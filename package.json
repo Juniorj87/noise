@@ -1,0 +1,29 @@
+{
+  "name": "sui-action-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NOISE HUB — non-custodial Sui Action Hub. Static frontend + Vercel serverless API + PostgreSQL.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node server/src/server.js",
+    "start": "node server/src/server.js",
+    "build": "node scripts/build-check.mjs",
+    "test": "cd server && npm test",
+    "test:integration": "cd server && npm run test:integration",
+    "test:api": "node --test --test-concurrency=1 server/test/api.test.js",
+    "test:pg": "node --test server/test/pg.test.js"
+  },
+  "dependencies": {
+    "@cetusprotocol/aggregator-sdk": "1.7.3",
+    "@mysten/deepbook-v3": "^2.6.4",
+    "@mysten/sui": "2.33.2",
+    "@mysten/suins": "^2.0.13",
+    "@suilend/sdk": "^12.4.1",
+    "aftermath-ts-sdk": "^5.1.1",
+    "navi-sdk": "^1.7.3",
+    "pg": "^8.13.1"
+  }
+}

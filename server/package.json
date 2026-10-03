@@ -1,0 +1,24 @@
+{
+  "name": "noise-hub-api",
+  "version": "0.1.0",
+  "description": "NOISE HUB backend — non-custodial Sui execution layer API",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js",
+    "test:integration": "node --test test/integration.test.js",
+    "test:pg": "node --test test/pg.test.js"
+  },
+  "dependencies": {
+    "@cetusprotocol/aggregator-sdk": "1.7.3",
+    "@mysten/deepbook-v3": "^2.6.4",
+    "@mysten/sui": "2.33.2",
+    "@mysten/suins": "^2.0.13",
+    "@suilend/sdk": "^12.4.1",
+    "aftermath-ts-sdk": "^5.1.1",
+    "navi-sdk": "^1.7.3"
+  }
+}

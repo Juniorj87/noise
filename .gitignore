@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+server/node_modules/
+
+# Real secrets — never commit (see .env.example for the template)
+.env
+.env.local
+.env.*.local
+
+# Local databases (SQLite dev artifacts)
+*.db
+*.db-shm
+*.db-wal
+server/data/
+
+# Vercel / build / logs / temp
+.vercel/
+*.log
+*.tmp.mjs
+
+# OS
+.DS_Store
+Thumbs.db

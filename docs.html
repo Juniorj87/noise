@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs — noise</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#0a0a0a; --text:#fff; --dim:rgba(255,255,255,.45); --accent:#0066ff; --line:rgba(255,255,255,.08); --surface:rgba(255,255,255,.02); }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); line-height:1.75; -webkit-font-smoothing:antialiased; }
+        nav { position:fixed; top:0; left:0; right:0; z-index:100; padding:20px 48px; display:flex; justify-content:space-between; align-items:center; background:rgba(10,10,10,.85); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+        .logo-noise { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:300; letter-spacing:-1px; color:var(--accent); text-decoration:none; }
+        .nav-cta { padding:10px 24px; background:var(--accent); color:#fff; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+        .wrap { display:flex; max-width:1200px; margin:0 auto; padding:120px 48px 80px; gap:64px; }
+        aside { width:230px; flex-shrink:0; position:sticky; top:110px; align-self:flex-start; max-height:calc(100vh - 140px); overflow-y:auto; }
+        aside a { display:block; color:var(--dim); text-decoration:none; font-size:12.5px; padding:7px 0; }
+        aside a:hover { color:var(--text); }
+        main { flex:1; min-width:0; }
+        h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,5vw,64px); font-weight:300; letter-spacing:-2px; margin-bottom:16px; }
+        h2 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:400; letter-spacing:-1px; margin:64px 0 16px; padding-top:32px; border-top:1px solid var(--line); }
+        h3 { font-size:14px; font-weight:600; margin:24px 0 8px; }
+        p, li { font-size:14px; color:rgba(255,255,255,.75); }
+        ul { padding-left:20px; margin:8px 0 16px; }
+        code { font-family:'Space Grotesk',monospace; font-size:12.5px; background:var(--surface); border:1px solid var(--line); padding:2px 7px; }
+        pre { background:var(--surface); border:1px solid var(--line); padding:20px; font-size:12.5px; line-height:1.8; overflow-x:auto; margin:12px 0 20px; }
+        .pill { display:inline-block; font-size:10px; letter-spacing:1.5px; padding:3px 9px; border:1px solid var(--line); color:var(--dim); }
+        .pill.live { color:#00ff88; border-color:rgba(0,255,136,.35); }
+        .pill.ro { color:var(--accent); border-color:rgba(0,102,255,.45); }
+        .warn { border:1px solid rgba(0,102,255,.4); background:rgba(0,102,255,.06); padding:16px 20px; font-size:13px; margin:16px 0; }
+        table { width:100%; border-collapse:collapse; margin:16px 0 24px; font-size:12.5px; }
+        th { text-align:left; font-size:10.5px; letter-spacing:1.5px; color:var(--dim); padding:12px; border-bottom:1px solid var(--line); }
+        td { padding:12px; border-bottom:1px solid var(--line); vertical-align:top; }
+        footer { padding:40px 48px; border-top:1px solid var(--line); display:flex; justify-content:space-between; color:var(--dim); font-size:12px; }
+        footer a { color:var(--dim); text-decoration:none; margin-left:24px; }
+        @media (max-width:900px){ aside{display:none;} .wrap{padding:110px 24px 60px;} nav{padding:16px 24px;} }
+        #noiseField { position:fixed; inset:0; width:100vw; height:100vh; display:block; pointer-events:none; z-index:0; }
+        .wrap, footer { position:relative; z-index:1; }
+    </style>
+</head>
+<body>
+    <canvas id="noiseField" aria-label="Ambient noise"></canvas>
+    <nav>
+        <div><a class="logo-noise" href="index.html">noise</a></div>
+        <button class="nav-cta" onclick="location.href=(window.HUB_APP_URL||'app.html')">Open App</button>
+    </nav>
+    <div class="wrap">
+        <aside>
+            <a href="#intro">Introduction</a>
+            <a href="#how">How it works</a>
+            <a href="#capital">Capital</a>
+            <a href="#discover">Discover</a>
+            <a href="#swap">Swap</a>
+            <a href="#earn">Earn</a>
+            <a href="#staking">Staking</a>
+            <a href="#lending">Lending</a>
+            <a href="#liquidity">Liquidity</a>
+            <a href="#trading">Trading</a>
+            <a href="#bridge">Bridge</a>
+            <a href="#nft">NFT</a>
+            <a href="#automation">Automation</a>
+            <a href="#ai">AI</a>
+            <a href="#memory">Memory</a>
+            <a href="#privacy">Privacy</a>
+            <a href="#security">Security</a>
+            <a href="#fees">Fees</a>
+            <a href="#referral">Referral</a>
+            <a href="#protocols">Protocols</a>
+            <a href="#activity">Activity</a>
+            <a href="#api">API</a>
+            <a href="#faq">FAQ</a>
+        </aside>
+        <main>
+            <h1 id="intro">noise docs</h1>
+            <p><b>noise</b> (NOISE HUB) is one non-custodial interface for the Sui ecosystem: capital overview, discovery, swap, earn, staking, lending, liquidity, trading, bridge, automation, AI — with every action tracked in Activity. Last updated: 2026-09-30.</p>
+            <div class="warn">Honesty rule: every feature is labelled <span class="pill live">LIVE</span>, <span class="pill ro">READ ONLY</span>, <span class="pill">DEEP LINK</span> or <span class="pill">COMING SOON</span>. Indicative values carry <code>*</code> and never look live.</div>
+
+            <h2 id="how">How it works</h2>
+            <pre>Connect → Discover → Choose → Review → Sign → Track → Automate
+Backend prepares. Wallet signs. Sui network settles.</pre>
+            <p>Open the app, connect a Sui wallet (read-only address or wallet-standard), see Capital aggregated without double counting, pick an action, review provider + route + fees + risks, simulate where supported, sign in your wallet, track the digest in Activity.</p>
+
+            <h2 id="capital">Capital</h2>
+            <p>Wallet coins (<code>suix_getAllBalances</code>), USD via CoinGecko, staking (<code>suix_getStakes</code>), non-coin object count (<code>suix_getOwnedObjects</code>). Rule: deposited tokens are positions, not wallet balance. Total = Available + DeFi + Staked + Rewards − Borrowed. Unpriced assets show <code>Price unavailable</code>.</p>
+
+            <h2 id="discover">Discover</h2>
+            <p>Tokens, pools, protocols, opportunities — each with Source + Updated. Tabs filter the live table and opportunity cards. Pool/whale feeds are <span class="pill ro">READ ONLY</span> until the indexer milestone (<code>STATUS.md</code>).</p>
+
+            <h2 id="swap">Swap</h2>
+            <p>Quotes via Cetus Aggregator V3 (<code>router_v3/find_routes</code>, SDK <code>@cetusprotocol/aggregator-sdk@1.7.3</code>). Review shows: you pay / receive, provider (<code>Best route via Cetus</code>), route, price impact, slippage, protocol / platform / network fees, minimum received, quote timestamp. No route → <code>PROVIDER_UNAVAILABLE</code> + deep-link, never a fabricated number.</p>
+
+            <h2 id="earn">Earn</h2>
+            <p>Opportunities show asset, protocol, APY + timestamp, TVL where available, deposit/withdraw, fees, lock and withdrawal conditions, risks. <code>*</code> = indicative preview until the indexer; verify on provider.</p>
+            <div class="warn"><b>Mandatory disclosure:</b> your funds are deposited into the selected protocol's smart contracts. noise does not custody these funds. APY is variable and may change. Third-party protocol and smart-contract risks apply.</div>
+            <h3>Earn math</h3>
+            <pre>annual  = principal × APY
+period  = principal × APY × days / 365
+compounding only where the protocol actually compounds</pre>
+
+            <h2 id="staking">Staking</h2>
+            <p>Native SUI staking reads are <span class="pill live">LIVE</span> (validators, principal). Shows validator/provider, APR/APY, commission, unbonding period, fees. Liquid staking (Aftermath / Haedal / Volo): stake SUI → receive provider LST. Transaction build = execution milestone.</p>
+
+            <h2 id="lending">Lending</h2>
+            <p>NAVI / Suilend / Scallop markets: supply APY, borrow APY, liquidity, utilization, collateral factor, liquidation threshold, health factor, rewards. Actions supply / withdraw / borrow / repay / claim follow the same Review → Sign flow. Never claim safe without current protocol data.</p>
+
+            <h2 id="liquidity">Liquidity</h2>
+            <p>Add / remove / collect fees / inspect position, range, pool, fee tier, APR/APY where available. Impermanent loss only as a labelled model/estimate.</p>
+
+            <h2 id="trading">Trading</h2>
+            <p>DeepBook: markets, bids/asks, spread, market/limit/cancel, open orders <span class="pill ro">READ ONLY</span> in this build; execution via DeepBook SDK milestone. Bluefin and others: <span class="pill">DEEP LINK</span> with attribution.</p>
+
+            <h2 id="bridge">Bridge</h2>
+            <p>Unified quote view (source, destination, asset, provider, fee, estimated receive, ETA) where provider APIs allow; otherwise <span class="pill">DEEP LINK</span>. No invented ETA/finality.</p>
+
+            <h2 id="nft">NFT</h2>
+            <p>Wallet non-coin count is live. Buy/sell/list need a marketplace SDK — <span class="pill">COMING SOON</span>; use the marketplace directly.</p>
+
+            <h2 id="automation">Automation</h2>
+            <p>Natural language → structured intent (schedule / price / reward / health triggers) → deterministic validation → permission engine → scheduler → adapter → simulation → execution → audit record. Default mode <code>MONITOR + NOTIFY</code>. Every execution automation carries allowed action/protocol/asset, max per execution, daily limit, expiration. Pause / resume / edit / revoke / delete anytime. Backend scheduler milestone moves runs off-device.</p>
+
+            <h2 id="ai">AI</h2>
+            <p>Tool-based assistant over live hub data: capital, balances, positions, earn, staking, lending, pools, token, activity, rewards, compare, build, simulate. Every dynamic answer shows Source + Updated; never invents values. AI cannot touch keys, bypass permissions, or build arbitrary transactions:</p>
+            <pre>User → AI → structured intent → validation → permission engine → tx builder → simulation → Review → wallet signs</pre>
+
+            <h2 id="memory">Memory</h2>
+            <p>Auto-save: UI preferences. Ask-before-save: strategies, notes, context. Never-save: seeds, keys, passwords, secrets. Enable / view / delete / clear in Security. Backend milestone: Seal-encrypted records in Walrus Memory.</p>
+
+            <h2 id="privacy">Privacy</h2>
+            <p>Seal = encryption &amp; access control; Walrus = decentralized storage (blobs are public — private data is always Seal-encrypted first); Sui = settlement &amp; execution.</p>
+
+            <h2 id="security">Security</h2>
+            <ul>
+                <li>Non-custodial: backend prepares, wallet signs. Keys never requested, never stored.</li>
+                <li>Production data over Sui gRPC (unified <code>SuiDataProvider</code>); legacy JSON-RPC only as a local-dev fallback via third-party endpoints — never Foundation JSON-RPC in production.</li>
+                <li>Simulation before signing on every execution path; <code>simulation_failed</code> blocks the wallet prompt.</li>
+                <li>Automation limits, expiry, revoke, pause-all; security events log.</li>
+                <li>Mainnet/testnet strictly separated. Rate limits + caching on all provider calls.</li>
+            </ul>
+            <p>We never claim 100% secure / unhackable / zero risk. Protocol, contract, liquidity and market risks always apply.</p>
+
+            <h2 id="fees">Fees</h2>
+            <table>
+                <tr><th>Fee</th><th>Meaning</th></tr>
+                <tr><td>Protocol fee</td><td>Fee charged by the underlying protocol (e.g. DeepBook pool taker/maker, read per-market — never hardcoded)</td></tr>
+                <tr><td>Provider fee</td><td>Fee charged by the routing/execution provider (e.g. Aftermath router integrator share)</td></tr>
+                <tr><td>Noise Hub fee</td><td>Transparent Noise Hub service fee — collected only as a real transaction leg; $0.00 when collection is not possible</td></tr>
+                <tr><td>Network fee</td><td>Sui transaction gas (estimated pre-sign, actual after confirmation)</td></tr>
+                <tr><td>Builder fee</td><td>Where the protocol supports it (DeepBook Predict official builder-code split — a share of protocol proceeds, never a trader debit)</td></tr>
+                <tr><td>Penalty / Impact</td><td>Instrument-specific Predict components, exact per market from the simulated chain quote</td></tr>
+            </table>
+            <p>Referral rewards are funded from eligible Noise Hub platform revenue — never an extra charge. The fee recipient is server-side configuration (<code>ACTION_HUB_FEE_RECIPIENT</code>); without it the platform fee is disabled and displayed as $0.00. Revenue is recorded only after on-chain confirmation.</p>
+
+            <h2 id="referral">Referral</h2>
+            <pre>referralReward = eligiblePlatformFee × policyRate(protocol, action)
+e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pre>
+            <p>No universal rate. Each protocol has a verified ReferralPolicy (default 0 until partner terms are confirmed). Links look like <code>https://noisehub.sui/?ref=bulka</code> (custom code or generated). 30-day attribution window (configurable). Self-referral, circular, duplicates and fake volume blocked. The reward is a share of platform revenue — never an extra user fee — and is recorded only after a real revenue event.</p>
+
+            <h2 id="protocols">Protocols</h2>
+            <table>
+                <tr><th>Protocol</th><th>Category</th><th>Status</th><th>Notes</th></tr>
+                <tr><td>Cetus (+Aggregator V3)</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes, tx build, devInspect simulation; wallet signs. SDK 1.7.3</td></tr>
+                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes via official REST (<code>/api/router/trade-route</code>); compared against Cetus</td></tr>
+                <tr><td>Aftermath Prices/Pools/Rewards</td><td>Data</td><td><span class="pill live">LIVE</span></td><td>Prices, pool TVL/APR, claimable rewards via REST; staking APY via SDK</td></tr>
+                <tr><td>Sui Native Staking</td><td>Staking</td><td><span class="pill live">LIVE</span></td><td>Balances, stakes, validators via RPC</td></tr>
+                <tr><td>DeepBook Spot</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Live market discovery, L2 orderbook, market/limit builds, open orders, cancel — via SDK 2.6.x; orders need your BalanceManager</td></tr>
+                <tr><td>DeepBook Predict</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Official <code>@mysten/deepbook-v3/predict</code> SDK: live market discovery (underlyings from chain config), UP/DOWN mint, exact simulated fee quotes, redeem, claim-settled, positions</td></tr>
+                <tr><td>SuiPump</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>674+ launchpad tokens: price, volume, trades, bonding progress, graduation — factual metrics only, never recommendations</td></tr>
+                <tr><td>Perpsplexity</td><td>Discovery</td><td><span class="pill">DEEP LINK</span></td><td>Perps venue: live status read; execution on the venue (no public token-discovery API — not scraped)</td></tr>
+                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">BLOCKED</span></td><td>SDK hardcodes deprecated RPC + undocumented pool args — see audit §C</td></tr>
+                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">BLOCKED</span></td><td>SDK needs unverified gRPC client shape — see audit §C</td></tr>
+                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">DEEP LINK</span></td><td>Official SDK package unverified — no invented integration</td></tr>
+                <tr><td>Haedal / Volo / Scallop / Bluefin</td><td>LST / Lending / Trading</td><td><span class="pill">DEEP LINK</span></td><td>Discovery + attribution; execution per milestone</td></tr>
+            </table>
+            <p>Verified 2026-09-30 / 2026-10-01 via npm registry + official docs + live probes. Full matrix: app → Security → Protocol registry.</p>
+
+            <h2 id="predict">DeepBook Predict</h2>
+            <p>A binary instrument: pick an asset, a strike and an expiry, take UP (settles above strike) or DOWN (settles below). Settlement is automatic and on-chain. Quotes show the exact fee components from a simulated chain quote — premium, trading fee, subsidy, builder fee, penalty, inventory impact — plus gas. There is no separate Noise Hub debit on Predict: builder/referral revenue is a split of protocol proceeds, not a trader charge. Minimum premium 1.00 USDC, quantity lots of 0.01.</p>
+
+            <h2 id="activity">Activity</h2>
+            <p>Every operation → timestamp, action, provider, asset, amount, fees, digest, status (preparing / awaiting signature / submitted / confirmed / failed / cancelled), origin (manual / automation / AI). Persisted server-side; digests link to the explorer.</p>
+
+            <h2 id="api">API</h2>
+            <p>Backend (<code>server/</code>, Node 22 + SQLite + verified SDKs) exposes:</p>
+            <pre>GET  /api/health /api/protocols
+GET  /api/capital?wallet=0x…      GET /api/quotes?from=&amp;to=&amp;amount=  (compared)
+GET  /api/prices?coins=…          GET /api/prices-info?coins=…
+GET  /api/aftermath/pools?limit=  GET /api/aftermath/staking-apy
+GET  /api/aftermath/rewards?wallet=  GET /api/aftermath/lp?wallet=
+GET  /api/trade/markets           GET /api/trade/orderbook?pool=&amp;ticks=
+GET  /api/trade/deepbook/markets    GET /api/trade/deepbook/orderbook?market=  POST /api/trade/deepbook/build
+GET  /api/trade/predict/markets     GET /api/trade/predict/market?underlying=&amp;expiryMs=
+POST /api/trade/predict/quote-mint  POST /api/trade/predict/build-mint
+POST /api/trade/predict/quote-redeem POST /api/trade/predict/build-redeem  POST /api/trade/predict/claim
+GET  /api/discover/suipump/tokens   GET /api/discover/perpsplexity/markets
+POST /api/fees (platform fee / breakdown)
+POST /api/swap/build              POST /api/sui (simulate)   GET /api/tx/status?digest=
+GET  /api/activity?wallet=0x…     POST /api/activity
+GET  /api/automation  POST /api/automation  POST /api/automation-status
+GET  /api/referral?code=  POST /api/referral/attribute  POST /api/referral/reward
+POST /api/ai  GET /api/ai-tools  GET /api/ai-providers  POST /api/ai/test
+GET  /api/memory  POST /api/memory  POST /api/memory-delete
+GET  /api/notifications  POST /api/notifications
+GET  /api/admin/summary  POST /api/admin/protocol  POST /api/admin/fees  (ADMIN_KEY)</pre>
+
+            <h2 id="faq">FAQ</h2>
+            <h3>What is Noise Hub?</h3>
+            <p>An execution + aggregation layer over existing Sui protocols: connect your wallet and act — swap, trade spot, take Predict positions, stake, track everything — with real quotes, real simulation and wallet signing.</p>
+            <h3>Does Noise Hub custody my funds?</h3>
+            <p>No. Your assets remain in your wallet and protocol positions. Transactions are signed by your wallet; the backend never holds keys and never signs.</p>
+            <h3>How does Noise Hub make money?</h3>
+            <p>On supported actions the hub may charge a transparent service fee, always shown before signing as Protocol / Provider / Noise Hub / Network lines. It is collected only as a real transaction leg — otherwise it reads $0.00.</p>
+            <h3>Does referral increase my fee?</h3>
+            <p>No. Referral rewards are paid from eligible Noise Hub platform revenue, never added to what you pay.</p>
+            <h3>Who receives the Noise Hub fee?</h3>
+            <p>The configured Noise Hub fee recipient (server-side configuration). It is never user input, never AI-supplied, never hardcoded in the frontend.</p>
+            <h3>What happens if a transaction fails?</h3>
+            <p>Simulation runs before signing — a failed simulation blocks the wallet prompt and nothing is sent. A wallet rejection submits nothing on-chain. On-chain failures are tracked to confirmed/failed with the reason shown in Activity.</p>
+            <h3>Is Noise Hub a wallet?</h3>
+            <p>No. It prepares and simulates; your wallet signs.</p>
+            <h3>Can Noise Hub access my private key?</h3>
+            <p>No. Keys never leave your wallet; the backend has no key handling at all.</p>
+            <h3>What is DeepBook Spot?</h3>
+            <p>The central-limit order book on Sui: live bids/asks per market, market and limit orders through your BalanceManager.</p>
+            <h3>What is DeepBook Predict?</h3>
+            <p>A binary instrument — asset, strike, expiry, UP/DOWN — with automatic on-chain settlement. Fees (trading, builder, penalty, impact) are quoted exactly per market from a simulated chain quote.</p>
+            <h3>Why is a Predict fee different from a normal swap?</h3>
+            <p>Predict mints a position against a market with its own fee policy (trading, builder, penalty, impact/subsidy components read from market state), while a swap pays router/pool fees plus gas. Both are shown line-by-line before you sign.</p>
+            <h3>Is noise a wallet? Does it hold my funds?</h3>
+            <p>No. It is a non-custodial execution layer. Funds sit in your wallet or in the protocol contracts you explicitly deposit into.</p>
+            <h3>Where does APY come from?</h3>
+            <p>Staking APY is live from the Aftermath Staking SDK; pool APR/TVL from the Aftermath Pools API — each with source + timestamp. Anything without a verified source shows Unavailable instead of a number. APY is always variable — verify on the provider before acting.</p>
+            <h3>What happens if a provider is down?</h3>
+            <p>Health monitoring isolates it (<code>PROVIDER_UNAVAILABLE</code> + deep-link). The rest of the app keeps working.</p>
+            <h3>Which wallet do I need?</h3>
+            <p>Any wallet-standard Sui wallet. Connection is read-only until you sign a reviewed transaction.</p>
+        </main>
+    </div>
+    <footer>
+        <div>noise — docs · 2026-09-30</div>
+        <div><a href="index.html">Landing</a><a href="app.html">Open App</a></div>
+    </footer>
+    <script>
+        (function () {
+            var cv = document.getElementById('noiseField');
+            if (!cv || !cv.getContext) return;
+            var ctx = cv.getContext('2d');
+            var W = 0, H = 0, t = Math.random() * 100;
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var sprite = document.createElement('canvas');
+            sprite.width = sprite.height = 64;
+            (function () {
+                var g = sprite.getContext('2d');
+                var grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+                grad.addColorStop(0, 'rgba(220,232,255,1)');
+                grad.addColorStop(0.35, 'rgba(0,102,255,0.5)');
+                grad.addColorStop(1, 'rgba(0,102,255,0)');
+                g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+            })();
+            var P = [];
+            function seed() {
+                P = [];
+                var n = Math.floor(W * H / 11000), i;
+                for (i = 0; i < n; i++) {
+                    P.push({ x: Math.random() * W, y: Math.random() * H, sp: 0.08 + Math.random() * 0.3, sz: 1 + Math.random() * 3, tw: Math.random() * Math.PI * 2, f: 0.4 + Math.random() * 1.2 });
+                }
+            }
+            function resize() {
+                var DPR = Math.min(window.devicePixelRatio || 1, 2);
+                W = Math.max(320, window.innerWidth); H = Math.max(320, window.innerHeight);
+                cv.width = W * DPR; cv.height = H * DPR;
+                ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                seed();
+            }
+            function frame() {
+                ctx.clearRect(0, 0, W, H);
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (var i = 0; i < P.length; i++) {
+                    var p = P[i];
+                    p.x += p.sp;
+                    if (p.x > W + 10) { p.x = -10; p.y = Math.random() * H; }
+                    var y = p.y + Math.sin(t * p.f + p.tw) * 8;
+                    ctx.globalAlpha = 0.04 + 0.08 * (0.5 + 0.5 * Math.sin(t * 1.5 + p.tw));
+                    ctx.drawImage(sprite, p.x - p.sz, y - p.sz, p.sz * 2, p.sz * 2);
+                }
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            }
+            window.addEventListener('resize', resize);
+            resize();
+            if (reduced) { frame(); } else {
+                (function loop() { t += 0.016; frame(); requestAnimationFrame(loop); })();
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — noise</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg:#0a0a0a; --text:#fff; --dim:rgba(255,255,255,.45); --accent:#0066ff; --line:rgba(255,255,255,.08); }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); padding:48px; line-height:1.7; -webkit-font-smoothing:antialiased; }
+        h1 { font-family:'Space Grotesk',sans-serif; font-weight:300; letter-spacing:-2px; font-size:42px; margin-bottom:8px; }
+        .sub { color:var(--dim); font-size:13px; margin-bottom:32px; }
+        .panel { border:1px solid var(--line); padding:28px; margin-bottom:24px; max-width:1000px; }
+        .panel h3 { font-size:11px; letter-spacing:2px; color:var(--dim); margin-bottom:16px; }
+        table { width:100%; border-collapse:collapse; font-size:12.5px; }
+        th { text-align:left; font-size:10.5px; letter-spacing:1.5px; color:var(--dim); padding:10px; border-bottom:1px solid var(--line); }
+        td { padding:10px; border-bottom:1px solid var(--line); vertical-align:top; }
+        input, select { background:rgba(255,255,255,.02); border:1px solid var(--line); color:var(--text); padding:10px 14px; font-size:13px; font-family:'Inter',sans-serif; }
+        button { background:var(--accent); color:#fff; border:none; padding:10px 20px; font-size:12px; font-weight:600; cursor:pointer; }
+        button.ghost { background:transparent; border:1px solid var(--line); }
+        .row { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+        .warn { border:1px solid rgba(255,80,80,.4); padding:12px 16px; font-size:12px; margin-bottom:24px; max-width:1000px; }
+        a { color:var(--accent); }
+    </style>
+</head>
+<body>
+    <h1>admin</h1>
+    <div class="sub">Internal operations. Served separately in production — never linked from the public app. <a href="index.html">← landing</a></div>
+    <div class="warn">ADMIN_KEY is checked server-side on every call. The key below lives only in this tab's memory (sessionStorage) — never in the database, never in logs.</div>
+    <div class="panel">
+        <h3>AUTH</h3>
+        <div class="row">
+            <input id="apiBase" value="http://localhost:3001" style="flex:1; min-width:220px;">
+            <input id="admKey" type="password" placeholder="ADMIN_KEY" style="flex:1; min-width:200px;">
+            <button onclick="loadAll()">Load</button>
+        </div>
+        <div class="fresh" id="authOut" style="font-size:12px; color:var(--dim);"></div>
+    </div>
+    <div class="panel">
+        <h3>SUMMARY</h3>
+        <div id="summary" style="font-size:13px;">—</div>
+    </div>
+    <div class="panel">
+        <h3>PROTOCOLS</h3>
+        <table><thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Enabled</th><th></th></tr></thead><tbody id="protoRows"><tr><td colspan="5">—</td></tr></tbody></table>
+    </div>
+    <div class="panel">
+        <h3>FEES (bps · 0–100 · runtime override, defaults from env)</h3>
+        <div class="row">
+            <input id="feeSwap" placeholder="swap bps">
+            <input id="feeEarn" placeholder="earn bps">
+            <input id="feeRefRate" placeholder="referral % (of hub revenue)">
+            <input id="feeRecipient" placeholder="fee recipient 0x… (empty = disabled)" style="flex:2; min-width:280px;">
+            <button onclick="saveFees()">Save fees</button>
+        </div>
+        <div class="row">
+            <input id="ovProvider" placeholder="provider (e.g. cetus)" style="max-width:200px;">
+            <input id="ovAction" placeholder="action (optional)" style="max-width:200px;">
+            <input id="ovBps" placeholder="bps" style="max-width:120px;">
+            <button class="ghost" onclick="saveOverride()">Save provider override</button>
+        </div>
+        <div class="fresh" id="feeOverrides" style="font-size:12px; color:var(--dim);"></div>
+    </div>
+    <div class="panel">
+        <h3>PROVIDER HEALTH</h3>
+        <div id="health" style="font-size:13px;">—</div>
+    </div>
+    <script>
+        const $ = (id) => document.getElementById(id);
+        // Same-origin default in production (Vercel /api); legacy Node server on localhost dev.
+        if (!['localhost', '127.0.0.1'].includes(location.hostname) && location.protocol !== 'file:') {
+            $('apiBase').value = location.origin;
+        }
+        const base = () => $('apiBase').value.replace(/\/$/, '');
+        const key = () => { const k = $('admKey').value; if (k) sessionStorage.setItem('adm', k); return sessionStorage.getItem('adm') || ''; };
+        if (sessionStorage.getItem('adm')) $('admKey').value = sessionStorage.getItem('adm');
+        async function call(path, method, body) {
+            const r = await fetch(base() + path, { method: method || 'GET', headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key() }, body: body ? JSON.stringify(body) : undefined });
+            return r.json();
+        }
+        async function loadAll() {
+            $('authOut').textContent = 'Loading…';
+            try {
+                const s = await call('/api/admin/summary');
+                if (s.error) { $('authOut').textContent = 'Failed: ' + s.error + ' (wrong key or server offline)'; return; }
+                $('authOut').textContent = 'Connected.';
+                $('summary').innerHTML = 'Net revenue: <b>$' + s.revenueNet + '</b> · Failed activity: <b>' + JSON.stringify(s.failedActivity) + '</b><br>Fees: swap ' + s.fees.swapBps + ' bps · earn ' + s.fees.earnBps + ' bps · ref ' + s.fees.refRate + '% · recipient ' + (s.fees.feeRecipient ? String(s.fees.feeRecipient).slice(0, 12) + '…' : '<i>disabled</i>') + ' · default ' + s.fees.defaultFeeBps + ' bps<br>Referral policies: <pre style="white-space:pre-wrap;">' + JSON.stringify(s.referralPolicies, null, 1).slice(0, 1200) + '</pre>';
+                $('feeOverrides').textContent = 'Overrides: ' + (((s.fees.overrides || []).map((o) => o.key + '=' + JSON.stringify(o.config)).join(' · ')) || 'none');
+                $('protoRows').innerHTML = s.protocols.map((p) => '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>' + p.status + '</td><td>' + (p.enabled ? 'on' : 'off') + '</td><td><button class="ghost" onclick="toggleProto(\'' + p.id + '\',' + (p.enabled ? 0 : 1) + ')">' + (p.enabled ? 'Disable' : 'Enable') + '</button></td></tr>').join('');
+                $('health').innerHTML = (s.health && s.health.length ? s.health : []).map((h) => h.provider + ': <b>' + h.status + '</b> · ' + (h.latency_ms || '?') + 'ms · ' + h.checked_at).join('<br>') || 'No checks recorded yet.';
+            } catch (e) { $('authOut').textContent = 'Server unreachable.'; }
+        }
+        async function toggleProto(id, enabled) {
+            await call('/api/admin/protocol', 'POST', { id, enabled, status: enabled ? 'LIVE_EXECUTION' : 'MAINTENANCE' });
+            loadAll();
+        }
+        async function saveFees() {
+            const body = {};
+            if ($('feeSwap').value !== '') body.swapBps = Number($('feeSwap').value);
+            if ($('feeEarn').value !== '') body.earnBps = Number($('feeEarn').value);
+            if ($('feeRefRate').value !== '') body.referralRate = Number($('feeRefRate').value);
+            if ($('feeRecipient').value !== '') body.feeRecipient = $('feeRecipient').value.trim();
+            if (!Object.keys(body).length) { alert('Enter at least one value.'); return; }
+            const r = await call('/api/admin/fees', 'POST', body);
+            alert(r.ok ? 'Saved: ' + JSON.stringify(r.fees) : 'Failed: ' + (r.error + ': ' + r.message));
+            loadAll();
+        }
+        async function saveOverride() {
+            const provider = $('ovProvider').value.trim();
+            const bps = $('ovBps').value.trim();
+            if (!provider || bps === '') { alert('Provider and bps are required.'); return; }
+            const r = await call('/api/admin/fees', 'POST', { providerOverride: { provider, action: $('ovAction').value.trim() || null, bps: Number(bps) } });
+            alert(r.ok ? 'Override saved.' : 'Failed: ' + (r.error + ': ' + r.message));
+            loadAll();
+        }
+    </script>
+</body>
+</html>
