@@ -33,7 +33,7 @@ const publicDir = join(process.cwd(), 'public');
 if (!existsSync(publicDir)) {
   mkdirSync(publicDir, { recursive: true });
 }
-for (const f of ['index.html', 'newmain.html', 'app.html', 'newapp.html', 'docs.html', 'admin.html']) {
+for (const f of ['index.html', 'app.html', 'docs.html', 'admin.html']) {
   const p = join(process.cwd(), f);
   if (existsSync(p)) cpSync(p, join(publicDir, f));
 }
