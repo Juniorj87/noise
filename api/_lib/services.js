@@ -111,11 +111,40 @@ export async function attributeReferral(code, referredWallet) {
   }
   if (row.referrer_wallet && row.referrer_wallet === referredWallet) return { ok: false, error: 'SELF_REFERRAL' };
   if (row.referrer_wallet) {
-    const circ = (await pool.query('SELECT id FROM referrals WHERE referrer_wallet = $1 AND referred_wallet = $2', [referredWallet, row.referrer_wallet])).rows[0];
+    const circ = (await pool.query(
+      `SELECT id FROM referral_attributions WHERE referrer = $1 AND referred_wallet = $2
+       UNION ALL SELECT id FROM referrals WHERE referrer_wallet = $1 AND referred_wallet = $2 LIMIT 1`,
+      [referredWallet, row.referrer_wallet])).rows[0];
     if (circ) return { ok: false, error: 'CIRCULAR_REFERRAL' };
   }
-  if (row.referred_wallet && row.referred_wallet !== referredWallet) return { ok: false, error: 'DUPLICATE_ATTRIBUTION' };
-  if (!row.referred_wallet) await pool.query('UPDATE referrals SET referred_wallet = $1 WHERE id = $2', [referredWallet, row.id]);
+  // First attribution wins — a wallet attributed elsewhere keeps its ORIGINAL
+  // referrer; after a qualifying confirmed action the freeze is explicit.
+  const existing = (await pool.query('SELECT * FROM referral_attributions WHERE referred_wallet = $1', [referredWallet])).rows[0]
+    || (await pool.query('SELECT id, code, referrer_wallet AS referrer FROM referrals WHERE referred_wallet = $1 AND referrer_wallet IS NOT NULL', [referredWallet])).rows[0];
+  if (existing) {
+    const same = existing.referrer === row.referrer_wallet
+      && (existing.code === code || existing.code === row.code);
+    if (same) return { ok: true, id: existing.id, fresh: false };
+    const acted = (await pool.query("SELECT id FROM transactions WHERE wallet = $1 AND status = 'confirmed' LIMIT 1", [referredWallet])).rows[0];
+    return { ok: false, error: acted ? 'ALREADY_ACTIVE' : 'ALREADY_ATTRIBUTED' };
+  }
+  // One code attributes MANY wallets: first fills the legacy single slot,
+  // every wallet gets an attribution row (canonical for stats/settlement).
+  try {
+    await pool.query(
+      `INSERT INTO referral_attributions (id, code, referrer, referred_wallet, source, status)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [uid('att'), code, row.referrer_wallet, referredWallet, 'link', 'attributed']);
+  } catch {
+    return { ok: false, error: 'ALREADY_ATTRIBUTED' };
+  }
+  if (!row.referred_wallet) {
+    try {
+      await pool.query("UPDATE referrals SET referred_wallet = $1, attributed_at = now(), status = 'attributed' WHERE id = $2", [referredWallet, row.id]);
+    } catch {
+      await pool.query('UPDATE referrals SET referred_wallet = $1 WHERE id = $2', [referredWallet, row.id]);
+    }
+  }
   return { ok: true, id: row.id, fresh: false };
 }
 
@@ -229,11 +258,23 @@ export async function settleReferralForTx(tx) {
   const policy = referralPolicyFor(aliases[rawKey] || rawKey || 'cetus', tx.action || '*');
   const rate = policy.rate;
   if (!(rate > 0)) return { reward: 0, reason: 'POLICY_RATE_ZERO', policy };
-  const ref = (await pool.query('SELECT * FROM referrals WHERE referred_wallet = $1', [tx.wallet])).rows[0];
-  if (!ref || !ref.referrer_wallet) return { reward: 0, reason: 'NO_ATTRIBUTION', policy };
-  if (ref.referrer_wallet === tx.wallet) return { reward: 0, reason: 'SELF_REFERRAL', policy };
-  if (ref.expires_at && new Date(ref.expires_at) < new Date()) return { reward: 0, reason: 'WINDOW_EXPIRED', policy };
-  const circular = (await pool.query('SELECT id FROM referrals WHERE referrer_wallet = $1 AND referred_wallet = $2', [tx.wallet, ref.referrer_wallet])).rows[0];
+  // Canonical attribution record first, legacy single-slot row as fallback.
+  // referral_id must reference a real referrals row (FK-safe).
+  const att = (await pool.query('SELECT * FROM referral_attributions WHERE referred_wallet = $1', [tx.wallet])).rows[0];
+  const legacy = att ? null : (await pool.query('SELECT * FROM referrals WHERE referred_wallet = $1', [tx.wallet])).rows[0];
+  const referrerWallet = att ? att.referrer : legacy?.referrer_wallet;
+  const regRow = att
+    ? ((await pool.query('SELECT * FROM referrals WHERE code = $1', [att.code])).rows[0]
+      || (await pool.query('SELECT * FROM referrals WHERE referrer_wallet = $1 LIMIT 1', [referrerWallet])).rows[0])
+    : legacy;
+  if (!referrerWallet || !regRow) return { reward: 0, reason: 'NO_ATTRIBUTION', policy };
+  if (referrerWallet === tx.wallet) return { reward: 0, reason: 'SELF_REFERRAL', policy };
+  if (regRow.expires_at && new Date(regRow.expires_at) < new Date()) return { reward: 0, reason: 'WINDOW_EXPIRED', policy };
+  const ref = regRow;
+  const circular = (await pool.query(
+    `SELECT id FROM referral_attributions WHERE referrer = $1 AND referred_wallet = $2
+     UNION ALL SELECT id FROM referrals WHERE referrer_wallet = $1 AND referred_wallet = $2 LIMIT 1`,
+    [tx.wallet, referrerWallet])).rows[0];
   if (circular) return { reward: 0, reason: 'CIRCULAR_REFERRAL', policy };
   const dup = (await pool.query('SELECT id FROM revenue_entries WHERE digest = $1', [tx.digest])).rows[0];
   if (dup) return { reward: 0, reason: 'DUPLICATE_DIGEST', policy };
@@ -244,10 +285,16 @@ export async function settleReferralForTx(tx) {
     `INSERT INTO revenue_entries (id, tx_id, wallet, referrer_wallet, referred_wallet, action, provider, digest,
        platform_fee, provider_share, referral_reward, net_revenue, gross_revenue, eligible_revenue, referral_rate)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'0',$10,$11,$12,$12,$13)`,
-    [revId, tx.id, tx.wallet, ref.referrer_wallet, tx.wallet, tx.action, tx.provider, tx.digest,
+    [revId, tx.id, tx.wallet, referrerWallet, tx.wallet, tx.action, tx.provider, tx.digest,
       String(eligible), String(reward), String(net), String(eligible), String(rate)]);
-  await pool.query('INSERT INTO referral_rewards (id, referral_id, revenue_id, amount, status) VALUES ($1,$2,$3,$4,$5)',
-    [uid('rew'), ref.id, revId, String(reward), 'confirmed']);
+  // referrer column exists on fresh schemas; legacy DBs fall back to the join path.
+  try {
+    await pool.query('INSERT INTO referral_rewards (id, referral_id, revenue_id, referrer, amount, status) VALUES ($1,$2,$3,$4,$5,$6)',
+      [uid('rew'), ref.id, revId, referrerWallet, String(reward), 'pending']);
+  } catch {
+    await pool.query('INSERT INTO referral_rewards (id, referral_id, revenue_id, amount, status) VALUES ($1,$2,$3,$4,$5)',
+      [uid('rew'), ref.id, revId, String(reward), 'pending']);
+  }
   return { reward, retained: net, revenueId: revId, policy };
 }
 

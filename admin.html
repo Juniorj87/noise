@@ -64,6 +64,40 @@
         <div class="fresh" id="feeOverrides" style="font-size:12px; color:var(--dim);"></div>
     </div>
     <div class="panel">
+        <h3>REVENUE</h3>
+        <div id="revSummary" style="font-size:13px;">—</div>
+        <h3 style="margin-top:20px;">REVENUE BY PROTOCOL</h3>
+        <table><thead><tr><th>PROTOCOL</th><th>REVENUE</th><th>REFERRAL</th><th>NOISE RETAINED</th><th>TXS</th></tr></thead><tbody id="revProto"><tr><td colspan="5">—</td></tr></tbody></table>
+        <h3 style="margin-top:20px;">REVENUE BY ACTION</h3>
+        <table><thead><tr><th>ACTION</th><th>REVENUE</th><th>REFERRAL</th><th>NOISE RETAINED</th><th>TXS</th></tr></thead><tbody id="revAction"><tr><td colspan="5">—</td></tr></tbody></table>
+    </div>
+    <div class="panel">
+        <h3>NOISE HUB REVENUE WALLET</h3>
+        <div id="revWallet" style="font-size:13px;">—</div>
+    </div>
+    <div class="panel">
+        <h3>RECONCILIATION</h3>
+        <div id="recon" style="font-size:13px;">—</div>
+    </div>
+    <div class="panel">
+        <h3>REFERRAL CONTROLS</h3>
+        <div class="row">
+            <input id="ctlRate" placeholder="referral % (0–100)" style="max-width:180px;">
+            <input id="ctlWindow" placeholder="window days (1–365)" style="max-width:180px;">
+            <input id="ctlMin" placeholder="min payout $" style="max-width:180px;">
+            <select id="ctlPayout"><option value="">payout enabled…</option><option value="true">enabled</option><option value="false">disabled</option></select>
+            <select id="ctlLb"><option value="">leaderboard…</option><option value="true">enabled</option><option value="false">disabled</option></select>
+            <button onclick="saveReferral()">Save referral controls</button>
+        </div>
+        <div id="refCtl" style="font-size:13px;">—</div>
+        <h3 style="margin-top:20px;">SETTLE PAYOUT (manual attestation — paste the on-chain tx digest)</h3>
+        <div class="row">
+            <input id="payId" placeholder="payout id" style="flex:1; min-width:200px;">
+            <input id="payTx" placeholder="tx digest" style="flex:2; min-width:280px;">
+            <button onclick="settlePayout()">Confirm paid</button>
+        </div>
+    </div>
+    <div class="panel">
         <h3>PROVIDER HEALTH</h3>
         <div id="health" style="font-size:13px;">—</div>
     </div>
@@ -90,7 +124,57 @@
                 $('feeOverrides').textContent = 'Overrides: ' + (((s.fees.overrides || []).map((o) => o.key + '=' + JSON.stringify(o.config)).join(' · ')) || 'none');
                 $('protoRows').innerHTML = s.protocols.map((p) => '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>' + p.status + '</td><td>' + (p.enabled ? 'on' : 'off') + '</td><td><button class="ghost" onclick="toggleProto(\'' + p.id + '\',' + (p.enabled ? 0 : 1) + ')">' + (p.enabled ? 'Disable' : 'Enable') + '</button></td></tr>').join('');
                 $('health').innerHTML = (s.health && s.health.length ? s.health : []).map((h) => h.provider + ': <b>' + h.status + '</b> · ' + (h.latency_ms || '?') + 'ms · ' + h.checked_at).join('<br>') || 'No checks recorded yet.';
+                loadRevenue();
             } catch (e) { $('authOut').textContent = 'Server unreachable.'; }
+        }
+        async function loadRevenue() {
+            try {
+                const r = await call('/api/admin/revenue');
+                if (!r.error && r.total) {
+                    const t = r.total;
+                    $('revSummary').innerHTML = 'TOTAL REVENUE <b>$' + t.eligible + '</b> · REFERRAL REVENUE <b>$' + t.referral + '</b> · NOISE RETAINED <b>$' + t.retained + '</b> · REFERRAL PAID <b>$' + t.paid + '</b> · PENDING <b>$' + t.pending + '</b> · TXS <b>' + t.txs + '</b><br><span style="color:var(--dim)">Protocol fees are never counted as Noise revenue — only eligible Noise Hub fees. Source: Noise accounting · ' + (r.updatedAt || '') + '</span>';
+                    $('revProto').innerHTML = (r.byProtocol || []).map((p) => '<tr><td>' + p.protocol + '</td><td>$' + p.revenue + '</td><td>$' + p.referral + '</td><td>$' + p.retained + '</td><td>' + p.txs + '</td></tr>').join('') || '<tr><td colspan="5">No revenue yet.</td></tr>';
+                    $('revAction').innerHTML = (r.byAction || []).map((p) => '<tr><td>' + p.action + '</td><td>$' + p.revenue + '</td><td>$' + p.referral + '</td><td>$' + p.retained + '</td><td>' + p.txs + '</td></tr>').join('') || '<tr><td colspan="5">No revenue yet.</td></tr>';
+                }
+            } catch (e) {}
+            try {
+                const w = await call('/api/revenue/wallet');
+                if (!w.error) $('revWallet').innerHTML = 'Address <b>' + w.wallet + '</b><br>Balance <b>' + (w.balance === null || w.balance === undefined ? '—' : w.balance + ' ' + (w.balanceAsset || 'SUI')) + '</b> · Incoming observed <b>' + (w.inboundTxs !== undefined ? w.inboundTxs : '—') + '</b> · Last activity <b>' + (w.lastActivity || '—') + '</b><br><span style="color:var(--dim)">Source: ' + (w.source || 'Sui') + ' · Updated: ' + (w.updatedAt || '') + ' · On-chain balance is settlement/verification only — accounting truth is the database.</span>';
+            } catch (e) {}
+            try {
+                const c = await call('/api/admin/reconciliation');
+                if (!c.error) {
+                    const warn = c.status === 'MISMATCH' ? '<br><b style="color:#ff8080;">REVENUE RECONCILIATION WARNING</b>' : '';
+                    $('recon').innerHTML = 'Expected <b>$' + c.expected + '</b> · Received <b>' + (c.received === null ? '—' : '$' + c.received) + '</b> · Difference <b>' + (c.difference === null ? '—' : '$' + c.difference) + '</b> · Status <b>' + c.status + '</b>' + warn + '<br><span style="color:var(--dim)">' + (c.expectedNote || '') + '</span>';
+                }
+            } catch (e) {}
+            try {
+                const f = await call('/api/admin/referral');
+                if (!f.error && f.controls) {
+                    const ctl = f.controls;
+                    $('refCtl').innerHTML = 'Rate <b>' + ctl.referralRate + '%</b> · Window <b>' + ctl.refWindowDays + 'd</b> · Min payout <b>$' + ctl.minPayout + '</b> · Payout <b>' + (ctl.payoutEnabled ? 'enabled' : 'disabled') + '</b> · Leaderboard <b>' + (ctl.leaderboardEnabled ? 'enabled' : 'disabled') + '</b> · Pending payouts <b>' + (f.pendingPayouts || 0) + '</b> · Wallet <b>' + (f.revenueWallet || '—') + '</b>';
+                }
+            } catch (e) {}
+        }
+        async function saveReferral() {
+            const body = {};
+            if ($('ctlRate').value !== '') body.referralRate = Number($('ctlRate').value);
+            if ($('ctlWindow').value !== '') body.refWindowDays = Number($('ctlWindow').value);
+            if ($('ctlMin').value !== '') body.minPayout = Number($('ctlMin').value);
+            if ($('ctlPayout').value !== '') body.payoutEnabled = $('ctlPayout').value === 'true';
+            if ($('ctlLb').value !== '') body.leaderboardEnabled = $('ctlLb').value === 'true';
+            if (!Object.keys(body).length) { alert('Enter at least one value.'); return; }
+            const r = await call('/api/admin/referral', 'POST', body);
+            alert(r.ok ? 'Saved.' : 'Failed: ' + (r.error + ': ' + (r.message || '')));
+            loadRevenue();
+        }
+        async function settlePayout() {
+            const payoutId = $('payId').value.trim(), txDigest = $('payTx').value.trim();
+            if (!payoutId || !txDigest) { alert('Payout id and tx digest are required.'); return; }
+            const r = await call('/api/admin/payout', 'POST', { payoutId, txDigest });
+            alert(r.ok ? 'Payout confirmed.' : 'Failed: ' + (r.error + ': ' + (r.message || '')));
+            loadRevenue();
+        }
         }
         async function toggleProto(id, enabled) {
             await call('/api/admin/protocol', 'POST', { id, enabled, status: enabled ? 'LIVE_EXECUTION' : 'MAINTENANCE' });

@@ -72,15 +72,37 @@ export function attributeReferral(code, referredWallet) {
   }
   // Circular referral check: did referredWallet refer row.referrer_wallet?
   if (row.referrer_wallet) {
-    const circ = db.prepare('SELECT id FROM referrals WHERE referrer_wallet = ? AND referred_wallet = ?')
-      .get(referredWallet, row.referrer_wallet);
+    const circ = db.prepare(`SELECT id FROM referral_attributions WHERE referrer = ? AND referred_wallet = ?
+       UNION ALL SELECT id FROM referrals WHERE referrer_wallet = ? AND referred_wallet = ? LIMIT 1`)
+      .get(referredWallet, row.referrer_wallet, referredWallet, row.referrer_wallet);
     if (circ) return { ok: false, error: 'CIRCULAR_REFERRAL' };
   }
-  if (row.referred_wallet && row.referred_wallet !== referredWallet) {
-    return { ok: false, error: 'DUPLICATE_ATTRIBUTION' };
+  // First attribution wins. A wallet attributed elsewhere keeps its ORIGINAL
+  // referrer — after a qualifying confirmed action the freeze is explicit.
+  const existing = db.prepare('SELECT * FROM referral_attributions WHERE referred_wallet = ?').get(referredWallet)
+    || db.prepare('SELECT id, code, referrer_wallet AS referrer FROM referrals WHERE referred_wallet = ? AND referrer_wallet IS NOT NULL').get(referredWallet);
+  if (existing) {
+    const same = existing.referrer === row.referrer_wallet
+      && (existing.code === code || existing.code === row.code);
+    if (same) return { ok: true, id: existing.id, fresh: false };
+    const acted = db.prepare("SELECT id FROM transactions WHERE wallet = ? AND status = 'confirmed' LIMIT 1").get(referredWallet);
+    return { ok: false, error: acted ? 'ALREADY_ACTIVE' : 'ALREADY_ATTRIBUTED' };
+  }
+  // One code attributes MANY wallets: first wallet fills the legacy single slot
+  // (keeps GET ?code= + legacy readers working), every wallet gets an
+  // attribution row — the canonical record for stats/settlement.
+  try {
+    db.prepare(`INSERT INTO referral_attributions (id, code, referrer, referred_wallet, source, status)
+      VALUES (?,?,?,?,?,?)`).run(uid('att'), code, row.referrer_wallet, referredWallet, 'link', 'attributed');
+  } catch {
+    return { ok: false, error: 'ALREADY_ATTRIBUTED' };
   }
   if (!row.referred_wallet) {
-    db.prepare('UPDATE referrals SET referred_wallet = ? WHERE id = ?').run(referredWallet, row.id);
+    try {
+      db.prepare("UPDATE referrals SET referred_wallet = ?, attributed_at = datetime('now'), status = 'attributed' WHERE id = ?").run(referredWallet, row.id);
+    } catch {
+      db.prepare('UPDATE referrals SET referred_wallet = ? WHERE id = ?').run(referredWallet, row.id);
+    }
   }
   return { ok: true, id: row.id, fresh: false };
 }
@@ -232,23 +254,41 @@ export function settleReferralForTx(tx) {
   // normalize known aliases
   const rate = policy.rate;
   if (!(rate > 0)) return { reward: 0, reason: 'POLICY_RATE_ZERO', policy };
-  const ref = db.prepare('SELECT * FROM referrals WHERE referred_wallet = ?').get(tx.wallet);
-  if (!ref || !ref.referrer_wallet) return { reward: 0, reason: 'NO_ATTRIBUTION', policy };
-  if (ref.referrer_wallet === tx.wallet) return { reward: 0, reason: 'SELF_REFERRAL', policy };
-  if (ref.expires_at && new Date(ref.expires_at) < new Date()) return { reward: 0, reason: 'WINDOW_EXPIRED', policy };
+  // Canonical attribution record first, legacy single-slot row as fallback.
+  const att = db.prepare('SELECT * FROM referral_attributions WHERE referred_wallet = ?').get(tx.wallet);
+  const legacy = att ? null : db.prepare('SELECT * FROM referrals WHERE referred_wallet = ?').get(tx.wallet);
+  const referrerWallet = att ? att.referrer : legacy?.referrer_wallet;
+  // referral_id must reference a real referrals row (FK-safe): prefer the
+  // code registration row, fall back to any row owned by the referrer.
+  const regRow = att
+    ? (db.prepare('SELECT * FROM referrals WHERE code = ?').get(att.code)
+      || db.prepare('SELECT * FROM referrals WHERE referrer_wallet = ? LIMIT 1').get(referrerWallet))
+    : legacy;
+  if (!referrerWallet || !regRow) return { reward: 0, reason: 'NO_ATTRIBUTION', policy };
+  if (referrerWallet === tx.wallet) return { reward: 0, reason: 'SELF_REFERRAL', policy };
+  if (regRow?.expires_at && new Date(regRow.expires_at) < new Date()) return { reward: 0, reason: 'WINDOW_EXPIRED', policy };
+  const ref = regRow;
   // Circular referral check: did tx.wallet refer ref.referrer_wallet?
-  const circular = db.prepare('SELECT id FROM referrals WHERE referrer_wallet = ? AND referred_wallet = ?').get(tx.wallet, ref.referrer_wallet);
+  const circular = db.prepare(`SELECT id FROM referral_attributions WHERE referrer = ? AND referred_wallet = ?
+    UNION ALL SELECT id FROM referrals WHERE referrer_wallet = ? AND referred_wallet = ? LIMIT 1`)
+    .get(tx.wallet, referrerWallet, tx.wallet, referrerWallet);
   if (circular) return { reward: 0, reason: 'CIRCULAR_REFERRAL', policy };
   const dup = db.prepare('SELECT * FROM revenue_entries WHERE digest = ?').get(tx.digest);
   if (dup) return { reward: 0, reason: 'DUPLICATE_DIGEST', policy };
   const reward = Math.round(eligible * (rate / 100) * 1e6) / 1e6;
   const rev = recordRevenue({
-    txId: tx.id, wallet: tx.wallet, referrerWallet: ref.referrer_wallet, action: tx.action, provider: tx.provider,
+    txId: tx.id, wallet: tx.wallet, referrerWallet, action: tx.action, provider: tx.provider,
     digest: tx.digest, platformFee: eligible, providerShare: 0, referralReward: reward, referralRate: rate,
   });
   const rid = uid('rew');
-  db.prepare('INSERT INTO referral_rewards (id,referral_id,revenue_id,amount,status) VALUES (?,?,?,?,?)')
-    .run(rid, ref.id, rev.id, String(reward), 'confirmed');
+  const hasReferrerCol = (() => { try { return db.prepare('PRAGMA table_info(referral_rewards)').all().some((c) => c.name === 'referrer'); } catch { return false; } })();
+  if (hasReferrerCol) {
+    db.prepare('INSERT INTO referral_rewards (id,referral_id,revenue_id,referrer,amount,status) VALUES (?,?,?,?,?,?)')
+      .run(rid, ref.id, rev.id, referrerWallet, String(reward), 'pending');
+  } else {
+    db.prepare('INSERT INTO referral_rewards (id,referral_id,revenue_id,amount,status) VALUES (?,?,?,?,?)')
+      .run(rid, ref.id, rev.id, String(reward), 'pending');
+  }
   return { reward, retained: rev.net, revenueId: rev.id, policy };
 }
 

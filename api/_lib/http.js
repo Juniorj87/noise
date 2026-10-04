@@ -76,7 +76,10 @@ export function handler(fn, { limit = 120 } = {}) {
       const rl = rateLimit((req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'anon') + '|' + url.pathname, limit);
       if (!rl.allowed) return json(res, 429, { error: 'RATE_LIMITED', message: 'Too many requests — slow down and retry shortly.' }, req);
       const out = await fn(req, res, url);
-      if (!res.writableEnded) json(res, out && out.status ? out.status : 200, out, req);
+      // Only a NUMERIC status selects the HTTP code — payloads may carry a
+      // string `status` of their own (e.g. reconciliation MATCHED/PENDING).
+      const httpStatus = Number.isInteger(out && out.status) ? out.status : 200;
+      if (!res.writableEnded) json(res, httpStatus, out, req);
     } catch (e) {
       const code = e.code || 'INTERNAL';
       const safe = ['INVALID_WALLET', 'INVALID_AMOUNT', 'INVALID_BPS', 'INVALID_DIGEST', 'INVALID_CODE', 'INVALID_TX', 'INVALID_OBJECT_ID',

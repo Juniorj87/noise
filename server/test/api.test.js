@@ -66,7 +66,7 @@ test('cors: wildcard is never returned', () => {
 
 test('cron: tx-tracker requires CRON_SECRET when set', async () => {
   process.env.CRON_SECRET = 'test-cron-secret-123';
-  const mod = await import('../../api/cron/tx-tracker.js');
+  const mod = await import('../../api/_lib/handlers/cron.js');
   const res = fakeRes();
   await mod.default(fakeReq({ url: 'http://localhost/api/cron/tx-tracker' }), res);
   assert.equal(res.statusCode, 401);
@@ -82,7 +82,7 @@ test('cron: tx-tracker requires CRON_SECRET when set', async () => {
 
 test('cron: automation endpoint auth + no-signature guarantee', async () => {
   process.env.CRON_SECRET = 'test-cron-secret-456';
-  const mod = await import('../../api/cron/automation.js');
+  const mod = await import('../../api/_lib/handlers/cron.js');
   const res = fakeRes();
   await mod.default(fakeReq({ url: 'http://localhost/api/cron/automation', headers: { 'x-cron-secret': 'wrong' } }), res);
   assert.equal(res.statusCode, 401);
@@ -130,6 +130,18 @@ test('vercel.json: crons registered + legacy aliases present', async () => {
   assert.ok(paths.includes('/api/cron/automation'));
   assert.ok(cfg.rewrites.some((r) => r.source === '/api/swap/build'));
   assert.ok(cfg.rewrites.some((r) => r.source === '/api/automation-status'));
+});
+
+test('http: string payload status never becomes the HTTP code', async () => {
+  const route = handler(async () => ({ expected: '100', status: 'PENDING' }));
+  const res = fakeRes();
+  await route(fakeReq(), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(JSON.parse(res.body).status, 'PENDING');
+  const route2 = handler(async () => ({ error: 'NOPE', status: 409 }));
+  const res2 = fakeRes();
+  await route2(fakeReq(), res2);
+  assert.equal(res2.statusCode, 409);
 });
 
 test('schema.sql: unique digest indexes exist for txs + revenue', async () => {

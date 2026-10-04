@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+server/node_modules
+
+# Secrets and environment
+.env*
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# SQLite databases & test artifacts
+server/data/
+server/test/
+*.db
+*.db-shm
+*.db-wal
+
+# Build artifacts & temp
+*.log
+*.tmp.mjs
+vercel.json.bak
+
+# Markdown documentation
+*.md

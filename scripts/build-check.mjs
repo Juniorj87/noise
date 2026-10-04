@@ -25,3 +25,20 @@ for (const f of files) {
 }
 if (bad) { console.error(bad + ' file(s) with syntax errors'); process.exit(1); }
 console.log('build check OK — static frontend, ' + files.length + ' serverless modules parse');
+
+// Prepare public/ directory for static frontend deployment
+import { mkdirSync, cpSync, existsSync } from 'node:fs';
+
+const publicDir = join(process.cwd(), 'public');
+if (!existsSync(publicDir)) {
+  mkdirSync(publicDir, { recursive: true });
+}
+for (const f of ['index.html', 'newmain.html', 'app.html', 'newapp.html', 'docs.html', 'admin.html']) {
+  const p = join(process.cwd(), f);
+  if (existsSync(p)) cpSync(p, join(publicDir, f));
+}
+const assetsDir = join(process.cwd(), 'assets');
+if (existsSync(assetsDir)) {
+  cpSync(assetsDir, join(publicDir, 'assets'), { recursive: true });
+}
+console.log('public directory prepared successfully');

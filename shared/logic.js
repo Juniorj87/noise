@@ -48,6 +48,118 @@ export function checkTransition(from, to) {
   return { ok: true };
 }
 
+/* ---------- revenue wallet (PUBLIC address — settlement/verification layer only) ----------
+ * This address may live in server-side config and be shown to users.
+ * It is NEVER a private key / seed / mnemonic — signing stays in the user's
+ * wallet (non-custodial) or in a dedicated server signer (stage 2, not here). */
+export const NOISE_HUB_REVENUE_WALLET = '0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1';
+export function revenueWalletAddress() { return NOISE_HUB_REVENUE_WALLET; }
+
+/* ---------- decimal-safe accounting (BigInt, smallest units — no float money) ---------- */
+export function toMinorUnits(amountStr, decimals = 6) {
+  const s = String(amountStr ?? '0').trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) throw Object.assign(new Error('INVALID_AMOUNT'), { code: 'INVALID_AMOUNT' });
+  const neg = s.startsWith('-');
+  const [w, f = ''] = s.replace('-', '').split('.');
+  const frac = (f + '0'.repeat(decimals)).slice(0, decimals);
+  const v = BigInt(w === '' ? '0' : w) * (10n ** BigInt(decimals)) + BigInt(frac === '' ? '0' : frac);
+  return neg ? (-v).toString() : v.toString();
+}
+export function fromMinorUnits(minorStr, decimals = 6) {
+  const neg = String(minorStr).startsWith('-');
+  const v = BigInt(String(minorStr).replace('-', ''));
+  const base = 10n ** BigInt(decimals);
+  const whole = v / base;
+  const frac = String(v % base).padStart(decimals, '0').replace(/0+$/, '');
+  return (neg ? '-' : '') + whole.toString() + (frac ? '.' + frac : '');
+}
+/** Split eligible revenue (minor units, string) by rate bps → { rewardMinor, retainedMinor }. */
+export function splitRevenueMinor(eligibleMinorStr, rateBps) {
+  const eligible = BigInt(eligibleMinorStr);
+  const rate = BigInt(Math.max(0, Math.min(10000, Number(rateBps) || 0)));
+  const reward = (eligible * rate) / 10000n;
+  return { rewardMinor: reward.toString(), retainedMinor: (eligible - reward).toString() };
+}
+/** Aggregate guard: SUM(REAL) can return 8.700000000000001 — round to 6dp. */
+export function moneyStr(v) {
+  const n = Number(v) || 0;
+  return String(Math.round(n * 1e6) / 1e6);
+}
+/** Decimal-string split (display convenience — exact to 6dp, never float). */
+export function splitRevenue(eligibleStr, ratePercent) {
+  const bps = Math.round(Number(ratePercent || 0) * 100);
+  const minor = toMinorUnits(eligibleStr, 6);
+  const { rewardMinor, retainedMinor } = splitRevenueMinor(minor, bps);
+  return { reward: fromMinorUnits(rewardMinor, 6), retained: fromMinorUnits(retainedMinor, 6) };
+}
+
+/* ---------- privacy: short wallet only, never full address in leaderboards ---------- */
+export function truncateWallet(addr) {
+  if (typeof addr !== 'string' || !/^0x[0-9a-fA-F]+$/.test(addr)) return '—';
+  const h = addr.slice(2);
+  if (h.length < 8) return addr;
+  return `0x${h.slice(0, 4)}...${h.slice(-4)}`;
+}
+
+/* ---------- leaderboard: deterministic ordering (one implementation, both stacks) ----------
+ * Primary: earned DESC → eligible DESC → active DESC → wallet ASC. */
+export function compareLeaderboardRows(a, b) {
+  const num = (v) => Number(v) || 0;
+  if (num(b.earned) !== num(a.earned)) return num(b.earned) - num(a.earned);
+  if (num(b.eligibleRevenue) !== num(a.eligibleRevenue)) return num(b.eligibleRevenue) - num(a.eligibleRevenue);
+  if ((b.activeReferrals || 0) !== (a.activeReferrals || 0)) return (b.activeReferrals || 0) - (a.activeReferrals || 0);
+  return String(a.wallet || '').localeCompare(String(b.wallet || ''));
+}
+export function assignRanks(rows) {
+  return [...rows].sort(compareLeaderboardRows).map((r, i) => ({ ...r, rank: i + 1 }));
+}
+export const LEADERBOARD_PERIODS = ['week', 'month', 'all'];
+export const LEADERBOARD_METRICS = ['earned', 'revenue', 'active'];
+/** Metric modes reorder the primary key; tie-breaks stay deterministic. */
+export function compareLeaderboardRowsRevenue(a, b) {
+  const num = (v) => Number(v) || 0;
+  if (num(b.eligibleRevenue) !== num(a.eligibleRevenue)) return num(b.eligibleRevenue) - num(a.eligibleRevenue);
+  if (num(b.earned) !== num(a.earned)) return num(b.earned) - num(a.earned);
+  if ((b.activeReferrals || 0) !== (a.activeReferrals || 0)) return (b.activeReferrals || 0) - (a.activeReferrals || 0);
+  return String(a.wallet || '').localeCompare(String(b.wallet || ''));
+}
+export function compareLeaderboardRowsActive(a, b) {
+  if ((b.activeReferrals || 0) !== (a.activeReferrals || 0)) return (b.activeReferrals || 0) - (a.activeReferrals || 0);
+  const num = (v) => Number(v) || 0;
+  if (num(b.earned) !== num(a.earned)) return num(b.earned) - num(a.earned);
+  if (num(b.eligibleRevenue) !== num(a.eligibleRevenue)) return num(b.eligibleRevenue) - num(a.eligibleRevenue);
+  return String(a.wallet || '').localeCompare(String(b.wallet || ''));
+}
+export function leaderboardComparator(metric) {
+  if (metric === 'revenue') return compareLeaderboardRowsRevenue;
+  if (metric === 'active') return compareLeaderboardRowsActive;
+  return compareLeaderboardRows;
+}
+
+/* ---------- reconciliation: DB expected vs wallet observed (pure, testable) ---------- */
+export function reconcileRevenue({ expectedIn, paidOut, observed, tolerance = 0.01 } = {}) {
+  const exp = Number(expectedIn) || 0;
+  const paid = Number(paidOut) || 0;
+  const expected = Math.round((exp - paid) * 1e6) / 1e6;
+  if (observed === null || observed === undefined || observed === '') {
+    return { expected: String(expected), received: null, difference: null, status: 'PENDING', coverage: 'observed-unavailable' };
+  }
+  const rec = Number(observed) || 0;
+  const diff = Math.round((rec - expected) * 1e6) / 1e6;
+  return {
+    expected: String(expected),
+    received: String(rec),
+    difference: String(diff),
+    status: Math.abs(diff) <= Number(tolerance) ? 'MATCHED' : 'MISMATCH',
+    coverage: 'partial-scan',
+  };
+}
+export function periodCutoffIso(period, nowMs = Date.now()) {
+  if (period === 'week') return new Date(nowMs - 7 * 864e5).toISOString();
+  if (period === 'month') return new Date(nowMs - 30 * 864e5).toISOString();
+  return null; // 'all'
+}
+
 /* ---------- referral policies (no universal 30% — per-protocol, verified) ---------- */
 export const REFERRAL_POLICIES = {
   'aftermath-perps': { '*': { rate: 10, basis: '10% of referee fees <$100M volume, 5% above (docs/perpetuals/referrals)', verified: '2026-09-30' } },

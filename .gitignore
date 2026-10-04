@@ -15,9 +15,12 @@ server/data/
 
 # Vercel / build / logs / temp
 .vercel/
+public/
 *.log
 *.tmp.mjs
 
 # OS
 .DS_Store
 Thumbs.db
+.vercel
+.env*

@@ -162,11 +162,66 @@ db.exec(`UPDATE automations SET updated_at = created_at WHERE updated_at IS NULL
 db.exec('CREATE INDEX IF NOT EXISTS idx_auto_wallet ON automations(wallet)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_auto_status ON automations(status)');
 
-// revenue & referrals: attribution hardening (§12, §32)
+// revenue & referrals: attribution hardening (§12, §32) + referral/revenue analytics layer
 ['referrer_wallet TEXT', 'referred_wallet TEXT', 'eligible_revenue TEXT',
- 'referral_rate TEXT', 'gross_revenue TEXT',
+ 'referral_rate TEXT', 'gross_revenue TEXT', 'gross_amount TEXT',
+ 'gross_asset TEXT', 'status TEXT', 'confirmed_at TEXT',
 ].forEach((ddl) => ensureColumn('revenue_entries', ddl));
-ensureColumn('referrals', 'updated_at TEXT');
+['updated_at TEXT', 'attributed_at TEXT', 'source TEXT', 'status TEXT',
+].forEach((ddl) => ensureColumn('referrals', ddl));
+['referrer TEXT', 'asset TEXT', 'paid_at TEXT', 'tx_digest TEXT',
+].forEach((ddl) => ensureColumn('referral_rewards', ddl));
+db.exec(`UPDATE revenue_entries SET status = 'confirmed' WHERE status IS NULL`);
+db.exec(`UPDATE referrals SET status = 'attributed' WHERE status IS NULL`);
+/* NOTE: legacy referral_rewards rows carry status 'confirmed' — queries treat
+   'pending' + 'confirmed' as unpaid (pending) and only 'paid' as paid. */
+db.exec(`CREATE TABLE IF NOT EXISTS referral_payouts (
+  id TEXT PRIMARY KEY,
+  referrer TEXT NOT NULL,
+  amount TEXT NOT NULL, asset TEXT NOT NULL DEFAULT 'USDC',
+  destination TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  tx_digest TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  confirmed_at TEXT
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS revenue_reconciliation (
+  id TEXT PRIMARY KEY,
+  period TEXT NOT NULL DEFAULT 'all',
+  expected TEXT NOT NULL, received TEXT NOT NULL, difference TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  checked_at TEXT NOT NULL DEFAULT (datetime('now')),
+  detail TEXT
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS referral_attributions (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  referrer TEXT,
+  referred_wallet TEXT NOT NULL UNIQUE,
+  attributed_at TEXT NOT NULL DEFAULT (datetime('now')),
+  source TEXT,
+  status TEXT NOT NULL DEFAULT 'attributed'
+)`);
+db.exec(`INSERT OR IGNORE INTO referral_attributions (id, code, referrer, referred_wallet, attributed_at, status)
+  SELECT 'att_' || substr(id, 1, 40), code, referrer_wallet, referred_wallet, created_at, 'attributed'
+  FROM referrals WHERE referred_wallet IS NOT NULL AND referrer_wallet IS NOT NULL`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_attr_code ON referral_attributions(code)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_attr_referrer ON referral_attributions(referrer)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_attr_status ON referral_attributions(status)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_ref_referrer ON referrals(referrer_wallet)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_ref_referred ON referrals(referred_wallet)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_ref_status ON referrals(status)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rew_referrer ON referral_rewards(referrer)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rew_status ON referral_rewards(status)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_payout_referrer ON referral_payouts(referrer)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_payout_status ON referral_payouts(status)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rev_referrer ON revenue_entries(referrer_wallet)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rev_provider ON revenue_entries(provider)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rev_action ON revenue_entries(action)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rev_created ON revenue_entries(created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_rev_status ON revenue_entries(status)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_tx_provider ON transactions(provider)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rev_digest_unique ON revenue_entries(digest)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rew_revenue_unique ON referral_rewards(revenue_id)');
 

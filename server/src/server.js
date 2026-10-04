@@ -5,6 +5,11 @@ import { sui, simulate } from './sui.js';
 import { NETWORK } from './sui.js';
 import { cetusAdapter, aftermathAdapter, deepbookAdapter, deepbookOpenOrders, suiAdapter, listProtocols, deepLink, compareRoutes, coinType } from './adapters.js';
 import {
+  getReferralStats, getReferralActivity, getLeaderboard, getRevenueSeries,
+  getNetworkStats, getRevenueSummary, getReconciliationExpected,
+} from './referral-analytics.js';
+import { NOISE_HUB_REVENUE_WALLET, reconcileRevenue } from '../../shared/logic.js';
+import {
   FEES, FeeEngine, feeBreakdown, attributeReferral, referralReward, referralPolicyFor, REFERRAL_POLICIES,
   logActivity, recordRevenue, createAutomation, setAutomationStatus,
   schedulerTick, parseAutomationNL, aiTools, aiChat, testAiConnection, saveMemory,
@@ -254,11 +259,118 @@ const routes = {
   'POST /api/scheduler-tick': async () => schedulerTick(),
 
   'GET /api/referral': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (wallet) {
+      if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+      const own = db.prepare('SELECT code FROM referrals WHERE referrer_wallet = ? ORDER BY created_at ASC LIMIT 1').get(wallet);
+      const stats = getReferralStats(wallet);
+      const lb = getLeaderboard({ period: 'all', metric: 'earned', limit: 1, viewer: wallet });
+      return {
+        wallet,
+        referral: own ? { code: own.code, link: 'https://noisehub.xyz/?ref=' + own.code } : null,
+        stats: {
+          referred: stats.referred, active: stats.active,
+          eligibleRevenue: stats.eligibleRevenue, earned: stats.earned,
+          pending: stats.pending, paid: stats.paid,
+          retained: stats.retained, conversion: stats.conversion,
+        },
+        rank: lb.viewer ? { position: lb.viewer.rank, total: lb.viewer.total } : { position: null, total: 0 },
+        rate: FEES.refRate, windowDays: FEES.refWindowDays,
+        updatedAt: stats.updatedAt, source: 'Noise accounting',
+      };
+    }
     const code = url.searchParams.get('code');
     const row = db.prepare('SELECT * FROM referrals WHERE code = ?').get(code);
     if (!row) return { error: 'UNKNOWN_CODE', code: 404 };
     const rewards = db.prepare('SELECT COALESCE(SUM(CAST(amount AS REAL)),0) AS total FROM referral_rewards WHERE referral_id = ?').get(row.id);
     return { referral: row, earned: rewards.total, rate: FEES.refRate, windowDays: FEES.refWindowDays };
+  },
+  'GET /api/referral/stats': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    const own = db.prepare('SELECT code FROM referrals WHERE referrer_wallet = ? ORDER BY created_at ASC LIMIT 1').get(wallet);
+    const stats = getReferralStats(wallet);
+    const lb = getLeaderboard({ period: 'all', metric: 'earned', limit: 1, viewer: wallet });
+    return {
+      wallet,
+      referral: own ? { code: own.code, link: 'https://noisehub.xyz/?ref=' + own.code } : null,
+      stats: {
+        referred: stats.referred, active: stats.active,
+        eligibleRevenue: stats.eligibleRevenue, earned: stats.earned,
+        pending: stats.pending, paid: stats.paid,
+        retained: stats.retained, conversion: stats.conversion,
+      },
+      rank: lb.viewer ? { position: lb.viewer.rank, total: lb.viewer.total } : { position: null, total: 0 },
+      rate: FEES.refRate, windowDays: FEES.refWindowDays,
+      updatedAt: stats.updatedAt, source: 'Noise accounting',
+    };
+  },
+  'GET /api/referral/activity': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    return { items: getReferralActivity(wallet, url.searchParams.get('limit') || 25), updatedAt: new Date().toISOString(), source: 'Noise accounting' };
+  },
+  'GET /api/referral/leaderboard': async (_, url) => {
+    if (String(process.env.LEADERBOARD_ENABLED || 'true') === 'false') return { error: 'LEADERBOARD_DISABLED', code: 503 };
+    return getLeaderboard({
+      period: url.searchParams.get('period') || 'all',
+      metric: url.searchParams.get('metric') || 'earned',
+      limit: url.searchParams.get('limit') || 50,
+      viewer: url.searchParams.get('wallet') || null,
+    });
+  },
+  'GET /api/referral/rank': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    const lb = getLeaderboard({ period: 'all', metric: 'earned', limit: 1, viewer: wallet });
+    return { ...(lb.viewer || { rank: null }), updatedAt: lb.updatedAt, source: lb.source };
+  },
+  'GET /api/referral/revenue': async (_, url) => {
+    const wallet = url.searchParams.get('wallet') || null;
+    if (wallet && !isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    return getRevenueSeries({ wallet, range: url.searchParams.get('range') || '30d' });
+  },
+  'GET /api/referral/network': async () => getNetworkStats(),
+  'POST /api/referral/claim': async (req) => {
+    const b = await readJson(req);
+    if (!isWalletAddress(b.wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    if (String(process.env.PAYOUT_ENABLED || 'false') !== 'true') {
+      return { error: 'PAYOUT_DISABLED', message: 'Claiming coming soon — rewards are tracked and safe.', code: 501 };
+    }
+    const stats = getReferralStats(b.wallet);
+    const min = Number(process.env.MIN_PAYOUT || 1);
+    if (!(Number(stats.pending) >= min)) return { error: 'BELOW_MINIMUM', message: `Minimum payout is $${min}.`, code: 400 };
+    const id = uid('pay');
+    db.prepare(`INSERT INTO referral_payouts (id, referrer, amount, asset, destination, status) VALUES (?,?,?,?,?,?)`)
+      .run(id, b.wallet, String(stats.pending), 'USDC', b.wallet, 'pending');
+    return { ok: true, payoutId: id, amount: stats.pending, status: 'pending' };
+  },
+  'GET /api/revenue/summary': async () => getRevenueSummary(),
+  'GET /api/revenue/wallet': async () => {
+    const wallet = process.env.NOISE_HUB_REVENUE_WALLET || NOISE_HUB_REVENUE_WALLET;
+    let balance = null;
+    try {
+      const cap = await suiAdapter.getCapital(wallet);
+      const suiCoin = (cap.coins || []).find((c) => String(c.coinType) === '0x2::sui::SUI');
+      if (suiCoin) balance = String(Number(suiCoin.totalBalance || 0) / 1e9);
+    } catch { /* observed-unavailable */ }
+    return {
+      wallet, balance, balanceAsset: 'SUI', source: 'Sui',
+      updatedAt: new Date().toISOString(),
+      coverage: balance === null ? 'observed-unavailable' : 'partial-scan',
+      note: 'On-chain balance is settlement/verification only — accounting truth is the Noise database.',
+    };
+  },
+  'GET /api/revenue/reconciliation': async () => {
+    const { expectedIn, paidOut } = getReconciliationExpected();
+    // Dev server performs no history scan: honest PENDING until observed on-chain.
+    const rec = reconcileRevenue({ expectedIn, paidOut, observed: null });
+    return {
+      ...rec, wallet: process.env.NOISE_HUB_REVENUE_WALLET || NOISE_HUB_REVENUE_WALLET,
+      expectedNote: 'DB accounting truth (eligible Noise Hub revenue minus paid rewards)',
+      observedNote: 'No wallet scan on dev server — configure production reconciliation for observed values',
+      source: 'Noise accounting', updatedAt: new Date().toISOString(),
+    };
   },
   'POST /api/referral/attribute': async (req) => {
     const b = await readJson(req);
@@ -585,6 +697,64 @@ const routes = {
       .run(b.enabled ? 1 : 0, b.status || 'MAINTENANCE', b.id);
     return { ok: true };
   },
+  'GET /api/admin/referral': async (_, _url, headers) => {
+    if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
+    return {
+      controls: {
+        referralRate: FEES.refRate, refWindowDays: FEES.refWindowDays,
+        minPayout: Number(process.env.MIN_PAYOUT || 1),
+        payoutEnabled: String(process.env.PAYOUT_ENABLED || 'false') === 'true',
+        leaderboardEnabled: String(process.env.LEADERBOARD_ENABLED || 'true') !== 'false',
+      },
+      summary: getRevenueSummary(),
+      pendingPayouts: db.prepare("SELECT COUNT(*) AS c FROM referral_payouts WHERE status = 'pending'").get()?.c ?? 0,
+      revenueWallet: process.env.NOISE_HUB_REVENUE_WALLET || NOISE_HUB_REVENUE_WALLET,
+    };
+  },
+  'POST /api/admin/referral': async (req, _url, headers) => {
+    if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
+    const b = await readJson(req);
+    if (b.referralRate != null) {
+      const v = Number(b.referralRate);
+      if (!(v >= 0 && v <= 100)) return { error: 'INVALID_RATE', code: 400 };
+      FEES.refRate = v; // runtime override; persisted via env in production config
+    }
+    return { ok: true, refRate: FEES.refRate };
+  },
+  'GET /api/admin/revenue': async (_, _url, headers) => {
+    if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
+    return getRevenueSummary();
+  },
+  'GET /api/admin/reconciliation': async (_, _url, headers) => {
+    if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
+    const { expectedIn, paidOut } = getReconciliationExpected();
+    return {
+      ...reconcileRevenue({ expectedIn, paidOut, observed: null }),
+      wallet: process.env.NOISE_HUB_REVENUE_WALLET || NOISE_HUB_REVENUE_WALLET,
+      source: 'Noise accounting', updatedAt: new Date().toISOString(),
+    };
+  },
+  'POST /api/admin/payout': async (req, _url, headers) => {
+    if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
+    const b = await readJson(req);
+    if (!b.payoutId || !b.txDigest) return { error: 'INVALID_REQUEST', code: 400 };
+    const pay = db.prepare('SELECT * FROM referral_payouts WHERE id = ?').get(b.payoutId);
+    if (!pay) return { error: 'NOT_FOUND', code: 404 };
+    if (pay.status === 'confirmed') return { ok: true, already: true };
+    db.prepare("UPDATE referral_payouts SET status = 'confirmed', tx_digest = ?, confirmed_at = datetime('now') WHERE id = ?")
+      .run(String(b.txDigest).slice(0, 200), b.payoutId);
+    try {
+      db.prepare(`UPDATE referral_rewards SET status = 'paid', paid_at = datetime('now'), tx_digest = ?
+        WHERE status IN ('pending','confirmed') AND COALESCE(referrer,
+          (SELECT referrer_wallet FROM referrals r WHERE r.id = referral_rewards.referral_id)) = ?`)
+        .run(String(b.txDigest).slice(0, 200), pay.referrer);
+    } catch {
+      db.prepare(`UPDATE referral_rewards SET status = 'paid' WHERE status IN ('pending','confirmed')
+        AND referral_id IN (SELECT id FROM referrals WHERE referrer_wallet = ?)`)
+        .run(pay.referrer);
+    }
+    return { ok: true, payoutId: b.payoutId };
+  },
 };
 
 /** Run a Vercel route handler against a capturing res shim and
@@ -599,24 +769,68 @@ function vercelShim(route) {
   };
 }
 
+/* Legacy dev action names → canonical production handler actions.
+ * The canonical source is api/_lib/handlers/*.js (same code Vercel runs). */
+const DEEPBOOK_DEV_ACTION = {
+  markets: 'markets', orderbook: 'orderbook', estimate: 'estimate', orders: 'orders',
+  build: 'build', cancel: 'cancel', info: 'market', setup: 'setup-account',
+};
+/** Dev-only compatibility shim: legacy /api/trade/deepbook/* paths are served by
+ *  the CANONICAL production trade handler. No production logic is duplicated or
+ *  altered here — only path/query translation plus legacy field-name mapping. */
+function deepbookDevShim(route) {
+  const base = vercelShim(route);
+  return async (req2, url2) => {
+    const seg = String(url2.pathname.split('/').filter(Boolean).pop() || '');
+    const target = DEEPBOOK_DEV_ACTION[seg] || seg;
+    const u = new URL(req2.url, 'http://localhost');
+    if (target !== seg) u.pathname = u.pathname.replace(/\/[^/]+$/, '/' + target);
+    // Canonical estimate/market read `pool`; legacy callers send `market`.
+    if ((target === 'estimate' || target === 'market')
+      && !u.searchParams.get('pool') && u.searchParams.get('market')) {
+      u.searchParams.set('pool', u.searchParams.get('market'));
+    }
+    req2.url = u.pathname + (u.search ? u.search : '');
+    const out = await base(req2, url2);
+    if (out && !out.error) {
+      if (seg === 'markets' && Array.isArray(out.markets)) {
+        out.markets = out.markets.map((m) => ({ ...m, midPrice: m.midPrice ?? m.last ?? null }));
+        if (!out.source) out.source = 'DeepBook SDK';
+      }
+      if (seg === 'orders' && Array.isArray(out.orders) && out.managerKnown === undefined) {
+        // Factual derivation via the canonical adapter: a wallet with no
+        // BalanceManager objects has no trading account. Dev-server only.
+        try {
+          const { deepbookAdapter: canon } = await import('../../api/_lib/deepbook.js');
+          const w = new URL(req2.url, 'http://localhost').searchParams.get('wallet');
+          const ids = w ? await canon.getBalanceManagerIds(w).catch(() => []) : [];
+          out.managerKnown = Array.isArray(ids) && ids.length > 0;
+        } catch { out.managerKnown = out.orders.length > 0; }
+      }
+    }
+    return out;
+  };
+}
+
 const server = createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') return send(res, 204, {}, req);
     const url = new URL(req.url, 'http://localhost');
     const key = req.method + ' ' + url.pathname;
     let handler = routes[key];
-    // Dev adapters for Vercel route files (exact-match router only):
-    // run the Vercel handler against a capturing res shim, then return its JSON body.
+    // Dev adapters for the CANONICAL production handlers (single implementation,
+    // also served by Vercel): run the handler against a capturing res shim,
+    // then return its JSON body. Legacy per-route files no longer exist.
     if (!handler && url.pathname.startsWith('/api/trade/deepbook/')) {
-      const { default: dbRoute } = await import('../../api/trade/deepbook/%5Baction%5D.js');
-      handler = vercelShim(dbRoute);
+      const { default: dbRoute } = await import('../../api/_lib/handlers/trade.js');
+      handler = deepbookDevShim(dbRoute);
     }
     if (!handler && url.pathname.startsWith('/api/earn/')) {
-      const { default: earnRoute } = await import('../../api/earn/%5Baction%5D.js');
+      const { default: earnRoute } = await import('../../api/_lib/handlers/earn.js');
       handler = vercelShim(earnRoute);
     }
     if (!handler && url.pathname.startsWith('/api/aftermath/')) {
-      const { default: afRoute } = await import('../../api/aftermath/%5Baction%5D.js');
+      const { default: afRoute } = await import('../../api/_lib/handlers/aftermath.js');
       handler = vercelShim(afRoute);
     }
     if (!handler) return send(res, 404, { error: 'NOT_FOUND' }, req);

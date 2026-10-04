@@ -106,7 +106,8 @@
         :root {
             --bg: #0a0a0a;
             --text: #ffffff;
-            --text-dim: rgba(255, 255, 255, 0.4);
+            --text-dim: rgba(255, 255, 255, 0.42);
+            --text-faint: rgba(255,255,255,0.24);
             --accent: #0066ff;
             --line: rgba(255, 255, 255, 0.08);
             --surface: rgba(255, 255, 255, 0.02);
@@ -128,6 +129,23 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Noise visual refinement — editorial Sui / DeepBook language */
+        .sidebar { padding:30px 18px; }
+        .sidebar-logo { margin-bottom:34px; padding-bottom:22px; }
+        .sidebar-logo a { text-transform:none; letter-spacing:-1.3px; }
+        .nav-group { margin:18px 0 7px; padding:0 12px; font-size:9px; letter-spacing:2.2px; color:var(--text-faint); }
+        .nav-item { border-radius:0; padding:10px 12px; }
+        .nav-item.active { background:transparent; }
+        .nav-item.active::before { height:18px; border-radius:0; }
+        .main { padding:56px 56px 72px; max-width:1600px; }
+        .page-header { margin-bottom:58px; }
+        .page-title { font-size:clamp(42px,4vw,64px); line-height:.98; letter-spacing:-2.8px; }
+        button, .btn, input, select, textarea { border-radius:0 !important; }
+        .app::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:90; background:radial-gradient(circle at 78% 8%,rgba(0,102,255,.035),transparent 32%); opacity:.65; }
+        .sidebar-wallet span { color:#7ee2b8; }
+        @media(max-width:1024px){.sidebar{width:176px}.main{margin-left:176px;padding:44px 36px}}
+        @media(max-width:700px){.sidebar{width:100%;height:auto;position:sticky;top:0;padding:14px 16px;border-right:0;border-bottom:1px solid var(--line)}.sidebar-logo{margin:0 0 12px;padding:0 0 12px}.nav-group{display:none}.sidebar-nav{flex-direction:row;overflow-x:auto;gap:2px}.nav-item{white-space:nowrap}.main{margin-left:0;padding:34px 20px 56px}.page-title{font-size:36px}}
+
         /* App Shell */
         .app {
             display: flex;
@@ -136,7 +154,7 @@
 
         /* Sidebar */
         .sidebar {
-            width: 200px;
+            width: 220px;
             background: var(--bg);
             border-right: 1px solid var(--line);
             padding: 32px 20px;
@@ -218,7 +236,7 @@
         /* Main Content */
         .main {
             flex: 1;
-            margin-left: 200px;
+            margin-left: 220px;
             padding: 48px;
         }
 
@@ -1263,6 +1281,50 @@
             cursor: not-allowed;
         }
         @media (max-width: 768px) { .sec-grid2 { grid-template-columns: 1fr; } }
+
+        /* ===== Noise Hub app polish / command-center layer ===== */
+        .main{width:100%;max-width:none;padding:42px 56px 88px;}
+        .main > *{max-width:1240px;margin-left:auto;margin-right:auto;}
+        .topbar{max-width:1240px;margin-bottom:34px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+        .noise-mark{font-size:12px;letter-spacing:2.6px;}
+        .nav-group-label{font-size:9px;letter-spacing:2.2px;color:var(--text-faint);padding:18px 12px 7px;}
+        .sidebar{width:236px;padding:30px 18px;}
+        .main{margin-left:236px;}
+        .sidebar-logo a b{color:#fff;font-weight:300;}
+        .sidebar-wallet{margin-top:auto;}
+        .sidebar-wallet .claim-btn{font-family:'Inter',sans-serif;letter-spacing:.2px;}
+        .page-header{position:relative;margin-bottom:34px;}
+        .page-title{font-size:clamp(40px,4vw,60px);}
+        .page-subtitle{max-width:720px;line-height:1.7;}
+        .command-intro{border:1px solid var(--line);background:linear-gradient(135deg,rgba(0,102,255,.07),rgba(255,255,255,.015) 48%,transparent);padding:30px 32px;margin:0 0 34px;position:relative;overflow:hidden;}
+        .command-intro:after{content:'';position:absolute;width:260px;height:260px;border:1px solid rgba(0,102,255,.12);border-radius:50%;right:-100px;top:-130px;}
+        .command-kicker{font-size:10px;letter-spacing:2.2px;color:var(--accent);margin-bottom:10px;}
+        .command-title{font-family:'Space Grotesk',sans-serif;font-size:28px;letter-spacing:-1.2px;font-weight:400;margin-bottom:8px;}
+        .command-copy{font-size:13px;color:var(--text-dim);max-width:760px;line-height:1.8;}
+        .command-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:24px;}
+        .command-step{background:rgba(10,10,10,.82);padding:18px 18px 20px;min-height:92px;}
+        .command-step b{display:block;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:400;margin-bottom:6px;}
+        .command-step span{font-size:11px;color:var(--text-dim);line-height:1.55;}
+        .command-number{font-size:9px;letter-spacing:1.8px;color:var(--accent);margin-bottom:12px;display:block;}
+        .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 42px;}
+        .quick-action{border:1px solid var(--line);padding:18px 20px;background:rgba(255,255,255,.012);cursor:pointer;transition:.2s;min-height:94px;}
+        .quick-action:hover{border-color:rgba(0,102,255,.55);background:rgba(0,102,255,.045);transform:translateY(-1px);}
+        .quick-action .qa-label{font-size:10px;letter-spacing:1.8px;color:var(--text-faint);margin-bottom:9px;}
+        .quick-action strong{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:400;display:block;margin-bottom:4px;}
+        .quick-action span{font-size:11px;color:var(--text-dim);}
+        .page-section-intro{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:0 0 22px;}
+        .page-section-intro p{font-size:12px;color:var(--text-dim);max-width:560px;line-height:1.7;}
+        .capital-value{margin-top:18px;}
+        .actions-grid{grid-template-columns:repeat(6,1fr);}
+        .action-item{min-height:76px;display:flex;align-items:center;justify-content:center;}
+        .assets-grid,.token-metrics{box-shadow:0 0 0 1px rgba(255,255,255,.015);}
+        .panel,.available-capital,.action-composer,.generated-automation,.rewards-block,.nft-preview,.chart-container,.opportunity-card,.automation-item{background:rgba(255,255,255,.012);}
+        .panel h3{font-weight:500;}
+        .how{background:rgba(255,255,255,.012);}
+        .btn-solid,.claim-btn,.confirm-btn,.create-btn{font-family:'Inter',sans-serif;letter-spacing:.1px;}
+        .status-pill{vertical-align:middle;}
+        @media(max-width:1024px){.sidebar{width:190px}.main{margin-left:190px;padding:36px 32px 72px}.command-steps{grid-template-columns:repeat(2,1fr)}.quick-actions{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:768px){.sidebar{width:100%;padding:14px 16px}.main{margin-left:0;padding:26px 20px 56px}.command-intro{padding:24px}.command-title{font-size:24px}.command-steps,.quick-actions{grid-template-columns:1fr}.topbar{padding-bottom:14px}.page-section-intro{display:block}.page-section-intro p{margin-top:8px}}
     </style>
 </head>
 <body>
@@ -1270,17 +1332,21 @@
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-logo"><a href="index.html">noise</a></div>
+            <div class="sidebar-logo"><a href="newmain.html"><span>noise</span><b> hub</b></a></div>
             <nav class="sidebar-nav">
+                <div class="nav-group-label">CORE</div>
                 <a class="nav-item active" data-page="capital">Capital</a>
                 <a class="nav-item" data-page="discover">Discover</a>
                 <a class="nav-item" data-page="earn">Earn</a>
                 <a class="nav-item" data-page="trade">Trade</a>
+                <div class="nav-group-label">ACTIONS</div>
                 <a class="nav-item" data-page="actions">Actions</a>
                 <a class="nav-item" data-page="automation">Automation</a>
+                <div class="nav-group-label">ACCOUNT</div>
                 <a class="nav-item" data-page="activity">Activity</a>
                 <a class="nav-item" data-page="ai">AI Assistant</a>
                 <a class="nav-item" data-page="referral">Referral <span id="refNavBadge" class="fresh" style="margin-left:6px; display:none;"></span></a>
+                <div class="nav-group-label">SYSTEM</div>
                 <a class="nav-item" data-page="security">Security</a>
                 <a class="nav-item" data-page="settings">Settings</a>
             </nav>
@@ -1296,9 +1362,10 @@
                 <input class="search-input" id="globalSearch" placeholder="Search token, protocol, pool, action — e.g. USDC">
                 <span class="net-badge live" id="netBadge">MAINNET · Sui RPC</span>
                 <span class="fresh" id="freshBadge">data: fresh</span>
-                <a class="noise-mark" href="index.html" title="Back to landing">NOISE</a>
+                <a class="noise-mark" href="newmain.html" title="Back to landing">NOISE HUB</a>
             </div>
             <div id="searchResults" style="margin-bottom:24px; display:none;"></div>
+            <div class="fresh" style="margin:-10px auto 28px;max-width:1240px;line-height:1.7;">NON-CUSTODIAL · WALLET AUTHORIZATION · LIVE SOURCES · REVIEW BEFORE SIGN</div>
             <!-- Capital Page -->
             <div class="page active" id="capital">
                 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
@@ -1307,8 +1374,27 @@
                     </div>
                     <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
                         <span id="capitalTimeAgo" style="font-size:11px; color:var(--text-dim);"></span>
-                        <button class="filter-btn" onclick="refreshCapitalManual()" style="font-size:11px; padding:6px 14px; cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--text);">⟳ Refresh</button>
+                        <button class="filter-btn" onclick="refreshCapitalManual()" style="font-size:11px; padding:6px 14px; cursor:pointer; background:transparent; border:1px solid var(--line); color:var(--text);">Refresh</button>
                     </div>
+                </div>
+
+
+                <div class="command-intro">
+                    <div class="command-kicker">NOISE HUB · SUI CONTROL LAYER</div>
+                    <div class="command-title">One place to see, decide, execute.</div>
+                    <div class="command-copy">Connect your wallet, inspect your real Sui state, choose an action, then review exactly what will happen before your wallet signs. Noise prepares the route and tracks the result — your wallet remains in control.</div>
+                    <div class="command-steps">
+                        <div class="command-step"><span class="command-number">01 · CONNECT</span><b>Connect wallet</b><span>Read your balances and positions directly from Sui.</span></div>
+                        <div class="command-step"><span class="command-number">02 · DISCOVER</span><b>See what matters</b><span>Markets, pools, tokens and live protocol data in one view.</span></div>
+                        <div class="command-step"><span class="command-number">03 · REVIEW</span><b>Build the action</b><span>Provider, fees, limits and simulation appear before signing.</span></div>
+                        <div class="command-step"><span class="command-number">04 · SIGN</span><b>Track on-chain</b><span>Your wallet signs. Noise follows the transaction to its final state.</span></div>
+                    </div>
+                </div>
+                <div class="quick-actions">
+                    <div class="quick-action" onclick="navigateTo('actions');openSwapComposer()"><div class="qa-label">MOVE</div><strong>Swap</strong><span>Compare supported routes →</span></div>
+                    <div class="quick-action" onclick="navigateTo('trade')"><div class="qa-label">MARKETS</div><strong>Trade</strong><span>DeepBook Spot &amp; Predict →</span></div>
+                    <div class="quick-action" onclick="navigateTo('earn')"><div class="qa-label">CAPITAL</div><strong>Earn</strong><span>Staking &amp; liquidity →</span></div>
+                    <div class="quick-action" onclick="navigateTo('discover')"><div class="qa-label">SIGNAL</div><strong>Discover</strong><span>Explore live Sui activity →</span></div>
                 </div>
 
                 <div class="capital-value" id="totalValue">—</div>
@@ -1341,11 +1427,11 @@
                 <div class="actions-section">
                     <div class="section-label">WHAT DO YOU WANT TO DO?</div>
                     <div class="actions-grid">
-                        <div class="action-item" onclick="navigateTo('actions')">Earn</div>
+                        <div class="action-item" onclick="navigateTo('earn')">Earn</div>
                         <div class="action-item" onclick="navigateTo('actions')">Swap</div>
                         <div class="action-item" onclick="navigateTo('actions')">Buy</div>
                         <div class="action-item" onclick="navigateTo('actions')">Sell</div>
-                        <div class="action-item" onclick="navigateTo('actions')">Stake</div>
+                        <div class="action-item" onclick="navigateTo('earn')">Stake</div>
                         <div class="action-item" onclick="navigateTo('actions')">Claim</div>
                     </div>
                 </div>
@@ -1483,7 +1569,7 @@
                 <div id="atab-move" class="action-intents">
                     <div class="intent-item" onclick="openSwapComposer()">
                         <div class="intent-title">Swap</div>
-                        <div class="intent-desc">Best route via Cetus / Aftermath / Turbos — attribution mandatory</div>
+                        <div class="intent-desc">Compare supported routes — provider + quote shown before signing</div>
                     </div>
                     <div class="intent-item" onclick="openSwapComposer('USDC','SUI')">
                         <div class="intent-title">Buy / Sell</div>
@@ -1530,7 +1616,7 @@
                     </div>
                     <div class="intent-item" onclick="openSwapComposer()">
                         <div class="intent-title">Swap</div>
-                        <div class="intent-desc">Best route via Cetus / Aftermath</div>
+                        <div class="intent-desc">Compare supported routes</div>
                     </div>
                 </div>
 
@@ -1567,7 +1653,7 @@
                     <div id="swapComposerPanel" style="display:none;">
                         <div class="panel">
                             <h3>SWAP COMPOSER</h3>
-                            <div class="fresh" style="margin-bottom:16px;">Best route via Cetus Aggregator / Aftermath Router</div>
+                            <div class="fresh" style="margin-bottom:16px;">Supported routes · provider + quote</div>
                             
                             <div style="margin-bottom:16px;">
                                 <div class="settings-label" style="margin-bottom:8px;">You pay</div>
@@ -1752,7 +1838,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             <div class="page" id="trade">
                 <div class="page-header">
                     <h1 class="page-title">TRADE</h1>
-                    <div class="page-subtitle">DeepBook V3 — live on-chain orderbook. You sign, the hub never custodies.</div>
+                    <div class="page-subtitle">DeepBook V3 · Spot + Predict. Select a market, review the quote/order, simulate where supported, then sign in your wallet.</div>
                 </div>
 
                 <!-- Trade Mode Selector -->
@@ -1848,7 +1934,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                             .m-tabs { display:flex; gap:8px; margin-bottom:12px; }
                         }
                         @media (min-width: 861px) { .m-tabs { display:none; } }
-                    </style>
+                    \n        /* ============================================================\n           NOISE VISUAL CONSOLIDATION\n           The landing page is the visual source of truth.\n           UI-only overrides: no data, wallet, routing or API logic.\n           ============================================================ */\n        .sidebar {\n            width: 224px;\n            padding: 32px 24px;\n            background: rgba(10,10,10,.92);\n            border-right: 1px solid var(--line);\n        }\n        .sidebar-logo {\n            margin-bottom: 34px;\n            padding: 0 0 22px;\n            border-bottom: 1px solid var(--line);\n        }\n        .sidebar-logo a {\n            display: inline-flex;\n            align-items: baseline;\n            gap: 4px;\n            font-size: 24px;\n            font-weight: 300;\n            letter-spacing: -1.4px;\n            color: var(--accent);\n        }\n        .sidebar-logo a b {\n            color: var(--text);\n            font-weight: 300;\n        }\n        .sidebar-nav { gap: 2px; }\n        .nav-group-label {\n            margin: 20px 0 7px;\n            padding: 0 4px;\n            font-size: 9px;\n            line-height: 1;\n            letter-spacing: 2.4px;\n            color: rgba(255,255,255,.28);\n        }\n        .nav-group-label:first-child { margin-top: 0; }\n        .nav-item {\n            padding: 9px 10px;\n            border-radius: 0;\n            font-size: 12px;\n            font-weight: 500;\n            letter-spacing: -.05px;\n            border-left: 1px solid transparent;\n        }\n        .nav-item:hover {\n            background: transparent;\n            color: var(--text);\n            border-left-color: rgba(255,255,255,.18);\n        }\n        .nav-item.active {\n            background: transparent;\n            color: var(--text);\n            border-left-color: var(--accent);\n        }\n        .nav-item.active::before { display: none; }\n        .sidebar-wallet { padding-top: 18px; }\n        .sidebar-wallet .claim-btn { border-radius: 0; }\n        .main {\n            margin-left: 224px;\n            padding: 48px 56px 72px;\n            max-width: 1600px;\n        }\n        .topbar {\n            margin-bottom: 54px;\n            gap: 16px;\n        }\n        .search-input {\n            background: transparent;\n            border-radius: 0;\n            padding: 11px 0;\n            border-width: 0 0 1px;\n            border-color: var(--line);\n            max-width: 560px;\n        }\n        .search-input:focus { border-color: rgba(0,102,255,.65); }\n        .net-badge, .status-pill, .status-badge { border-radius: 0; }\n        .net-badge.live { color: rgba(255,255,255,.5); border-color: var(--line); }\n        .noise-mark {\n            color: var(--accent);\n            font-size: 11px;\n            letter-spacing: 2.5px;\n            font-weight: 600;\n        }\n        .page-header { margin-bottom: 42px; }\n        .page-title {\n            font-size: clamp(42px, 5vw, 64px);\n            line-height: .98;\n            font-weight: 300;\n            letter-spacing: -3px;\n            text-transform: none;\n        }\n        .page-subtitle { max-width: 620px; line-height: 1.7; }\n        .section-label {\n            font-size: 10px;\n            letter-spacing: 2.5px;\n            margin-bottom: 18px;\n        }\n        .panel, .rewards-block, .nft-preview, .action-composer, .action-panel, .modal, .how {\n            border-radius: 0 !important;\n        }\n        .panel { background: rgba(255,255,255,.012); }\n        .assets-grid, .actions-grid, .token-grid, .opportunity-grid, .token-metrics {\n            border-radius: 0;\n        }\n        .action-item, .asset-item, .discover-item { border-radius: 0 !important; }\n        .capital-value {\n            font-size: clamp(56px, 7vw, 84px);\n            line-height: .95;\n            letter-spacing: -4px;\n        }\n        .capital-change, .yield, .change, .interface-change { color: rgba(255,255,255,.62) !important; }\n        .capital-change::first-letter { color: var(--text); }\n        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {\n            border-radius: 0 !important;\n        }\n        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {\n            background: var(--accent);\n        }\n        .filter-btn, .secondary-btn, .btn-secondary { border-radius: 0 !important; }\n        .fresh { letter-spacing: .2px; }\n        .app-footer {\n            margin-top: 96px;\n            padding-top: 28px;\n            border-top: 1px solid var(--line);\n            display: flex;\n            justify-content: space-between;\n            align-items: flex-end;\n            gap: 32px;\n        }\n        .footer-brand {\n            font-family: 'Space Grotesk', sans-serif;\n            font-size: 18px;\n            font-weight: 300;\n            letter-spacing: -1px;\n            color: var(--accent);\n        }\n        .footer-brand span { color: var(--text); }\n        .footer-note {\n            margin-top: 7px;\n            font-size: 10px;\n            letter-spacing: 1.2px;\n            color: rgba(255,255,255,.3);\n            text-transform: uppercase;\n        }\n        .app-footer .footer-links { display:flex; gap:26px; }\n        .app-footer .footer-links a {\n            color: rgba(255,255,255,.42);\n            font-size: 11px;\n            letter-spacing: .4px;\n        }\n        .app-footer .footer-links a:hover { color: var(--text); }\n        /* Keep the landing-page ambient motif, but make it quieter inside the app. */\n        #noiseField { opacity: .24; }\n        @media (max-width: 1024px) {\n            .sidebar { width: 184px; }\n            .main { margin-left: 184px; padding: 40px 36px 64px; }\n        }\n        @media (max-width: 768px) {\n            .sidebar { width:100%; padding:20px 24px; }\n            .sidebar-logo { margin-bottom:20px; }\n            .sidebar-nav { gap: 2px; }\n            .nav-group-label { display:none; }\n            .nav-item { padding: 9px 12px; }\n            .main { margin-left:0; padding:32px 24px 56px; }\n            .topbar { margin-bottom:36px; }\n            .page-title { font-size:36px; letter-spacing:-2px; }\n            .capital-value { font-size:48px; letter-spacing:-2.5px; }\n            .app-footer { flex-direction:column; align-items:flex-start; margin-top:64px; }\n        }\n        @media (max-width:430px) {\n            .main { padding:24px 20px 48px; }\n            .sidebar { padding:18px 20px; }\n            .sidebar-logo a { font-size:22px; }\n            .page-title { font-size:30px; }\n            .capital-value { font-size:36px; }\n            .app-footer .footer-links { gap:18px; }\n        }\n</style>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
                         <span class="section-label" style="margin:0;">ASSET</span>
                         <span id="pUnderlyings" style="display:flex; gap:8px; flex-wrap:wrap;"></span>
@@ -2208,6 +2294,16 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     <div class="settings-item"><div class="settings-label">Connected protocols</div><div class="settings-arrow" onclick="navigateTo('security')">→</div></div>
                 </div>
             </div>
+            <footer class="app-footer">
+                <div>
+                    <div class="footer-brand">noise <span>hub</span></div>
+                    <div class="footer-note">Built openly on Sui · non-custodial</div>
+                </div>
+                <div class="footer-links">
+                    <a href="https://x.com/Soulpureaux" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+                    <a href="https://github.com/Juniorj87/noise" target="_blank" rel="noopener noreferrer">GitHub</a>
+                </div>
+            </footer>
         </main>
     </div>
 
@@ -4412,7 +4508,8 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             } catch (e) {}
         }
 
-        /* ---- Referral dashboard — real accounting data only, never mock numbers ---- */
+        /* ---- Referral dashboard — real accounting data only, never mock numbers ----
+           All user/API-controlled strings go through escapeHtml before DOM insert. */
         let lbMetric = 'earned', lbPeriod = 'all', refRange = '30d';
         const money = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? '—' : '$' + Number(v).toFixed(2);
         const int0 = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? '—' : String(Number(v));

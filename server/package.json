@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js",
+    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js test/referral-analytics.test.js",
     "test:integration": "node --test test/integration.test.js",
     "test:pg": "node --test test/pg.test.js"
   },

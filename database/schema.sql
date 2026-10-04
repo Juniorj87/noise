@@ -77,7 +77,9 @@ CREATE TABLE IF NOT EXISTS revenue_entries (
   platform_fee TEXT, provider_share TEXT, referral_reward TEXT,
   net_revenue TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   referrer_wallet TEXT, referred_wallet TEXT, eligible_revenue TEXT,
-  referral_rate TEXT, gross_revenue TEXT
+  referral_rate TEXT, gross_revenue TEXT,
+  gross_amount TEXT, gross_asset TEXT NOT NULL DEFAULT 'USDC',
+  status TEXT NOT NULL DEFAULT 'confirmed', confirmed_at TIMESTAMPTZ
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_rev_digest_unique ON revenue_entries(digest);
 
@@ -85,16 +87,78 @@ CREATE TABLE IF NOT EXISTS referrals (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE, referrer_wallet TEXT,
   referred_wallet TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  expires_at TEXT, updated_at TIMESTAMPTZ
+  expires_at TEXT, updated_at TIMESTAMPTZ,
+  attributed_at TIMESTAMPTZ, source TEXT, status TEXT NOT NULL DEFAULT 'attributed'
 );
 CREATE TABLE IF NOT EXISTS referral_rewards (
   id TEXT PRIMARY KEY,
   referral_id TEXT REFERENCES referrals(id),
   revenue_id TEXT REFERENCES revenue_entries(id),
-  amount TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  referrer TEXT, amount TEXT NOT NULL, asset TEXT NOT NULL DEFAULT 'USDC',
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  paid_at TIMESTAMPTZ, tx_digest TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_rew_revenue_unique ON referral_rewards(revenue_id);
+
+-- Payout intents (stage 1: record only — no auto-send, no private key anywhere).
+-- Settlement happens via a dedicated signer in stage 2; here we only track.
+CREATE TABLE IF NOT EXISTS referral_payouts (
+  id TEXT PRIMARY KEY,
+  referrer TEXT NOT NULL,
+  amount TEXT NOT NULL, asset TEXT NOT NULL DEFAULT 'USDC',
+  destination TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  tx_digest TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  confirmed_at TIMESTAMPTZ
+);
+
+-- On-chain reconciliation audit (DB expected vs revenue-wallet observed).
+CREATE TABLE IF NOT EXISTS revenue_reconciliation (
+  id TEXT PRIMARY KEY,
+  period TEXT NOT NULL DEFAULT 'all',
+  expected TEXT NOT NULL, received TEXT NOT NULL, difference TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  detail TEXT
+);
+
+-- One row per attributed wallet: a single code/link can attribute MANY wallets.
+-- First attribution wins — it is never overwritten (server-side, see services).
+CREATE TABLE IF NOT EXISTS referral_attributions (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  referrer TEXT,
+  referred_wallet TEXT NOT NULL UNIQUE,
+  attributed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  source TEXT,
+  status TEXT NOT NULL DEFAULT 'attributed'
+);
+-- Backfill legacy single-slot rows (idempotent — rerunnable on every deploy).
+INSERT INTO referral_attributions (id, code, referrer, referred_wallet, attributed_at, status)
+SELECT 'att_' || substr(r.id, 1, 40), r.code, r.referrer_wallet, r.referred_wallet, r.created_at, 'attributed'
+FROM referrals r
+WHERE r.referred_wallet IS NOT NULL AND r.referrer_wallet IS NOT NULL
+ON CONFLICT (referred_wallet) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_ref_referrer ON referrals(referrer_wallet);
+CREATE INDEX IF NOT EXISTS idx_ref_referred ON referrals(referred_wallet);
+CREATE INDEX IF NOT EXISTS idx_ref_status ON referrals(status);
+CREATE INDEX IF NOT EXISTS idx_attr_code ON referral_attributions(code);
+CREATE INDEX IF NOT EXISTS idx_attr_referrer ON referral_attributions(referrer);
+CREATE INDEX IF NOT EXISTS idx_attr_status ON referral_attributions(status);
+CREATE INDEX IF NOT EXISTS idx_rew_referrer ON referral_rewards(referrer);
+CREATE INDEX IF NOT EXISTS idx_rew_status ON referral_rewards(status);
+CREATE INDEX IF NOT EXISTS idx_payout_referrer ON referral_payouts(referrer);
+CREATE INDEX IF NOT EXISTS idx_payout_status ON referral_payouts(status);
+CREATE INDEX IF NOT EXISTS idx_rev_referrer ON revenue_entries(referrer_wallet);
+CREATE INDEX IF NOT EXISTS idx_rev_provider ON revenue_entries(provider);
+CREATE INDEX IF NOT EXISTS idx_rev_action ON revenue_entries(action);
+CREATE INDEX IF NOT EXISTS idx_rev_created ON revenue_entries(created_at);
+CREATE INDEX IF NOT EXISTS idx_rev_status ON revenue_entries(status);
+CREATE INDEX IF NOT EXISTS idx_tx_provider ON transactions(provider);
+CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at);
 
 CREATE TABLE IF NOT EXISTS automations (
   id TEXT PRIMARY KEY,
