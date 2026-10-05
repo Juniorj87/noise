@@ -162,19 +162,26 @@ e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pr
             <table>
                 <tr><th>Protocol</th><th>Category</th><th>Status</th><th>Notes</th></tr>
                 <tr><td>Cetus (+Aggregator V3)</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes, tx build, devInspect simulation; wallet signs. SDK 1.7.3</td></tr>
-                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes via official REST (<code>/api/router/trade-route</code>); compared against Cetus</td></tr>
+                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Quotes via official REST (<code>/api/router/trade-route</code>); compared against Cetus. Unsigned build is a milestone</td></tr>
                 <tr><td>Aftermath Prices/Pools/Rewards</td><td>Data</td><td><span class="pill live">LIVE</span></td><td>Prices, pool TVL/APR, claimable rewards via REST; staking APY via SDK</td></tr>
                 <tr><td>Sui Native Staking</td><td>Staking</td><td><span class="pill live">LIVE</span></td><td>Balances, stakes, validators via RPC</td></tr>
                 <tr><td>DeepBook Spot</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Live market discovery, L2 orderbook, market/limit builds, open orders, cancel — via SDK 2.6.x; orders need your BalanceManager</td></tr>
                 <tr><td>DeepBook Predict</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Official <code>@mysten/deepbook-v3/predict</code> SDK: live market discovery (underlyings from chain config), UP/DOWN mint, exact simulated fee quotes, redeem, claim-settled, positions</td></tr>
+                <tr><td>DeepBook Margin</td><td>Trading</td><td><span class="pill">COMING SOON</span></td><td>Live Sui primitive; no SDK/execution path wired into Noise yet</td></tr>
                 <tr><td>SuiPump</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>674+ launchpad tokens: price, volume, trades, bonding progress, graduation — factual metrics only, never recommendations</td></tr>
-                <tr><td>Perpsplexity</td><td>Discovery</td><td><span class="pill">DEEP LINK</span></td><td>Perps venue: live status read; execution on the venue (no public token-discovery API — not scraped)</td></tr>
-                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">BLOCKED</span></td><td>SDK hardcodes deprecated RPC + undocumented pool args — see audit §C</td></tr>
-                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">BLOCKED</span></td><td>SDK needs unverified gRPC client shape — see audit §C</td></tr>
-                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">DEEP LINK</span></td><td>Official SDK package unverified — no invented integration</td></tr>
-                <tr><td>Haedal / Volo / Scallop / Bluefin</td><td>LST / Lending / Trading</td><td><span class="pill">DEEP LINK</span></td><td>Discovery + attribution; execution per milestone</td></tr>
+                <tr><td>Perpsplexity</td><td>Discovery</td><td><span class="pill">DISCOVER</span></td><td>Perps venue: live status read; execution on the venue (no public token-discovery API — not scraped)</td></tr>
+                <tr><td>Haedal</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Staking surface pending; execution intentionally OFF until the SDK path is verified</td></tr>
+                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>SDK hardcodes deprecated RPC + undocumented pool args — see audit §C</td></tr>
+                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>SDK needs unverified gRPC client shape — see audit §C</td></tr>
+                <tr><td>Scallop · Bucket · AlphaLend</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link; execution per milestone</td></tr>
+                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">DISCOVER</span></td><td>No public quote+build path wired — discovery + deep link only</td></tr>
+                <tr><td>Bluefin Spot · Bluefin Perps</td><td>Trading</td><td><span class="pill">DISCOVER</span></td><td>Kept separate; discovery + deep link only</td></tr>
+                <tr><td>Volo · SpringSui</td><td>Liquid staking</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
+                <tr><td>FlowX · Momentum · Kriya · Metastable · Obric</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Some routed via the Cetus aggregator; not direct adapters</td></tr>
+                <tr><td>Typus · Sudo</td><td>Derivatives</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
+                <tr><td>Walrus · Seal</td><td>Data / Security</td><td><span class="pill">COMING SOON</span></td><td>Persistent storage + threshold encryption; not installed — encrypt-before-store only, no plaintext</td></tr>
             </table>
-            <p>Verified 2026-09-30 / 2026-10-01 via npm registry + official docs + live probes. Full matrix: app → Security → Protocol registry.</p>
+            <p>Verified 2026-10-04. One source of truth: <code>shared/registry.js</code> (35 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
 
             <h2 id="predict">DeepBook Predict</h2>
             <p>A binary instrument: pick an asset, a strike and an expiry, take UP (settles above strike) or DOWN (settles below). Settlement is automatic and on-chain. Quotes show the exact fee components from a simulated chain quote — premium, trading fee, subsidy, builder fee, penalty, inventory impact — plus gas. There is no separate Noise Hub debit on Predict: builder/referral revenue is a split of protocol proceeds, not a trader charge. Minimum premium 1.00 USDC, quantity lots of 0.01.</p>

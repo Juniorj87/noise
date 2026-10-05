@@ -3,6 +3,7 @@
 import { AggregatorClient } from '@cetusprotocol/aggregator-sdk';
 import { Aftermath } from 'aftermath-ts-sdk';
 import { SuiDataProvider, NETWORK } from './sui-provider.js';
+import { normalizePool } from '../../shared/earn-normalize.js';
 
 export { NETWORK };
 
@@ -130,8 +131,11 @@ export const cetusAdapter = {
   },
 };
 
+/** Honest capability split: Aftermath Router gives live DATA + QUOTE only;
+ *  there is no build/simulate/execute path wired in Noise. */
 export const aftermathAdapter = {
   id: 'aftermath',
+  capabilities: { read: true, quote: true, build: false, simulate: false, execute: false, rewards: true },
   async getQuote({ from, to, amountMist }) {
     const q = await afPost('/api/router/trade-route', {
       coinInType: coinType(from), coinOutType: coinType(to), coinInAmount: String(amountMist),
@@ -156,7 +160,11 @@ export const aftermathAdapter = {
     return envelope(await afPost('/api/price-info', { coins }), 'Aftermath Prices', 'https://docs.aftermath.finance/for-developers/api/rest-api/prices');
   },
   async getStakingApy() {
-    return envelope(await aftermath.Staking().getApy({}), 'Aftermath Staking SDK', 'https://docs.aftermath.finance/liquid-staking-afsui/fees');
+    // Aftermath SDK returns a decimal RATIO (0.0143 = 1.43% APY) — never a
+    // percent. Unit metadata travels with the value so no caller can confuse
+    // ratio with percent or APY with APR.
+    const env = await envelope(await aftermath.Staking().getApy({}), 'Aftermath Staking SDK', 'https://docs.aftermath.finance/liquid-staking-afsui/fees');
+    return { ...env, kind: 'apy', unit: 'ratio', basis: 'provider' };
   },
   async getClaimableRewards(wallet) {
     const r = await afPost('/api/rewards/claimable', { walletAddress: wallet });
@@ -164,9 +172,16 @@ export const aftermathAdapter = {
   },
   async getPoolSummaries(limit = 12) {
     const all = await afPost('/api/pools/summary', { poolIds: null }, 25000);
+    const updatedAt = new Date().toISOString();
     const rows = (Array.isArray(all) ? all : [])
-      .map((s) => ({ name: s.pool?.name, poolId: s.pool?.objectId, tvl: s.stats?.tvl, volume24h: s.stats?.volume, fees24h: s.stats?.fees, apr: s.stats?.apr, lpPrice: s.stats?.lpPrice }))
-      .filter((p) => p.tvl > 0).sort((a, b) => b.tvl - a.tvl).slice(0, limit);
+      .map((s) => normalizePool({
+        name: s.pool?.name, poolId: s.pool?.objectId,
+        tvl: s.stats?.tvl, volume24h: s.stats?.volume,
+        fees24h: s.stats?.fees, apr: s.stats?.apr, lpPrice: s.stats?.lpPrice,
+      }, { source: 'Aftermath Pools', updatedAt }))
+      .filter((p) => p.tvl !== null && p.tvl > 0)
+      .sort((a, b) => b.tvl - a.tvl)
+      .slice(0, limit);
     return envelope(rows, 'Aftermath Pools API', 'https://docs.aftermath.finance/for-developers/api/rest-api/pools');
   },
   async getOwnedLp(wallet) {

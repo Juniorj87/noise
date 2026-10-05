@@ -5,6 +5,7 @@ import pg from 'pg';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PROTOCOLS } from '../../shared/registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,20 +39,13 @@ export function ensureSchema() {
   return schemaReady;
 }
 
+// Seed derives from the single canonical registry (shared/registry.js).
+// Unified status vocabulary: LIVE / PARTIAL / DISCOVER / COMING_SOON.
 async function seedProtocols() {
-  const rows = [
-    ['cetus', 'Cetus', 'swap', 'https://app.cetus.zone', 'https://cetus-1.gitbook.io/cetus-developer-docs', 'LIVE_EXECUTION', '["quote","build-tx","simulate","execute"]', 'pool fee + platform bps', 'partner closed to new teams → policy 0'],
-    ['sui-native', 'Sui Native Staking', 'staking', 'https://sui.io', 'https://docs.sui.io', 'PARTIAL', '["read","simulate"]', 'validator commission', '—'],
-    ['navi', 'NAVI', 'lending', 'https://naviprotocol.io', 'https://docs.naviprotocol.io', 'BLOCKED', '[]', 'referral-share first', 'terms unverified → policy 0'],
-    ['suilend', 'Suilend', 'lending', 'https://suilend.fi', 'https://docs.suilend.fi', 'BLOCKED', '[]', 'referral-share first', 'terms unverified → policy 0'],
-    ['aftermath', 'Aftermath', 'swap/lst', 'https://aftermath.finance', 'https://docs.aftermath.finance', 'PARTIAL', '["quote","prices","pools","rewards","staking-apy"]', 'router: no protocol fee; pools 0.30%/0.10% + 0.005%', 'perps 10%/5%; router 2.5% of integrator fee'],
-    ['deepbook', 'DeepBook', 'trading', 'https://deepbook.tech', 'https://docs.sui.io', 'PARTIAL', '["markets","orderbook"]', 'verify', '—'],
-    ['turbos', 'Turbos', 'swap', 'https://turbos.finance', 'https://docs.turbos.finance', 'DEEP_LINK_ONLY', '["pools"]', 'verify', 'verify'],
-    ['haedal', 'Haedal', 'lst', 'https://haedal.xyz', 'https://docs.haedal.xyz', 'READ_ONLY', '["stake-quote","positions"]', 'verify', 'verify'],
-    ['bluefin', 'Bluefin', 'trading', 'https://bluefin.io', 'https://docs.bluefin.io', 'DEEP_LINK_ONLY', '["markets"]', 'verify', 'verify'],
-    ['scallop', 'Scallop', 'lending', 'https://scallop.io', 'https://docs.scallop.io', 'DEEP_LINK_ONLY', '["markets"]', 'verify', 'verify'],
-    ['volo', 'Volo', 'lst', 'https://volo.fi', 'https://docs.volo.fi', 'DEEP_LINK_ONLY', '["pools"]', 'verify', 'verify'],
-  ];
+  const rows = PROTOCOLS.map((x) => [
+    x.id, x.name, x.category, x.url, x.docs, x.status,
+    JSON.stringify(x.actions), x.fee, x.ref, x.last,
+  ]);
   for (const r of rows) {
     await getPool().query(
       `INSERT INTO protocols (id,name,category,website,docs,status,capabilities,fee_model,referral_support,last_verified)

@@ -41,16 +41,27 @@ Noise is being built to make that experience more unified.
 
 ## Sui ecosystem
 
-Noise works with components of the Sui ecosystem, including:
+The full, honest ecosystem registry lives in [`shared/registry.js`](shared/registry.js)
+(35 protocols, one source of truth) and drives the app's Discover → Ecosystem view.
+Every protocol carries one status:
 
-- Sui
-- DeepBook
-- DeepBook Predict
-- Cetus
-- Aftermath
-- SuiPump
-- Sui Bridge
-- Wormhole / Portal
+- **LIVE** — Noise can perform every action it advertises.
+- **PARTIAL** — part of the surface works (e.g. live data, no execution yet).
+- **DISCOVER** — ecosystem discovery / deep link; no execution in Noise.
+- **COMING SOON** — surface planned; execution intentionally disabled.
+
+Live execution today: Sui native staking, Cetus swap, DeepBook spot + Predict,
+SuiPump discovery. Everything else is labelled honestly — no fake integrations.
+
+Regenerate the in-app mirror after editing the registry: `node scripts/gen-ui-registry.mjs`
+(the build and `server/test/registry.test.js` fail if the mirror drifts).
+
+Two companion registries keep behaviour honest:
+
+- **SwapProvider registry** (`shared/swap-providers.js`) — which providers can quote/build.
+  A provider without an adapter is listed with a reason, never a fabricated rate (`/api/providers`).
+- **Skill registry** (`shared/skills.js`) — capabilities with a strict permission model:
+  read-data · build-transaction · request-signature. Never a private key, never auto-sign (`/api/skills`).
 
 ---
 

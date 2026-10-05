@@ -14,7 +14,7 @@ export default handler(async (req, res, url) => {
   const action = url.pathname.split('/').pop();
 
   if (action === 'tools') {
-    return { tools: ['getCapital', 'getBalances', 'getEarnApy', 'getDeepBookMarkets', 'getPredictMarkets', 'llmChat'] };
+    return { tools: ['getCapital', 'getBalances', 'getEarnApy', 'getDeepBookMarkets', 'getPredictMarkets', 'getProtocols', 'getMemory', 'getSkills', 'llmChat'] };
   }
   if (action === 'providers') {
     return {

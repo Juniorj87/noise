@@ -9,6 +9,9 @@ import {
   getNetworkStats, getRevenueSummary, getReconciliationExpected,
 } from './referral-analytics.js';
 import { NOISE_HUB_REVENUE_WALLET, reconcileRevenue } from '../../shared/logic.js';
+import { swapProviders } from '../../shared/swap-providers.js';
+import { statusCounts, REGISTRY_VERIFIED_AT } from '../../shared/registry.js';
+import { allSkills, skillCounts, skillIsSafe, SKILL_PERMISSIONS } from '../../shared/skills.js';
 import {
   FEES, FeeEngine, feeBreakdown, attributeReferral, referralReward, referralPolicyFor, REFERRAL_POLICIES,
   logActivity, recordRevenue, createAutomation, setAutomationStatus,
@@ -63,7 +66,7 @@ function send(res, code, body, req) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': origin,
     'Vary': 'Origin',
-    'Access-Control-Allow-Methods': 'GET,POST,PATCH,OPTIONS',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
   });
   res.end(data);
@@ -433,6 +436,60 @@ const routes = {
     db.prepare('DELETE FROM memory_records WHERE id = ? AND wallet = ?').run(b.id, b.wallet);
     return { ok: true };
   },
+  'DELETE /api/memory': async (req) => {
+    const b = await readJson(req);
+    if (!isWalletAddress(b.wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    if (b.all) { db.prepare('DELETE FROM memory_records WHERE wallet = ?').run(b.wallet); return { ok: true, cleared: true }; }
+    if (!b.id) return { error: 'MISSING_ID', code: 400 };
+    db.prepare('DELETE FROM memory_records WHERE id = ? AND wallet = ?').run(b.id, b.wallet);
+    return { ok: true };
+  },
+
+  /* Provider availability + health (§7-12, #3) — honest, no fake quotes. */
+  'GET /api/providers': async () => {
+    const health = db.prepare('SELECT provider,status,latency_ms AS latencyMs,checked_at AS checkedAt FROM provider_health').all();
+    const healthBy = Object.fromEntries(health.map((h) => [h.provider, h.status]));
+    const swap = swapProviders().map((p) => ({ ...p, health: healthBy[p.id] || (p.quote ? 'UNKNOWN' : 'NOT_WIRED') }));
+    return {
+      swap,
+      swapSummary: {
+        quotable: swap.filter((p) => p.quote).map((p) => p.name),
+        buildable: swap.filter((p) => p.build).map((p) => p.name),
+        unavailable: swap.filter((p) => !p.quote).map((p) => ({ provider: p.name, reason: p.reason })),
+      },
+      health,
+      ecosystem: statusCounts(),
+      verifiedAt: REGISTRY_VERIFIED_AT,
+      updatedAt: new Date().toISOString(),
+      source: 'Noise provider registry',
+    };
+  },
+
+  /* Skill registry + per-wallet enable state (§36-37). */
+  'GET /api/skills': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (wallet && !isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    const granted = {};
+    if (wallet) {
+      for (const r of db.prepare("SELECT scope, granted FROM permissions WHERE wallet = ? AND scope LIKE 'skill:%'").all(wallet)) granted[r.scope] = Number(r.granted) === 1;
+    }
+    return {
+      skills: allSkills().map((s) => ({ ...s, enabled: wallet ? Boolean(granted['skill:' + s.id]) : false, safe: skillIsSafe(s) })),
+      counts: skillCounts(),
+      permissionModel: { allowed: SKILL_PERMISSIONS, forbidden: ['private-key', 'auto-sign'] },
+      updatedAt: new Date().toISOString(),
+      source: 'Noise skill registry',
+    };
+  },
+  'POST /api/skills/toggle': async (req) => {
+    const b = await readJson(req);
+    if (!isWalletAddress(b.wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    if (!b.skill || !allSkills().some((s) => s.id === b.skill)) return { error: 'INVALID_SKILL', code: 400 };
+    db.prepare(`INSERT INTO permissions (wallet, scope, granted, updated_at) VALUES (?,?,?,datetime('now'))
+      ON CONFLICT(wallet, scope) DO UPDATE SET granted = excluded.granted, updated_at = datetime('now')`)
+      .run(b.wallet, 'skill:' + b.skill, b.enabled ? 1 : 0);
+    return { ok: true, skill: b.skill, enabled: Boolean(b.enabled) };
+  },
 
   /* Multi-provider quotes + transparent comparison (§7-8). */
   'GET /api/quotes': async (_, url) => {
@@ -458,7 +515,14 @@ const routes = {
     else { failed.push({ provider: 'Aftermath Router', error: aftermath.reason?.code || 'PROVIDER_UNAVAILABLE' }); markHealth('aftermath', 'UNAVAILABLE'); }
     if (!ok.length) return { error: 'ALL_PROVIDERS_UNAVAILABLE', failed, fallback: deepLink('cetus', { from, to }), code: 502 };
     const compared = compareRoutes(ok, { platformFee: FeeEngine.calculatePlatformFee(amount, 'swap'), gasEst: 0 });
-    return { ...compared, failed, fees: feeBreakdown(amount, 'swap') };
+    const match = (q, id) => String(q.provider || '').toLowerCase().includes(id === 'aftermath' ? 'aftermath' : id);
+    const providers = swapProviders().map((p) => {
+      if (!p.quote) return { id: p.id, name: p.name, available: false, reason: p.reason };
+      const got = ok.find((q) => match(q, p.id));
+      const bad = failed.find((f) => match(f, p.id));
+      return { id: p.id, name: p.name, available: Boolean(got), reason: got ? null : (bad?.error || 'PROVIDER_UNAVAILABLE'), build: p.build };
+    });
+    return { ...compared, failed, fees: feeBreakdown(amount, 'swap'), providers };
   },
 
   /* Live prices with source envelope (§2, §30). */

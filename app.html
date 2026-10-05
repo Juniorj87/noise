@@ -15,19 +15,80 @@
     // Real Sui wallet layer (wallet-standard, no bundler). Backend never sees keys.
     import { getWallets } from '@wallet-standard/app';
     const api = getWallets();
-    const state = { wallet: null, address: null, chain: 'sui:mainnet', listeners: [] };
+    const state = { wallet: null, address: null, chain: 'sui:mainnet', listeners: [], lastError: null, lastTxError: null };
+    let apiError = null;
+    function suiSignFeature(w) {
+      return w && w.features && (w.features['sui:signAndExecuteTransaction'] || w.features['sui:signAndExecuteTransactionBlock']);
+    }
+    function isSui(w) { return Boolean(suiSignFeature(w)); }
     function capable() {
-      try {
-        return api.get().filter((w) => w.features && (w.features['sui:signAndExecuteTransaction'] || w.features['sui:signAndExecuteTransactionBlock']));
-      } catch (e) { return []; }
+      try { return api.get().filter(isSui); } catch (e) { apiError = String(e && e.message || e); return []; }
+    }
+    // Wallet Diagnostics (spec §52, §92) — diagnostic only; never shown to a
+    // normal user. Reports the exact reason a wallet is (not) connectable and
+    // covers Slush without hardcoding `if (name === 'Slush')`.
+    function diagnostics() {
+      let all = [];
+      try { all = api.get(); } catch (e) { apiError = String(e && e.message || e); all = []; }
+      const wallets = all.map((w) => {
+        const feats = Object.keys(w.features || {});
+        return {
+          name: w.name,
+          chains: w.chains || [],
+          accounts: (w.accounts || []).length,
+          sui: isSui(w),
+          connect: feats.includes('standard:connect'),
+          events: feats.includes('standard:events'),
+          sign: Boolean(suiSignFeature(w)),
+        };
+      });
+      const origin = (typeof location !== 'undefined' ? location.origin : '');
+      const local = /^http:\/\/(localhost|127\.0\.0\.1)/.test(origin);
+      return {
+        origin,
+        https: /^https:\/\//.test(origin) || local,
+        insecureOrigin: /^http:\/\//.test(origin) && !local,
+        walletStandardApi: apiError ? 'ERROR: ' + apiError : 'OK',
+        walletsDetected: wallets.length,
+        wallets,
+        slushDetected: wallets.some((w) => /slush/i.test(w.name)),
+        suiWallets: wallets.filter((w) => w.sui).map((w) => w.name),
+        selected: state.wallet ? state.wallet.name : null,
+        network: state.chain,
+        address: state.address ? (state.address.slice(0, 6) + '…' + state.address.slice(-4)) : null,
+        canConnect: wallets.some((w) => w.sui && w.connect),
+        canSign: wallets.some((w) => w.sui && w.sign),
+        signTransaction: wallets.some((w) => w.sui && w.sign),
+        signAndExecuteTransaction: wallets.some((w) => w.sui && w.sign),
+        lastError: state.lastError ? { code: state.lastError.code, message: state.lastError.message } : null,
+        lastTransactionError: state.lastTxError ? { code: state.lastTxError.code, message: state.lastTxError.message } : null,
+        postMessage: typeof window !== 'undefined' && typeof window.postMessage === 'function',
+      };
     }
     async function connect(name) {
+      state.lastError = null;
       const list = capable();
-      if (!list.length) throw Object.assign(new Error('NO_WALLET'), { code: 'NO_WALLET' });
+      if (!list.length) {
+        const err = Object.assign(new Error('NO_WALLET'), { code: 'NO_WALLET', diagnostics: diagnostics() });
+        state.lastError = err; throw err;
+      }
       const w = (name && list.find((x) => x.name === name)) || list[0];
-      await w.features['standard:connect'].connect();
+      const connectFeature = w.features['standard:connect'];
+      if (!connectFeature || !connectFeature.connect) {
+        const err = Object.assign(new Error('NO_CONNECT_FEATURE'), { code: 'NO_CONNECT_FEATURE', wallet: w.name });
+        state.lastError = err; throw err;
+      }
+      try {
+        await connectFeature.connect();
+      } catch (e) {
+        const err = Object.assign(new Error('CONNECT_FAILED'), { code: 'CONNECT_FAILED', wallet: w.name, cause: String((e && e.message) || e) });
+        state.lastError = err; throw err;
+      }
       const acc = (w.accounts && w.accounts[0]) || null;
-      if (!acc) throw Object.assign(new Error('NO_ACCOUNT'), { code: 'NO_ACCOUNT' });
+      if (!acc) {
+        const err = Object.assign(new Error('NO_ACCOUNT'), { code: 'NO_ACCOUNT', wallet: w.name });
+        state.lastError = err; throw err;
+      }
       state.wallet = w;
       state.address = acc.address;
       state.rejectListeners = state.rejectListeners || [];
@@ -73,31 +134,36 @@
       }
     }
     async function signAndExecute(txBytesB64, opts) {
-      if (!state.wallet) throw Object.assign(new Error('NOT_CONNECTED'), { code: 'NOT_CONNECTED' });
-      const feat = state.wallet.features['sui:signAndExecuteTransaction'] || state.wallet.features['sui:signAndExecuteTransactionBlock'];
-      if (!feat) throw Object.assign(new Error('UNSUPPORTED_WALLET'), { code: 'UNSUPPORTED_WALLET' });
-      const bytes = b64ToBytes(txBytesB64);
-      let res;
-      if (feat.signAndExecuteTransaction) {
-        res = await feat.signAndExecuteTransaction({
-          transaction: bytes,
-          transactionBlock: bytes,
-          chain: (opts && opts.chain) || state.chain,
-          options: { showEffects: true, showEvents: false },
-        });
-      } else if (feat.signAndExecuteTransactionBlock) {
-        res = await feat.signAndExecuteTransactionBlock({
-          transactionBlock: bytes,
-          chain: (opts && opts.chain) || state.chain,
-          options: { showEffects: true, showEvents: false },
-        });
+      try {
+        if (!state.wallet) throw Object.assign(new Error('NOT_CONNECTED'), { code: 'NOT_CONNECTED' });
+        const feat = state.wallet.features['sui:signAndExecuteTransaction'] || state.wallet.features['sui:signAndExecuteTransactionBlock'];
+        if (!feat) throw Object.assign(new Error('UNSUPPORTED_WALLET'), { code: 'UNSUPPORTED_WALLET' });
+        const bytes = b64ToBytes(txBytesB64);
+        let res;
+        if (feat.signAndExecuteTransaction) {
+          res = await feat.signAndExecuteTransaction({
+            transaction: bytes,
+            transactionBlock: bytes,
+            chain: (opts && opts.chain) || state.chain,
+            options: { showEffects: true, showEvents: false },
+          });
+        } else if (feat.signAndExecuteTransactionBlock) {
+          res = await feat.signAndExecuteTransactionBlock({
+            transactionBlock: bytes,
+            chain: (opts && opts.chain) || state.chain,
+            options: { showEffects: true, showEvents: false },
+          });
+        }
+        return (res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest))) || res;
+      } catch (e) {
+        state.lastTxError = { code: (e && e.code) || 'SIGN_FAILED', message: String((e && e.message) || e) };
+        throw e;
       }
-      return (res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest))) || res;
     }
     function onAccountsChange(fn) { state.listeners.push(fn); }
     window.HubWallet = {
       list: () => capable().map((w) => ({ name: w.name, icon: w.icon })),
-      connect, disconnect, signAndExecute, onAccountsChange, onRejected,
+      connect, disconnect, signAndExecute, onAccountsChange, onRejected, diagnostics,
       get address() { return state.address; },
       get chain() { return state.chain; },
     };
@@ -1333,7 +1399,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-logo"><a href="index.html"><span>noise</span><b> hub</b></a></div>
-            <nav class="sidebar-nav">
+                        <nav class="sidebar-nav">
                 <div class="nav-group-label">CORE</div>
                 <a class="nav-item active" data-page="capital">Capital</a>
                 <a class="nav-item" data-page="discover">Discover</a>
@@ -1346,8 +1412,11 @@
                 <a class="nav-item" data-page="activity">Activity</a>
                 <a class="nav-item" data-page="ai">AI Assistant</a>
                 <a class="nav-item" data-page="referral">Referral <span id="refNavBadge" class="fresh" style="margin-left:6px; display:none;"></span></a>
-                <div class="nav-group-label">SYSTEM</div>
+                <a class="nav-item" data-page="leaderboard">Leaderboard</a>
+                <div class="nav-group-label">DATA</div>
+                <a class="nav-item" data-page="memory">Memory</a>
                 <a class="nav-item" data-page="security">Security</a>
+                <div class="nav-group-label">SYSTEM</div>
                 <a class="nav-item" data-page="settings">Settings</a>
             </nav>
             <div class="sidebar-wallet" id="walletBox">
@@ -1480,6 +1549,7 @@
                     <div class="discover-tab active" onclick="setDiscoverSource('suipump')">SuiPump</div>
                     <div class="discover-tab" onclick="setDiscoverSource('perpsplexity')">Perpsplexity</div>
                     <div class="discover-tab" onclick="setDiscoverSource('pools')">Pools</div>
+                    <div class="discover-tab" onclick="setDiscoverSource('ecosystem')">Ecosystem</div>
                 </div>
 
                 <div class="fresh" id="discoverFresh" style="margin-bottom:16px;">Loading discovery data…</div>
@@ -1512,6 +1582,15 @@
                     <div class="opportunity-grid" id="poolGrid">
                         <div class="fresh">Loading live pools…</div>
                     </div>
+                </div>
+
+                <!-- Ecosystem / Protocols Section (spec §21-23) — a real Sui ecosystem terminal,
+                     rendered from the protocol registry. No metric is shown unless it is sourced. -->
+                <div id="discoverEcosystem" style="display:none;">
+                    <div class="section-label" style="margin-bottom:16px;">SUI ECOSYSTEM — PROTOCOL REGISTRY</div>
+                    <div class="sub-tabs" style="margin-bottom:16px;" id="ecoFilters"></div>
+                    <div class="opportunity-grid" id="ecoGrid"></div>
+                    <div class="fresh" style="margin-top:8px;" id="ecoFresh">Source: Noise ProtocolRegistry (shared/registry.js) · verified <span id="ecoVerified"></span>. Status: LIVE · PARTIAL · DISCOVER · COMING SOON. Open a card for capabilities, fees and docs.</div>
                 </div>
             </div>
 
@@ -1937,6 +2016,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     \n        /* ============================================================\n           NOISE VISUAL CONSOLIDATION\n           The landing page is the visual source of truth.\n           UI-only overrides: no data, wallet, routing or API logic.\n           ============================================================ */\n        .sidebar {\n            width: 224px;\n            padding: 32px 24px;\n            background: rgba(10,10,10,.92);\n            border-right: 1px solid var(--line);\n        }\n        .sidebar-logo {\n            margin-bottom: 34px;\n            padding: 0 0 22px;\n            border-bottom: 1px solid var(--line);\n        }\n        .sidebar-logo a {\n            display: inline-flex;\n            align-items: baseline;\n            gap: 4px;\n            font-size: 24px;\n            font-weight: 300;\n            letter-spacing: -1.4px;\n            color: var(--accent);\n        }\n        .sidebar-logo a b {\n            color: var(--text);\n            font-weight: 300;\n        }\n        .sidebar-nav { gap: 2px; }\n        .nav-group-label {\n            margin: 20px 0 7px;\n            padding: 0 4px;\n            font-size: 9px;\n            line-height: 1;\n            letter-spacing: 2.4px;\n            color: rgba(255,255,255,.28);\n        }\n        .nav-group-label:first-child { margin-top: 0; }\n        .nav-item {\n            padding: 9px 10px;\n            border-radius: 0;\n            font-size: 12px;\n            font-weight: 500;\n            letter-spacing: -.05px;\n            border-left: 1px solid transparent;\n        }\n        .nav-item:hover {\n            background: transparent;\n            color: var(--text);\n            border-left-color: rgba(255,255,255,.18);\n        }\n        .nav-item.active {\n            background: transparent;\n            color: var(--text);\n            border-left-color: var(--accent);\n        }\n        .nav-item.active::before { display: none; }\n        .sidebar-wallet { padding-top: 18px; }\n        .sidebar-wallet .claim-btn { border-radius: 0; }\n        .main {\n            margin-left: 224px;\n            padding: 48px 56px 72px;\n            max-width: 1600px;\n        }\n        .topbar {\n            margin-bottom: 54px;\n            gap: 16px;\n        }\n        .search-input {\n            background: transparent;\n            border-radius: 0;\n            padding: 11px 0;\n            border-width: 0 0 1px;\n            border-color: var(--line);\n            max-width: 560px;\n        }\n        .search-input:focus { border-color: rgba(0,102,255,.65); }\n        .net-badge, .status-pill, .status-badge { border-radius: 0; }\n        .net-badge.live { color: rgba(255,255,255,.5); border-color: var(--line); }\n        .noise-mark {\n            color: var(--accent);\n            font-size: 11px;\n            letter-spacing: 2.5px;\n            font-weight: 600;\n        }\n        .page-header { margin-bottom: 42px; }\n        .page-title {\n            font-size: clamp(42px, 5vw, 64px);\n            line-height: .98;\n            font-weight: 300;\n            letter-spacing: -3px;\n            text-transform: none;\n        }\n        .page-subtitle { max-width: 620px; line-height: 1.7; }\n        .section-label {\n            font-size: 10px;\n            letter-spacing: 2.5px;\n            margin-bottom: 18px;\n        }\n        .panel, .rewards-block, .nft-preview, .action-composer, .action-panel, .modal, .how {\n            border-radius: 0 !important;\n        }\n        .panel { background: rgba(255,255,255,.012); }\n        .assets-grid, .actions-grid, .token-grid, .opportunity-grid, .token-metrics {\n            border-radius: 0;\n        }\n        .action-item, .asset-item, .discover-item { border-radius: 0 !important; }\n        .capital-value {\n            font-size: clamp(56px, 7vw, 84px);\n            line-height: .95;\n            letter-spacing: -4px;\n        }\n        .capital-change, .yield, .change, .interface-change { color: rgba(255,255,255,.62) !important; }\n        .capital-change::first-letter { color: var(--text); }\n        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {\n            border-radius: 0 !important;\n        }\n        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {\n            background: var(--accent);\n        }\n        .filter-btn, .secondary-btn, .btn-secondary { border-radius: 0 !important; }\n        .fresh { letter-spacing: .2px; }\n        .app-footer {\n            margin-top: 96px;\n            padding-top: 28px;\n            border-top: 1px solid var(--line);\n            display: flex;\n            justify-content: space-between;\n            align-items: flex-end;\n            gap: 32px;\n        }\n        .footer-brand {\n            font-family: 'Space Grotesk', sans-serif;\n            font-size: 18px;\n            font-weight: 300;\n            letter-spacing: -1px;\n            color: var(--accent);\n        }\n        .footer-brand span { color: var(--text); }\n        .footer-note {\n            margin-top: 7px;\n            font-size: 10px;\n            letter-spacing: 1.2px;\n            color: rgba(255,255,255,.3);\n            text-transform: uppercase;\n        }\n        .app-footer .footer-links { display:flex; gap:26px; }\n        .app-footer .footer-links a {\n            color: rgba(255,255,255,.42);\n            font-size: 11px;\n            letter-spacing: .4px;\n        }\n        .app-footer .footer-links a:hover { color: var(--text); }\n        /* Keep the landing-page ambient motif, but make it quieter inside the app. */\n        #noiseField { opacity: .24; }\n        @media (max-width: 1024px) {\n            .sidebar { width: 184px; }\n            .main { margin-left: 184px; padding: 40px 36px 64px; }\n        }\n        @media (max-width: 768px) {\n            .sidebar { width:100%; padding:20px 24px; }\n            .sidebar-logo { margin-bottom:20px; }\n            .sidebar-nav { gap: 2px; }\n            .nav-group-label { display:none; }\n            .nav-item { padding: 9px 12px; }\n            .main { margin-left:0; padding:32px 24px 56px; }\n            .topbar { margin-bottom:36px; }\n            .page-title { font-size:36px; letter-spacing:-2px; }\n            .capital-value { font-size:48px; letter-spacing:-2.5px; }\n            .app-footer { flex-direction:column; align-items:flex-start; margin-top:64px; }\n        }\n        @media (max-width:430px) {\n            .main { padding:24px 20px 48px; }\n            .sidebar { padding:18px 20px; }\n            .sidebar-logo a { font-size:22px; }\n            .page-title { font-size:30px; }\n            .capital-value { font-size:36px; }\n            .app-footer .footer-links { gap:18px; }\n        }\n</style>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
                         <span class="section-label" style="margin:0;">ASSET</span>
+<span id="pState" class="status-pill ro">LOADING</span>
                         <span id="pUnderlyings" style="display:flex; gap:8px; flex-wrap:wrap;"></span>
                         <span class="fresh" id="pFresh" style="margin-left:auto;"></span>
                     </div>
@@ -2080,7 +2160,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     <div class="page-subtitle">Answers from LIVE tools — never hallucinated. <span class="status-pill live">MONITORING</span></div>
                 </div>
                 <div class="chat-box" id="chatBox">
-                    <div class="msg ai">Ask about your real data: “Where is my USDC?”, “What can I do with 500 USDC?”, “Compare SUI earn”. Tools: portfolio · balances · earn · lending · staking · liquidity · token · protocol · activity · rewards · compare · build · simulate.<span class="src">Source: local tool router · Updated: now</span></div>
+                    <div class="msg ai">Ask about your real data: “Where is my USDC?”, “What can I do with 500 USDC?”, “Compare SUI earn”. Tools: portfolio · balances · earn · lending · staking · liquidity · token · protocol · memory · skills · activity · rewards · compare · build · simulate. The assistant reads data, analyses and prepares transactions — it never holds a private key and never signs. You approve every signature in your wallet.<span class="src">Source: local tool router · Updated: now</span></div>
                 </div>
                 <div class="chat-row">
                     <input class="search-input" id="chatInput" placeholder='Try: Where is my USDC?'>
@@ -2137,42 +2217,9 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     <div class="fresh" id="refChartEmpty" style="margin-top:8px; display:none;">No referral revenue in this period yet.</div>
                 </div>
                 <div class="panel">
-                    <h3>REFERRAL LEADERBOARD</h3>
-                    <div class="activity-filters" style="margin-bottom:4px;">
-                        <button class="filter-btn active" data-lm="earned" onclick="setLbMetric('earned')">EARNED</button>
-                        <button class="filter-btn" data-lm="revenue" onclick="setLbMetric('revenue')">REVENUE</button>
-                        <button class="filter-btn" data-lm="active" onclick="setLbMetric('active')">ACTIVE</button>
-                        <span style="flex:1;"></span>
-                        <button class="filter-btn active" data-lp="all" onclick="setLbPeriod('all')">ALL TIME</button>
-                        <button class="filter-btn" data-lp="month" onclick="setLbPeriod('month')">THIS MONTH</button>
-                        <button class="filter-btn" data-lp="week" onclick="setLbPeriod('week')">THIS WEEK</button>
-                    </div>
-                    <table class="token-table"><thead><tr><th>#</th><th>WALLET</th><th>ACTIVE</th><th>REVENUE</th><th>EARNED</th></tr></thead>
-                    <tbody id="lbBody"><tr><td colspan="5" class="fresh">Loading…</td></tr></tbody></table>
-                    <div class="fresh" id="lbEmpty" style="margin-top:8px; display:none;">The network is just getting started. Be one of the first referrers.</div>
-                    <div class="kv" id="lbViewer" style="display:none; margin-top:8px;"><span id="lbViewerLabel">YOUR RANK</span><b id="lbViewerVal">—</b></div>
-                    <div class="fresh" id="lbUpdated" style="margin-top:8px;">Source: Noise accounting · Updated: —</div>
-                </div>
-                <div class="panel">
                     <h3>REFERRAL ACTIVITY</h3>
                     <table class="token-table"><thead><tr><th>DATE</th><th>ACTION</th><th>USER</th><th>REVENUE</th><th>YOUR SHARE</th><th>STATUS</th></tr></thead>
                     <tbody id="refActBody"><tr><td colspan="6" class="fresh">No referral activity yet.</td></tr></tbody></table>
-                </div>
-                <div class="panel">
-                    <h3>YOUR POSITION</h3>
-                    <div class="kv"><span>Rank</span><b id="posRank">—</b></div>
-                    <div class="kv"><span>Active referrals</span><b id="posActive">—</b></div>
-                    <div class="kv"><span>Revenue generated</span><b id="posRevenue">—</b></div>
-                    <div class="kv"><span>Earned</span><b id="posEarned">—</b></div>
-                    <div class="fresh" style="margin-top:8px;">Live values from Noise accounting — never hardcoded.</div>
-                </div>
-                <div class="panel">
-                    <h3>NOISE NETWORK</h3>
-                    <div class="kv"><span>Referrers</span><b id="netReferrers">—</b></div>
-                    <div class="kv"><span>Referred users</span><b id="netReferred">—</b></div>
-                    <div class="kv"><span>Eligible revenue</span><b id="netEligible">—</b></div>
-                    <div class="kv"><span>Rewards distributed</span><b id="netPaid">—</b></div>
-                    <div class="fresh" style="margin-top:8px;">Real data only — building until activity exists.</div>
                 </div>
                 <div class="panel">
                     <h3>HOW IT PAYS — PER-PROTOCOL POLICY (no universal rate)</h3>
@@ -2236,7 +2283,21 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     <div id="secEvents" style="font-size:12px; color:var(--text-dim); line-height:2;">wallet-connected · just now<br>automation-granted · —<br>simulation-check · —</div>
                 </div>
                 <div class="panel">
-                    <h3>PROTOCOL REGISTRY — INTEGRATION MATRIX (verified <span id="verifiedDate">2026-09-30</span>)</h3>
+                    <h3>SEAL — ENCRYPTION &amp; ACCESS CONTROL</h3>
+                    <div class="kv"><span>Purpose</span><b>Decentralized encryption + programmable access control for Noise data</b></div>
+                    <div class="kv"><span>Encryption</span><b>threshold-based key servers</b></div>
+                    <div class="kv"><span>Access policy</span><b>on-chain, programmable</b></div>
+                    <div class="kv"><span>Storage</span><b>encrypted content can live in Walrus</b></div>
+                    <div class="kv"><span>Status</span><b>COMING SOON — encrypt-before-store only, no plaintext</b></div>
+                    <div class="fresh" style="margin:10px 0;">Flow: enable private memory → Noise creates an access policy → data is encrypted → the encrypted blob is stored → access is controlled by Seal → only then is it decrypted for you.</div>
+                </div>
+                <div class="panel">
+                    <h3>PROVIDER HEALTH</h3>
+                    <div id="providerHealth" style="font-size:12px;"><span class="fresh">Loading provider health…</span></div>
+                    <div class="fresh" style="margin-top:8px;">A provider that is offline is excluded from routing — never replaced with a fake rate.</div>
+                </div>
+                <div class="panel">
+                    <h3>PROTOCOL REGISTRY — INTEGRATION MATRIX (verified <span id="verifiedDate">2026-10-04</span>)</h3>
                     <div id="protoTable" style="font-size:12px;"></div>
                 </div>
             </div>
@@ -2294,13 +2355,107 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     <div class="settings-item"><div class="settings-label">Connected protocols</div><div class="settings-arrow" onclick="navigateTo('security')">→</div></div>
                 </div>
             </div>
+            <!-- Leaderboard Page (spec §38-42, §79) — global ranking, separate from Referral -->
+            <div class="page" id="leaderboard">
+                <div class="page-header">
+                    <h1 class="page-title">LEADERBOARD</h1>
+                    <div class="page-subtitle">Top contributors to the Noise network. Referral · Activity · Volume · Earnings are shown only when they can be computed from confirmed data — none is invented.</div>
+                </div>
+                <div class="panel">
+                    <h3>REFERRAL LEADERBOARD</h3>
+                    <div class="activity-filters" style="margin-bottom:4px;">
+                        <button class="filter-btn active" data-lm="earned" onclick="setLbMetric('earned')">EARNED</button>
+                        <button class="filter-btn" data-lm="revenue" onclick="setLbMetric('revenue')">REVENUE</button>
+                        <button class="filter-btn" data-lm="active" onclick="setLbMetric('active')">ACTIVE</button>
+                        <span style="flex:1;"></span>
+                        <button class="filter-btn active" data-lp="all" onclick="setLbPeriod('all')">ALL TIME</button>
+                        <button class="filter-btn" data-lp="month" onclick="setLbPeriod('month')">THIS MONTH</button>
+                        <button class="filter-btn" data-lp="week" onclick="setLbPeriod('week')">THIS WEEK</button>
+                    </div>
+                    <table class="token-table"><thead><tr><th>#</th><th>WALLET</th><th>ACTIVE</th><th>REVENUE</th><th>EARNED</th></tr></thead>
+                    <tbody id="lbBody"><tr><td colspan="5" class="fresh">Loading…</td></tr></tbody></table>
+                    <div class="fresh" id="lbEmpty" style="margin-top:8px; display:none;">The network is just getting started. Be one of the first referrers.</div>
+                    <div class="kv" id="lbViewer" style="display:none; margin-top:8px;"><span id="lbViewerLabel">YOUR RANK</span><b id="lbViewerVal">—</b></div>
+                    <div class="fresh" id="lbUpdated" style="margin-top:8px;">Source: Noise accounting · Updated: —</div>
+                </div>
+                <div class="panel">
+                    <h3>YOUR POSITION</h3>
+                    <div class="kv"><span>Rank</span><b id="posRank">—</b></div>
+                    <div class="kv"><span>Active referrals</span><b id="posActive">—</b></div>
+                    <div class="kv"><span>Revenue generated</span><b id="posRevenue">—</b></div>
+                    <div class="kv"><span>Earned</span><b id="posEarned">—</b></div>
+                    <div class="fresh" style="margin-top:8px;">Live values from Noise accounting — never hardcoded.</div>
+                </div>
+                <div class="panel">
+                    <h3>NOISE NETWORK</h3>
+                    <div class="kv"><span>Referrers</span><b id="netReferrers">—</b></div>
+                    <div class="kv"><span>Referred users</span><b id="netReferred">—</b></div>
+                    <div class="kv"><span>Eligible revenue</span><b id="netEligible">—</b></div>
+                    <div class="kv"><span>Rewards distributed</span><b id="netPaid">—</b></div>
+                    <div class="fresh" style="margin-top:8px;">Real data only — building until activity exists.</div>
+                </div>
+                <div class="fresh" style="margin-top:8px;">Volume and activity rankings appear only when a confirmed metric exists. Positions are deterministic: earned, then revenue, then active referrals, then wallet.</div>
+            </div>
+            <!-- Memory / Data Page (spec §25-35) — Walrus (storage) · Seal (encryption) · Noise (app) -->
+            <div class="page" id="memory">
+                <div class="page-header">
+                    <h1 class="page-title">MEMORY</h1>
+                    <div class="page-subtitle">Private memory and persistent data for Noise.</div>
+                </div>
+                <div class="panel">
+                    <h3>THE DATA LAYER — STORAGE vs ENCRYPTION vs APPLICATION</h3>
+                    <div class="kv"><span>Walrus</span><b>Persistent decentralized (content-addressed) storage</b></div>
+                    <div class="kv"><span>Seal</span><b>Threshold encryption + programmable access control</b></div>
+                    <div class="kv"><span>Noise</span><b>Application layer — decides what is stored and when</b></div>
+                    <div class="fresh" style="margin-top:10px;">Walrus stores encrypted application data without putting the data itself on Sui. Seal can be used together with Walrus to hold encrypted content. Noise stores only what you enable.</div>
+                </div>
+                <div class="panel">
+                    <h3>NOISE MEMORY</h3>
+                    <div class="kv"><span>Status</span><b id="memPageStatus">DISABLED</b></div>
+                    <div class="kv"><span>Storage</span><b>Local encrypted store · Walrus <span class="status-pill ro">COMING SOON</span></b></div>
+                    <div class="kv"><span>Encryption</span><b>Seal access control <span class="status-pill ro">COMING SOON</span></b></div>
+                    <div class="kv"><span>Data</span><b>Encrypted</b></div>
+                    <div class="kv"><span>Never stored</span><b>seed · private key · wallet secret · signing secret</b></div>
+                    <div class="chat-row" style="margin-top:12px;">
+                        <button class="claim-btn" id="memEnableBtn" onclick="memEnable()">Enable Memory</button>
+                        <button class="btn-ghost" onclick="memDisable()">Disable</button>
+                        <button class="btn-ghost" onclick="memExport()">Export</button>
+                        <button class="btn-ghost" onclick="memDeleteAll()">Delete</button>
+                    </div>
+                    <div class="fresh" id="memNote" style="margin-top:10px;">Enable to store preferences, saved protocols, saved strategies, automation settings and AI context. Encrypt first, store second — plaintext is never written.</div>
+                    <div id="memLines" style="margin-top:12px; font-size:12px;"></div>
+                </div>
+                <div class="panel">
+                    <h3>FLOW</h3>
+                    <div style="font:12px/1.9 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--text-dim);">
+                        Your data → Encrypt → Seal → Store → Walrus<br>
+                        Walrus → Encrypted blob → Seal authorization → Decrypt → Noise
+                    </div>
+                </div>
+            </div>
+            <!-- Skills Page (spec §36-37) — capability registry with a strict permission model -->
+            <div class="page" id="skills">
+                <div class="page-header">
+                    <h1 class="page-title">SKILLS</h1>
+                    <div class="page-subtitle">Capabilities you can attach to Noise. A skill can read data, build a transaction and request a signature — it never receives a private key and can never auto-sign.</div>
+                </div>
+                <div class="panel">
+                    <h3>PERMISSION MODEL</h3>
+                    <div class="kv"><span>Allowed</span><b>read-data · build-transaction · request-signature</b></div>
+                    <div class="kv"><span>Never</span><b>private key · auto-sign</b></div>
+                    <div class="kv"><span>Enforcement</span><b>server-side skill registry + per-wallet grants</b></div>
+                    <div class="fresh" style="margin-top:10px;">Skills are off by default. Enabling one grants the permissions listed on its card; signing always requires your wallet to approve the reviewed transaction.</div>
+                </div>
+                <div class="opportunity-grid" id="skillsGrid"><div class="fresh">Loading skill registry…</div></div>
+                <div class="fresh" id="skillsFresh" style="margin-top:10px;">Source: Noise skill registry · Updated: —</div>
+            </div>
             <footer class="app-footer">
                 <div>
                     <div class="footer-brand">noise <span>hub</span></div>
                     <div class="footer-note">Built openly on Sui · non-custodial</div>
                 </div>
                 <div class="footer-links">
-                    <a href="https://x.com/Soulpureaux" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+                    <a href="https://x.com/NoiseHubSui" target="_blank" rel="noopener noreferrer">X / Twitter</a>
                     <a href="https://github.com/Juniorj87/noise" target="_blank" rel="noopener noreferrer">GitHub</a>
                 </div>
             </footer>
@@ -2357,31 +2512,35 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
            Design preserved (dash 2 + main style). Logic per FULL spec:
            adapter layer / registry / capital (no double count) / fee engine
            (bps) / referral / automation safety / AI tool router / freshness.
-           No fake execution: unsupported = DISCOVERY_ONLY / DEEP_LINK_ONLY.
+           No fake execution: unsupported = PARTIAL / DISCOVER / COMING_SOON (spec §2).
         ==================================================================== */
-        const VERIFIED_AT = '2026-09-30';
         const $ = (id) => document.getElementById(id);
         const store = {
             get(k, d) { try { const v = localStorage.getItem('hub_' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
             set(k, v) { try { localStorage.setItem('hub_' + k, JSON.stringify(v)); } catch {} }
         };
 
-        /* ---- Protocol registry (§5-6, §64) ---- */
-        const REGISTRY = [
-            { id: 'cetus', name: 'Cetus', cat: 'swap', status: 'LIVE_EXECUTION', caps: ['quote', 'build-tx', 'simulate', 'positions'], url: 'https://app.cetus.zone', docs: 'https://cetus-1.gitbook.io', fee: 'pool fee + 20 bps platform (cfg)', ref: 'verify', last: VERIFIED_AT },
-            { id: 'aftermath', name: 'Aftermath', cat: 'swap/lst', status: 'READ_ONLY', caps: ['quote', 'positions'], url: 'https://aftermath.finance', docs: 'https://docs.aftermath.finance', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'deepbook', name: 'DeepBook', cat: 'trading', status: 'READ_ONLY', caps: ['markets', 'orderbook'], url: 'https://deepbook.tech', docs: 'https://docs.sui.io', fee: 'verify', ref: '—', last: VERIFIED_AT },
-            { id: 'bluefin', name: 'Bluefin', cat: 'trading', status: 'DISCOVERY_ONLY', caps: ['markets'], url: 'https://bluefin.io', docs: 'https://docs.bluefin.io', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'turbos', name: 'Turbos', cat: 'swap', status: 'DISCOVERY_ONLY', caps: ['pools'], url: 'https://turbos.finance', docs: 'https://docs.turbos.finance', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'navi', name: 'NAVI', cat: 'lending', status: 'READ_ONLY', caps: ['markets', 'positions', 'rewards'], url: 'https://naviprotocol.io', docs: 'https://docs.naviprotocol.io', fee: 'referral-share first', ref: 'verify', last: VERIFIED_AT },
-            { id: 'suilend', name: 'Suilend', cat: 'lending', status: 'READ_ONLY', caps: ['markets', 'positions'], url: 'https://suilend.fi', docs: 'https://docs.suilend.fi', fee: 'referral-share first', ref: 'verify', last: VERIFIED_AT },
-            { id: 'scallop', name: 'Scallop', cat: 'lending', status: 'DISCOVERY_ONLY', caps: ['markets'], url: 'https://scallop.io', docs: 'https://docs.scallop.io', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'haedal', name: 'Haedal', cat: 'lst', status: 'READ_ONLY', caps: ['stake-quote', 'positions'], url: 'https://haedal.xyz', docs: 'https://docs.haedal.xyz', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'volo', name: 'Volo', cat: 'lst', status: 'DISCOVERY_ONLY', caps: ['pools'], url: 'https://volo.fi', docs: 'https://docs.volo.fi', fee: 'verify', ref: 'verify', last: VERIFIED_AT },
-            { id: 'sui-native', name: 'Sui Native Staking', cat: 'staking', status: 'LIVE_EXECUTION', caps: ['stake', 'unstake', 'rewards', 'validators'], url: 'https://sui.io', docs: 'https://docs.sui.io', fee: 'validator commission', ref: '—', last: VERIFIED_AT },
-            { id: 'suibridge', name: 'Sui Bridge', cat: 'bridge', status: 'DEEP_LINK_ONLY', caps: ['quote-link'], url: 'https://bridge.sui.io', docs: 'https://docs.sui.io/concepts/bridge', fee: 'provider fee', ref: '—', last: VERIFIED_AT },
-            { id: 'wormhole', name: 'Wormhole (bridge)', cat: 'bridge', status: 'DEEP_LINK_ONLY', caps: ['quote-link'], url: 'https://portalbridge.com', docs: 'https://docs.wormhole.com', fee: 'provider fee', ref: 'verify', last: VERIFIED_AT }
-        ];
+        /* ---- Protocol registry (spec §21) ----
+           GENERATED MIRROR of shared/registry.js — one source of truth.
+           Regenerate:  node scripts/gen-ui-registry.mjs
+           server/test/registry.test.js fails if this mirror drifts. */
+        /* REGISTRY_JSON_START */
+        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","objects","stakes"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-04"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"https://docs.sui.io/concepts/tokenomics/staking","fee":"validator commission","ref":"—","last":"2026-10-04"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate","position"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-04"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"PARTIAL","caps":["swap-quote","pools","staking-apy","rewards","position"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-04"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","cancel_order","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-04"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3/predict","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-04"},{"id":"deepbook-margin","name":"DeepBook Margin","cat":"trading","status":"COMING_SOON","caps":[],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3/margin","fee":"—","ref":"—","last":"2026-10-04"},{"id":"turbos","name":"Turbos","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://turbos.finance","docs":"https://docs.turbos.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"flowx","name":"FlowX","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"momentum","name":"Momentum","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://momentum.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kriya","name":"Kriya","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://kriya.finance","docs":"https://docs.kriya.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"metastable","name":"Metastable","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://metastable.io","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"obric","name":"Obric","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://obric.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"DISCOVER","caps":["markets"],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-perps","name":"Bluefin Perps","cat":"trading","status":"DISCOVER","caps":[],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"typus","name":"Typus","cat":"trading","status":"DISCOVER","caps":[],"url":"https://typus.finance","docs":"https://docs.typus.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"sudo","name":"Sudo","cat":"trading","status":"DISCOVER","caps":[],"url":"https://sudo.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"perpsplexity","name":"Perpsplexity","cat":"trading","status":"DISCOVER","caps":["markets"],"url":"https://perpsplexity.app","docs":"","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"navi","name":"NAVI","cat":"lending","status":"DISCOVER","caps":[],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"suilend","name":"Suilend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"scallop","name":"Scallop","cat":"lending","status":"DISCOVER","caps":[],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bucket","name":"Bucket","cat":"lending","status":"DISCOVER","caps":[],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphalend","name":"AlphaLend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://alphalend.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"PARTIAL","caps":["stake","unstake","position","apy"],"url":"https://haedal.xyz","docs":"https://docs.haedal.xyz","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://volo.fi","docs":"https://docs.volo.fi","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphafi","name":"AlphaFi","cat":"yield","status":"DISCOVER","caps":[],"url":"https://alphafi.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kai","name":"Kai","cat":"yield","status":"DISCOVER","caps":[],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"nemo","name":"Nemo","cat":"btcfi","status":"DISCOVER","caps":[],"url":"https://nemo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"suipump","name":"SuiPump","cat":"launchpad","status":"LIVE","caps":["tokens","price","volume","trades","bonding","graduation"],"url":"https://suipump.fun","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"suibridge","name":"Sui Bridge","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://bridge.sui.io","docs":"https://docs.sui.io/concepts/bridge","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"walrus","name":"Walrus","cat":"data","status":"COMING_SOON","caps":[],"url":"https://walrus.xyz","docs":"https://docs.wal.app","fee":"storage cost","ref":"—","last":"2026-10-04"},{"id":"seal","name":"Seal","cat":"security","status":"COMING_SOON","caps":[],"url":"https://seal-docs.wal.app","docs":"https://seal-docs.wal.app","fee":"key-server fees","ref":"—","last":"2026-10-04"}];
+        /* REGISTRY_JSON_END */
+        /* CAP_JSON_START */
+        window.ACTION_CAPABILITIES = {"swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Cetus","url":"https://app.cetus.zone","note":"Cetus router: quote → build → simulate → wallet sign."},"stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native stake PTB built + simulated; wallet signs."},"unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native unstake PTB built + simulated; wallet signs."},"liquid_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath","url":"https://aftermath.finance","note":"Liquid stake/unstake PTB built + simulated; wallet signs."},"predict_mint":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_redeem":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"spot_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"limit_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"market_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"cancel_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"setup_trading_account":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"liquidity":{"data":"LIVE","quote":"LIVE","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Cetus / Aftermath pools","url":"https://app.cetus.zone","note":"Pool TVL/APR are live; pool add-liquidity build is not wired."},"claim":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Aftermath","url":"https://aftermath.finance","note":"Rewards are readable; protocol reward claim needs a provider adapter."},"supply":{"data":"UNAVAILABLE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending SDKs are blocked — no markets are shown rather than invented."},"borrow":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"repay":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"withdraw":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"transfer":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Sui","url":"https://sui.io","note":"Transfers are not built in Noise."}};
+        /* CAP_JSON_END */
+        window.REGISTRY = REGISTRY;
+        // Capability matrix keyed by id (spec: "Protocol capability matrix").
+        window.CAP_MATRIX = {"sui":{"id":"sui","name":"Sui","category":"infrastructure","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"sui-native":{"id":"sui-native","name":"Sui Native Staking","category":"staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"cetus":{"id":"cetus","name":"Cetus","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":true,"execution":true},"aftermath":{"id":"aftermath","name":"Aftermath","category":"dex","bucket":"DEX","status":"PARTIAL","data":true,"swap":true,"trade":false,"earn":true,"position":true,"execution":false},"deepbook":{"id":"deepbook","name":"DeepBook","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-predict":{"id":"deepbook-predict","name":"DeepBook Predict","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-margin":{"id":"deepbook-margin","name":"DeepBook Margin","category":"trading","bucket":"TRADING","status":"COMING_SOON","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"turbos":{"id":"turbos","name":"Turbos","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"flowx":{"id":"flowx","name":"FlowX","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"momentum":{"id":"momentum","name":"Momentum","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kriya":{"id":"kriya","name":"Kriya","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"metastable":{"id":"metastable","name":"Metastable","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"obric":{"id":"obric","name":"Obric","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-spot":{"id":"bluefin-spot","name":"Bluefin Spot","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-perps":{"id":"bluefin-perps","name":"Bluefin Perps","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"typus":{"id":"typus","name":"Typus","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"sudo":{"id":"sudo","name":"Sudo","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"perpsplexity":{"id":"perpsplexity","name":"Perpsplexity","category":"trading","bucket":"TRADING","status":"DISCOVER","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"navi":{"id":"navi","name":"NAVI","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suilend":{"id":"suilend","name":"Suilend","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"scallop":{"id":"scallop","name":"Scallop","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bucket":{"id":"bucket","name":"Bucket","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"alphalend":{"id":"alphalend","name":"AlphaLend","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"haedal":{"id":"haedal","name":"Haedal","category":"liquid-staking","bucket":"STAKING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":true,"position":false,"execution":false},"volo":{"id":"volo","name":"Volo","category":"liquid-staking","bucket":"STAKING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"springsui":{"id":"springsui","name":"SpringSui","category":"liquid-staking","bucket":"STAKING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"alphafi":{"id":"alphafi","name":"AlphaFi","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kai":{"id":"kai","name":"Kai","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"nemo":{"id":"nemo","name":"Nemo","category":"btcfi","bucket":"BTCFI","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"steamm":{"id":"steamm","name":"STEAMM","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suipump":{"id":"suipump","name":"SuiPump","category":"launchpad","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suibridge":{"id":"suibridge","name":"Sui Bridge","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"wormhole":{"id":"wormhole","name":"Wormhole / Portal","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"walrus":{"id":"walrus","name":"Walrus","category":"data","bucket":"INFRASTRUCTURE","status":"COMING_SOON","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"seal":{"id":"seal","name":"Seal","category":"security","bucket":"INFRASTRUCTURE","status":"COMING_SOON","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false}};
+        // Unified status scale (spec §2, §84): LIVE / PARTIAL / DISCOVER / COMING_SOON.
+        const STATUS_META = {
+            LIVE: { label: 'LIVE', cls: 'live', note: 'Noise can perform the advertised actions.' },
+            PARTIAL: { label: 'PARTIAL', cls: 'ro', note: 'Part of the surface works (e.g. live data, no execution yet).' },
+            DISCOVER: { label: 'DISCOVER', cls: 'ro', note: 'Ecosystem discovery / deep link — no execution in Noise.' },
+            COMING_SOON: { label: 'COMING SOON', cls: 'ro', note: 'Surface planned; execution intentionally disabled.' },
+        };
+        function statusClass(status) { return (STATUS_META[status] || {}).cls || 'ro'; }
         function protoStatus(id) { const p = REGISTRY.find(r => r.id === id); return p ? p.status : 'UNAVAILABLE'; }
 
         /* ---- Fee engine (§26-27, §57 — bps integer-safe) ---- */
@@ -2421,6 +2580,10 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             if (pageId === 'activity') loadActivityFeed();
             if (pageId === 'trade') tradeInit();
             if (pageId === 'referral') paintRef();
+            if (pageId === 'leaderboard') paintLeaderboard();
+            if (pageId === 'memory') paintMemoryPage();
+            if (pageId === 'skills') loadSkills();
+            if (pageId === 'security') loadProviderHealth();
         }
         navItems.forEach(item => item.addEventListener('click', () => navigateTo(item.dataset.page)));
         function showComposer(type) {
@@ -2449,7 +2612,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             } else {
                 if (table) table.style.display = '';
                 grids.forEach(g => g.style.display = '');
-                if (name.includes('market')) toast('Pools feed: READ_ONLY in this build — pool indexer milestone.');
+                if (name.includes('market')) toast('Pools feed: DISCOVER in this build — pool indexer milestone.');
             }
         }));
         document.querySelectorAll('.activity-filters .filter-btn, .earn-filters .filter-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -2567,6 +2730,31 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                 apiPatch('/api/tx', { id: window._activeTxId, to: 'rejected', extra: { failure_reason: 'User rejected the transaction in the wallet' } }).catch(() => {});
             });
         }
+        // Dev-only wallet diagnostics (spec §52, §92). Never shown to a normal
+        // user — appears only when the URL carries `?diag`.
+        function showWalletDiagnostics(d) {
+            let el = $('walletDiagPanel');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'walletDiagPanel';
+                el.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;max-width:440px;background:#0a0a0a;border:1px solid var(--line);padding:16px 18px;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff;white-space:pre-wrap;';
+                document.body.appendChild(el);
+            }
+            const rows = [
+                ['Origin', d.origin || location.origin],
+                ['HTTPS', d.https ? 'OK' : (d.insecureOrigin ? 'INSECURE (http)' : 'n/a')],
+                ['Wallet Std', d.walletStandardApi],
+                ['Detected', String(d.walletsDetected || 0) + ' (' + (d.suiWallets || []).join(', ') + ')'],
+                ['Slush', d.slushDetected ? 'detected' : 'not detected'],
+                ['Connect', d.canConnect ? 'OK' : 'UNAVAILABLE'],
+                ['Sign', d.canSign ? 'READY' : 'UNAVAILABLE'],
+                ['Chain', d.chain || '—'],
+                ['Selected', d.selected || 'none'],
+                ['Last error', d.lastError ? (d.lastError.code + (d.lastError.cause ? ': ' + d.lastError.cause : '')) : '—'],
+                ['postMessage', d.postMessage ? 'OK' : 'missing'],
+            ];
+            el.textContent = 'WALLET DIAGNOSTICS\n' + rows.map((r) => r[0].padEnd(11) + ' ' + r[1]).join('\n');
+        }
         async function connectWallet() {
             // 1) Real wallet-standard flow (signing enabled, keys never leave wallet).
             if (window.HubWallet) {
@@ -2584,12 +2772,22 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     attributeRefParam();
                     return;
                 } catch (e) {
-                    if (e && (e.code === 'NO_WALLET')) {
-                        toast('No Sui wallet found — install Slush/Sui Wallet, or paste a read-only address.');
-                    } else if (!(e && e.code === 'NO_ACCOUNT')) {
-                        toast('Wallet connection rejected or failed.');
+                    const code = e && e.code;
+                    const d = (window.HubWallet.diagnostics && window.HubWallet.diagnostics()) || {};
+                    console.warn('[wallet] connect failed', code, e, d);
+                    if (code === 'NO_WALLET') {
+                        toast('No Sui wallet detected (Wallet Standard). Install Slush, or paste a read-only address below.');
+                    } else if (code === 'NO_ACCOUNT') {
+                        toast('Wallet exposed no account — read-only mode. Unlock the wallet to sign.');
+                    } else {
+                        const declined = /reject|denied|cancel/i.test(String((e && (e.cause || e.message)) || ''));
+                        toast(declined ? 'Connection request was declined in the wallet.'
+                            : (d.slushDetected ? 'Slush' : 'The wallet') + ' could not connect. Check: installed/open · Sui mainnet · approved Noise Hub.');
+                        if (new URLSearchParams(location.search).has('diag') && typeof showWalletDiagnostics === 'function') showWalletDiagnostics(d);
                         return;
                     }
+                    // NO_WALLET / NO_ACCOUNT fall through to the read-only address fallback.
+                    if (new URLSearchParams(location.search).has('diag') && typeof showWalletDiagnostics === 'function') showWalletDiagnostics(d);
                 }
             }
             // 2) Read-only fallback: address only, no signing. Private keys are NEVER requested.
@@ -2861,7 +3059,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             const p = $('extraActionPanel'); p.style.display = 'block';
             $('extraActionTitle').textContent = mode === 'borrow' ? 'BORROW — HEALTH CHECK REQUIRED' : 'SUPPLY (LENDING)';
             $('extraActionBody').innerHTML = mode === 'borrow'
-                ? 'Collateral → Borrowed → <b>Health Factor</b> → Liquidation threshold → Estimated health after borrow.<br>Providers: NAVI (READ_ONLY) · Suilend (READ_ONLY) · Scallop (DISCOVERY_ONLY). Never claim safe without current protocol data. <a href="https://naviprotocol.io" target="_blank" style="color:var(--accent)">Open on NAVI</a>'
+                ? 'Collateral → Borrowed → <b>Health Factor</b> → Liquidation threshold → Estimated health after borrow.<br>Providers: NAVI / Suilend / Scallop are <b>DISCOVER</b> (no execution) — open the provider directly. Never claim safe without current protocol data. <a href="https://naviprotocol.io" target="_blank" style="color:var(--accent)">Open on NAVI</a>'
                 : 'Markets: asset · supply APY · borrow APY · liquidity · utilization · collateral factor · rewards · fees.<br>Prefer protocol referral/revenue-share — no hidden user fee. <button class="claim-btn" style="margin-top:10px" onclick="openReview(\'supply\')">Review supply</button>';
             p.scrollIntoView({ behavior: 'smooth' });
         }
@@ -3357,7 +3555,22 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             markets: [], underlyings: [], underlying: null, expiryMs: null,
             side: 'up', strikeMode: 'reference', strike: 'reference',
             mode: 'budget', quote: null, quoteKey: '', detail: null, timer: null,
+            lastOkAt: null,
         };
+        /* Predict state machine (production fix): the feature is never removed —
+           it transitions between explicit states with a last-successful timestamp. */
+        function pSetState(state) {
+            const el = $('pState');
+            if (el) {
+                const cls = state === 'LIVE' ? 'live' : 'ro';
+                const label = { LIVE: 'LIVE', LOADING: 'LOADING', TEMPORARILY_UNAVAILABLE: 'TEMPORARILY UNAVAILABLE', PAUSED: 'PAUSED', COMING_SOON: 'COMING SOON' };
+                el.className = 'status-pill ' + cls;
+                el.textContent = label[state] || state;
+            }
+            const f = $('pFresh');
+            if (f) f.dataset.state = state;
+        }
+        function pLastOk() { return P.lastOkAt ? ago(new Date(P.lastOkAt).toISOString()) : 'never in this session'; }
         function pSetTab(which) {
             $('pTabCard').classList.toggle('active', which === 'card');
             $('pTabTrade').classList.toggle('active', which === 'trade');
@@ -3404,6 +3617,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
         }
         async function pLoadMarkets() {
             const uw = $('pUnderlyings'), ex = $('pExpiries');
+            pSetState('LOADING');
             uw.innerHTML = '<span class="fresh">Discovering live Predict markets…</span>';
             ex.innerHTML = '';
             try {
@@ -3411,9 +3625,11 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                 if (!r || r.error) throw new Error((r && r.error) || 'PROVIDER_UNAVAILABLE');
                 P.markets = r.markets || [];
                 P.underlyings = r.underlyings || [];
+                P.lastOkAt = Date.now();
                 if (!P.markets.length) {
+                    pSetState('PAUSED');
                     uw.innerHTML = '<span class="fresh">No active markets right now. New markets will appear automatically when the next trading window opens.</span>';
-                    $('pFresh').textContent = 'Source: DeepBook Predict SDK · Updated: ' + new Date().toLocaleTimeString();
+                    $('pFresh').textContent = 'Source: DeepBook Predict SDK · Last successful update: ' + pLastOk();
                     return;
                 }
                 if (!P.underlying || !P.underlyings.includes(P.underlying)) {
@@ -3425,15 +3641,24 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                     return '<button class="filter-btn' + (u === P.underlying ? ' active' : '') + '" onclick="pSelectUnderlying(\'' + u + '\')">' + u + (n ? ' (' + n + ')' : '') + '</button>';
                 }).join('');
                 pRenderExpiries();
+                pSetState('LIVE');
                 $('pFresh').textContent = 'Source: DeepBook Predict SDK (live) · Updated: ' + new Date().toLocaleTimeString();
                 const c = r.constants || {};
                 $('pLimits').textContent = 'Minimum premium 1.00 USDC · quantity lots of 0.01 USDC' +
                     (c.quoteCoinType ? ' · quote asset USDC' : '');
             } catch (e) {
-                uw.innerHTML = '<span class="fresh" style="color:#ff6666;">DeepBook Predict markets temporarily unavailable. Your wallet and funds are unaffected. </span>';
+                // Never remove Predict — show an explicit, recoverable state.
+                pSetState('TEMPORARILY_UNAVAILABLE');
+                uw.innerHTML = '<span class="fresh" style="color:#ff6666;">DeepBook Predict — DATA TEMPORARILY UNAVAILABLE. Your wallet and funds are unaffected.</span>';
+                const meta = document.createElement('div');
+                meta.className = 'fresh'; meta.style.marginTop = '8px';
+                meta.textContent = 'Last successful update: ' + pLastOk();
+                uw.appendChild(meta);
                 const rb = document.createElement('button');
-                rb.className = 'btn-ghost'; rb.textContent = 'Retry'; rb.onclick = () => { P.markets = []; predictInit(); };
+                rb.className = 'btn-ghost'; rb.style.marginTop = '10px'; rb.textContent = 'Retry';
+                rb.onclick = () => { P.markets = []; pLoadMarkets(); };
                 uw.appendChild(rb);
+                $('pFresh').textContent = 'Source: DeepBook Predict SDK · Last successful update: ' + pLastOk();
             }
         }
         function pSelectUnderlying(u) {
@@ -3763,7 +3988,27 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             b.textContent = label;
             b.onclick = fn;
         }
+        /* Capability gate (production fix): a non-executable action must never
+           open Review/Build — it shows the honest per-stage status + Open Provider. */
+        function showProviderGate(kind, cap) {
+            const panel = $('extraActionPanel');
+            if (!panel) { toast((cap.provider || 'Provider') + ' — execution is not available in Noise. Open the provider to continue.'); return; }
+            panel.style.display = 'block';
+            if ($('extraActionTitle')) $('extraActionTitle').textContent = kind.toUpperCase().replace(/_/g, ' ') + ' — VIEW ON PROVIDER';
+            if ($('extraActionBody')) $('extraActionBody').innerHTML =
+                '<div class="kv"><span>Provider</span><b>' + escapeHtml(cap.provider || '—') + '</b></div>' +
+                '<div class="kv"><span>Data</span><b>' + escapeHtml(String(cap.data)) + '</b></div>' +
+                '<div class="kv"><span>Quote</span><b>' + escapeHtml(String(cap.quote)) + '</b></div>' +
+                '<div class="kv"><span>Build</span><b>' + escapeHtml(String(cap.build)) + '</b></div>' +
+                '<div class="kv"><span>Simulation</span><b>' + escapeHtml(String(cap.simulate)) + '</b></div>' +
+                '<div class="kv"><span>Execution</span><b>' + escapeHtml(String(cap.execute)) + '</b></div>' +
+                '<div class="fresh" style="margin-top:10px;">' + escapeHtml(cap.note || 'Execution is not available in Noise yet. Continue on the provider — no transaction was built.') + '</div>' +
+                '<button class="claim-btn" style="margin-top:10px;" onclick="window.open(\'' + String(cap.url || '') + '\',\'_blank\')">View on Provider ↗</button>';
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
         function openReview(kind) {
+            const cap = (window.ACTION_CAPABILITIES || {})[kind];
+            if (cap && cap.execute !== 'LIVE') { showProviderGate(kind, cap); return; }
             const q = window._quote, s = window._swap;
             window._swapTx = null;
             window._activeTxId = null;
@@ -3787,7 +4032,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                 setReviewStatus('Status: <span class="status-pill">QUOTED</span> — next: build & simulate on-chain.');
                 setConfirm('Build & Simulate', swapBuild);
             } else if (kind === 'supply') {
-                $('reviewTitle').textContent = 'REVIEW SUPPLY'; $('reviewSub').textContent = 'Via NAVI · READ_ONLY — execution needs an SDK update';
+                $('reviewTitle').textContent = 'REVIEW SUPPLY'; $('reviewSub').textContent = 'Via NAVI · DISCOVER — execution blocked at the SDK';
                 renderFees($('reviewFees'), feeBreakdown(1000, 'earn'));
                 $('reviewCustody').textContent = 'Funds go to NAVI contracts. Hub does not custody. Simulation runs via devInspect at signing — not yet executed.';
             } else if (kind === 'stake') {
@@ -3795,13 +4040,13 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                 renderFees($('reviewFees'), feeBreakdown(100, 'earn'));
                 $('reviewCustody').textContent = 'Staked with validator via Sui system staking. Unbonding period applies. Simulation runs via devInspect at signing.';
             } else if (kind === 'liquidity') {
-                $('reviewTitle').textContent = 'REVIEW LIQUIDITY'; $('reviewSub').textContent = 'Via Cetus pool · READ_ONLY — tx build via Cetus SDK milestone';
+                $('reviewTitle').textContent = 'REVIEW LIQUIDITY'; $('reviewSub').textContent = 'Via Cetus pool · PARTIAL — pool tx build is a milestone';
                 renderFees($('reviewFees'), feeBreakdown(500, 'swap'));
                 $('reviewCustody').textContent = 'LP position in DEX contracts. IL risk labelled as estimate. Simulation runs via devInspect at signing.';
             } else if (kind === 'claim') {
-                $('reviewTitle').textContent = 'REVIEW CLAIM'; $('reviewSub').textContent = 'Rewards claim · READ_ONLY in this build';
+                $('reviewTitle').textContent = 'REVIEW CLAIM'; $('reviewSub').textContent = 'Rewards claim · COMING SOON in this build';
                 renderFees($('reviewFees'), feeBreakdown(10, 'earn'));
-                $('reviewCustody').textContent = 'Native staking rewards accrue on-chain. Protocol reward claims execute via provider adapters (NAVI/Suilend READ_ONLY) — open the provider to claim.';
+                $('reviewCustody').textContent = 'Native staking rewards accrue on-chain. Protocol reward claims require a provider adapter (NAVI/Suilend are DISCOVER) — open the provider to claim.';
             } else if (!q) {
                 $('reviewTitle').textContent = 'REVIEW'; $('reviewSub').textContent = 'Simulation unavailable — review carefully before signing.';
                 renderFees($('reviewFees'), feeBreakdown(100, 'swap'));
@@ -4028,7 +4273,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
         }
         async function confirmAction() {
             // Non-swap kinds: honest state — execution only where a real path exists.
-            toast('This action is READ_ONLY in the current build — open the provider to execute.');
+            toast('This action has no execution path in the current build (status DISCOVER / COMING SOON) — open the provider to execute.');
         }
 
         /* ---- Modals / toast ---- */
@@ -4508,6 +4753,128 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             } catch (e) {}
         }
 
+        /* ---- Leaderboard page (spec §38-42, §79) — global ranking, separate from Referral ---- */
+        async function paintLeaderboard() {
+            if (!wallet) {
+                ['posRank', 'posActive', 'posRevenue', 'posEarned'].forEach((id) => { if ($(id)) $(id).textContent = '—'; });
+                loadLeaderboard(); loadNetwork();
+                return;
+            }
+            try {
+                const s = await apiGet('/api/referral/stats?wallet=' + wallet, 15000);
+                if (s && !s.error && s.stats) {
+                    const st = s.stats, has = st.referred > 0 || Number(st.earned) > 0;
+                    const rk = (s.rank && s.rank.position) || null;
+                    if ($('posRank')) $('posRank').textContent = rk ? '#' + rk + ' of ' + (s.rank.total || '—') : '—';
+                    if ($('posActive')) $('posActive').textContent = has ? int0(st.active) + ' active referrals' : '—';
+                    if ($('posRevenue')) $('posRevenue').textContent = has ? money(st.eligibleRevenue) + ' revenue generated' : '—';
+                    if ($('posEarned')) $('posEarned').textContent = has ? money(st.earned) + ' earned' : '—';
+                }
+            } catch (e) { /* backend offline — keep em-dashes, never fake */ }
+            loadLeaderboard(); loadNetwork();
+        }
+
+        /* ---- Memory page (spec §25-35) — Walrus = storage, Seal = encryption/access control ---- */
+        const MEM = { key: 'memConsent' };
+        function memEnabled() { return store.get(MEM.key, false) === true; }
+        function paintMemoryPage() {
+            const on = memEnabled();
+            if ($('memPageStatus')) $('memPageStatus').textContent = on ? 'ENABLED' : 'DISABLED';
+            if ($('memEnableBtn')) $('memEnableBtn').style.display = on ? 'none' : '';
+            if ($('memNote')) $('memNote').textContent = on
+                ? 'Enabled. Preferences, saved protocols, strategies, automation settings and AI context are stored encrypted. Never: seed, private key, password or secret. Deleting removes records from the Noise memory index — it is not a guaranteed physical erase of prior storage.'
+                : 'Enable to store preferences, saved protocols, saved strategies, automation settings and AI context. Encrypt first, store second — plaintext is never written.';
+            renderMemLines();
+        }
+        function memEnable() {
+            store.set(MEM.key, true);
+            paintMemoryPage();
+            toast('Memory enabled — encrypted and consent-gated. Walrus/Seal storage is COMING SOON; records stay in the local encrypted store.');
+        }
+        function memDisable() {
+            store.set(MEM.key, false);
+            paintMemoryPage();
+            toast('Memory disabled — Noise will not store new context.');
+        }
+        async function renderMemLines() {
+            const el = $('memLines'); if (!el) return;
+            if (!wallet) { el.innerHTML = '<span class="fresh">Connect a wallet to view your memory.</span>'; return; }
+            try {
+                const r = await apiGet('/api/memory?wallet=' + wallet, 15000);
+                const items = (r && r.items) || [];
+                el.innerHTML = items.length
+                    ? items.map((m) => '<div class="kv"><span>' + escapeHtml(String(m.category || '').toUpperCase()) + '</span><b>' + escapeHtml(String(m.content || '').slice(0, 60)) + '</b></div>').join('')
+                    : '<span class="fresh">No memory records yet.</span>';
+            } catch (e) { el.innerHTML = '<span class="fresh">Memory unavailable (backend offline).</span>'; }
+        }
+        async function memExport() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            try {
+                const r = await apiGet('/api/memory?wallet=' + wallet, 15000);
+                const blob = new Blob([JSON.stringify(r || { items: [] }, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'noise-memory-' + wallet.slice(2, 10) + '.json';
+                document.body.appendChild(a); a.click(); a.remove();
+                toast('Memory exported.');
+            } catch (e) { toast('Export failed (backend offline).'); }
+        }
+        async function memDeleteAll() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!confirm('Remove all Noise memory records for this wallet? This removes them from the Noise memory index.')) return;
+            try {
+                const r = await fetch(API_BASE + '/api/memory', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wallet, all: true }) });
+                await r.json().catch(() => ({}));
+                toast('Memory records removed from the Noise index.');
+                renderMemLines();
+            } catch (e) { toast('Delete failed (backend offline).'); }
+        }
+
+        /* ---- Skills page (spec §36-37) ---- */
+        async function loadSkills() {
+            const grid = $('skillsGrid'); if (!grid) return;
+            grid.innerHTML = '<div class="fresh">Loading skill registry…</div>';
+            try {
+                const r = await apiGet('/api/skills' + (wallet ? '?wallet=' + wallet : ''), 15000);
+                const skills = (r && r.skills) || [];
+                if (!skills.length) { grid.innerHTML = '<div class="fresh">Skill registry unavailable.</div>'; return; }
+                grid.innerHTML = skills.map((s) => {
+                    const perms = (s.permissions || []).map((p) => escapeHtml(p)).join(' · ') || 'no permissions';
+                    const req = (s.requires || []).length ? 'Requires: ' + escapeHtml(s.requires.join(', ')) + ' · ' : '';
+                    const btn = s.status === 'AVAILABLE'
+                        ? '<button class="btn-ghost" style="margin-top:10px;" onclick="toggleSkill(\'' + s.id + '\',' + (s.enabled ? 'false' : 'true') + ')">' + (s.enabled ? 'Disable' : 'Enable') + '</button>'
+                        : '<span class="status-pill ro" style="margin-top:10px;">COMING SOON</span>';
+                    return '<div class="opportunity-card" data-live="1">' +
+                        '<div class="opportunity-asset">' + escapeHtml(s.name) + '</div>' +
+                        '<span class="status-pill ' + (s.status === 'AVAILABLE' ? 'live' : 'ro') + '">' + escapeHtml(s.status) + '</span>' +
+                        '<div class="opportunity-metrics" style="margin-top:8px;">' + escapeHtml(s.purpose) + '</div>' +
+                        '<div class="fresh">' + req + 'Permissions: ' + perms + '</div>' +
+                        '<div class="fresh">Never: private key · auto-sign</div>' + btn + '</div>';
+                }).join('');
+                if ($('skillsFresh')) $('skillsFresh').textContent = 'Source: ' + ((r && r.source) || 'Noise skill registry') + ' · Updated: ' + new Date().toLocaleTimeString();
+            } catch (e) { grid.innerHTML = '<div class="fresh">Skill registry unavailable (backend offline).</div>'; }
+        }
+        async function toggleSkill(id, enabled) {
+            if (!wallet) { toast('Connect wallet to grant skills.'); return; }
+            try {
+                await apiPost('/api/skills/toggle', { wallet, skill: id, enabled }, 15000);
+                toast((enabled ? 'Skill enabled: ' : 'Skill disabled: ') + id);
+                loadSkills();
+            } catch (e) { toast('Could not update skill (backend offline).'); }
+        }
+
+        /* ---- Provider health (spec #3) — offline providers are excluded, never faked ---- */
+        async function loadProviderHealth() {
+            const el = $('providerHealth'); if (!el) return;
+            try {
+                const r = await apiGet('/api/providers', 15000);
+                const swap = (r && r.swap) || [];
+                const dot = (st) => (st === 'OPERATIONAL' || st === 'LIVE') ? '<b style="color:#00ff88;">●</b>' : (st === 'DEGRADED' ? '<b style="color:#ffcc00;">●</b>' : '<b style="color:#888;">○</b>');
+                el.innerHTML = swap.map((p) => '<div class="kv"><span>' + dot(p.health) + ' ' + escapeHtml(p.name) + '</span><b>' + escapeHtml(String(p.available === false && p.reason ? p.reason : (p.health || 'UNKNOWN'))) + '</b></div>').join('') +
+                    '<div class="fresh" style="margin-top:8px;">Source: ' + escapeHtml((r && r.source) || 'Noise provider registry') + ' · Updated: ' + new Date().toLocaleTimeString() + '</div>';
+            } catch (e) { el.innerHTML = '<span class="fresh">Provider health unavailable (backend offline).</span>'; }
+        }
+
         /* ---- Referral dashboard — real accounting data only, never mock numbers ----
            All user/API-controlled strings go through escapeHtml before DOM insert. */
         let lbMetric = 'earned', lbPeriod = 'all', refRange = '30d';
@@ -4689,7 +5056,7 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
         $('globalSearch').addEventListener('input', (e) => {
             const q = e.target.value.trim().toLowerCase(), box = $('searchResults');
             if (q.length < 2) { box.style.display = 'none'; return; }
-            const hits = REGISTRY.filter(p => (p.name + p.cat + p.id).toLowerCase().includes(q)).map(p => '<span class="status-pill ' + (p.status === 'LIVE_EXECUTION' ? 'live' : 'ro') + '" style="cursor:pointer; margin-right:8px;" onclick="openProto(\'' + p.id + '\')">' + p.name + ' · ' + p.status + '</span>').join('') || '<span class="fresh">No protocol match — try token: USDC / SUI.</span>';
+            const hits = REGISTRY.filter(p => (p.name + p.cat + p.id).toLowerCase().includes(q)).map(p => '<span class="status-pill ' + statusClass(p.status) + '" style="cursor:pointer; margin-right:8px;" onclick="openProto(\'' + p.id + '\')">' + p.name + ' · ' + p.status + '</span>').join('') || '<span class="fresh">No protocol match — try token: USDC / SUI.</span>';
             box.innerHTML = '<div class="panel"><h3>SEARCH: ' + q.toUpperCase() + ' — WALLET + EARN + LENDING + POOLS + SWAP ROUTES + ACTIVITY</h3><div>' + hits + ' <span class="status-pill ro" style="cursor:pointer;" onclick="navigateTo(\'earn\')">Earn USDC →</span> <span class="status-pill ro" style="cursor:pointer;" onclick="openSwap()">Swap →</span></div></div>';
             box.style.display = 'block';
         });
@@ -4698,8 +5065,12 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
         function secEvent(t) { const el = $('secEvents'); if (el) el.innerHTML = t + ' · just now<br>' + el.innerHTML; }
         function paintProtos() {
             const el = $('protoTable'); if (!el) return;
-            el.innerHTML = '<div class="kv"><span><b>Provider</b></span><b>Read · Quote · Build · Sim · Status</b></div>' + REGISTRY.map(p =>
-                '<div class="kv"><span><a style="color:var(--accent);cursor:pointer;" onclick="openProto(\'' + p.id + '\')">' + p.name + '</a> <span class="fresh">· ' + p.cat + '</span></span><b>' + p.caps.slice(0, 3).join('/') + ' · ' + p.status + '</b></div>').join('');
+            el.innerHTML = '<div class="kv"><span><b>Protocol capability matrix</b></span><b>Data · Swap · Trade · Earn · Position · Exec</b></div>' + REGISTRY.map(p => {
+                const c = (window.CAP_MATRIX || {})[p.id];
+                const yn = (v) => v ? '✓' : '—';
+                const cap = c ? [yn(c.data), yn(c.swap), yn(c.trade), yn(c.earn), yn(c.position), yn(c.execution)].join(' · ') : p.caps.slice(0, 3).join('/');
+                return '<div class="kv"><span><a style="color:var(--accent);cursor:pointer;" onclick="openProto(\'' + p.id + '\')">' + p.name + '</a> <span class="fresh">· ' + p.cat + '</span></span><b><span class="status-pill ' + statusClass(p.status) + '">' + p.status + '</span> <span class="fresh">' + cap + '</span></b></div>';
+            }).join('');
         }
 
         /* ---- Automation NL preview (kept) ---- */
@@ -4743,19 +5114,100 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             if (v == null || isNaN(Number(v))) return 'Unavailable';
             return '$' + Number(v).toLocaleString(undefined, { maximumFractionDigits: v < 1 ? 4 : 2 });
         }
+        function fmtUsdDash(v) { return (v === null || v === undefined || isNaN(Number(v))) ? '—' : fmtUsd(v); }
+        /* Honest APR: unknown → '—', real zero → '0.00%', tiny → '< 0.01%'. Never 0.00% for unknown. */
+        function formatAprPct(pct) {
+            if (pct === null || pct === undefined || !isFinite(Number(pct))) return '—';
+            const n = Number(pct);
+            if (n === 0) return '0.00%';
+            if (Math.abs(n) < 0.01) return '< 0.01%';
+            return n.toFixed(2) + '%';
+        }
+        /* Dev diagnostics (spec §4): run earnDiagnostics() in the console. */
+        function earnDiagnostics() {
+            const rows = (window._earnPools || []).map((p) => ({
+                name: p.name,
+                tvl: (p.tvl === null || p.tvl === undefined) ? 'UNAVAILABLE' : 'OK',
+                fees24h: (p.fees24h === null || p.fees24h === undefined) ? 'UNAVAILABLE' : 'OK',
+                feeApr: p.feeApr == null ? 'unavailable' : Number(p.feeApr).toFixed(3) + '%',
+                rewardApr: p.rewardApr == null ? 'unavailable' : Number(p.rewardApr).toFixed(3) + '%',
+                totalApr: p.totalApr == null ? 'unavailable' : Number(p.totalApr).toFixed(3) + '%',
+                displayedApr: formatAprPct(p.totalApr),
+                dataSource: p.source,
+            }));
+            console.table(rows);
+            return rows;
+        }
+        window.earnDiagnostics = earnDiagnostics;
         function ago(iso) {
             const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
             if (s < 60) return s + 's ago';
             if (s < 3600) return Math.floor(s / 60) + 'm ago';
             return Math.floor(s / 3600) + 'h ago';
         }
+        /* Freshness: LIVE (<30s) · RECENT (<5m) · STALE · UNAVAILABLE. */
+        function freshState(iso) {
+            if (!iso) return 'UNAVAILABLE';
+            const ms = Date.now() - new Date(iso).getTime();
+            if (!Number.isFinite(ms) || ms < 0) return 'UNAVAILABLE';
+            if (ms < 30000) return 'LIVE';
+            if (ms < 300000) return 'RECENT';
+            return 'STALE';
+        }
+        function freshPill(iso) {
+            const st = freshState(iso);
+            const cls = st === 'LIVE' ? 'live' : (st === 'RECENT' ? 'ro' : (st === 'STALE' ? 'pending' : 'rejected'));
+            return '<span class="status-pill ' + cls + '">' + st + '</span>';
+        }
+        /* Data snapshots for window.NoiseDataDiagnostics (dev-only inspector). */
+        window._dataShots = window._dataShots || {};
+        function shot(provider, endpoint, startedAt, res) {
+            const ms = Date.now() - startedAt;
+            const snap = {
+                provider, endpoint, at: new Date().toISOString(), ms,
+                ok: Boolean(res && !res.error),
+                error: (res && (res.error + (res.message ? ': ' + res.message : ''))) || null,
+                source: (res && (res.source || (res.value && res.value.source))) || null,
+                updatedAt: (res && res.updatedAt) || null,
+            };
+            window._dataShots[provider + ' ' + endpoint] = snap;
+            return res;
+        }
+        function window_NoiseDataDiagnostics() { return NoiseDataDiagnostics(); }
+        function NoiseDataDiagnostics() {
+            const rows = [];
+            for (const [k, s] of Object.entries(window._dataShots)) {
+                rows.push({
+                    provider: k, http: s.ok ? 'ok' : ('error: ' + s.error),
+                    ms: s.ms, source: s.source || '—',
+                    dataAge: s.updatedAt ? ago(s.updatedAt) : '—',
+                    freshness: freshState(s.updatedAt),
+                });
+            }
+            const pools = (window._earnPools || []).map((p) => ({
+                pool: p.name,
+                tvl: p.tvl == null ? 'missing→—' : p.tvl,
+                aprTotal: p.totalApr == null ? 'missing→—' : (p.totalApr + '% (' + p.aprBasis + ')'),
+                aprFee: p.feeApr == null ? 'missing→—' : (p.feeApr + '%'),
+                aprReward: p.rewardApr == null ? 'missing→—' : (p.rewardApr + '%'),
+                displayed: (typeof formatAprPct === 'function' ? formatAprPct(p.totalApr) : p.totalApr) + ' APR',
+                source: p.source, age: p.updatedAt ? ago(p.updatedAt) : '—',
+            }));
+            console.table(rows);
+            if (pools.length) console.table(pools);
+            return { endpoints: rows, pools };
+        }
+        window.NoiseDataDiagnostics = NoiseDataDiagnostics;
         async function loadDiscover() {
             const fr = $('discoverFresh');
             try {
-                const [pi, pools] = await Promise.all([
+                const t0 = Date.now();
+                const [piRaw, poolsRaw] = await Promise.all([
                     apiGet('/api/prices-info?coins=' + TOKEN_SYMS.join(','), 20000),
                     apiGet('/api/aftermath/pools?limit=6', 25000),
                 ]);
+                const pi = shot('Aftermath', 'prices-info', t0, piRaw);
+                const pools = shot('Aftermath', 'pools', t0, poolsRaw);
                 if (pi && !pi.error && pi.value) {
                     $('tokenRows').innerHTML = TOKEN_SYMS.map((s) => {
                         const d = pi.value[SYM_TYPE[s]];
@@ -4765,20 +5217,20 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                             : '<span class="fresh">n/a</span>';
                         return '<tr onclick="openToken(\'' + s + '\')"><td><div class="token-name">' + s + '</div></td>' +
                             '<td class="value">' + price + '</td><td>' + chg + '</td>' +
-                            '<td class="fresh">Aftermath</td><td class="fresh">' + ago(pi.updatedAt) + '</td></tr>';
+                            '<td class="fresh">Aftermath</td><td class="fresh">' + ago(pi.updatedAt) + ' ' + freshPill(pi.updatedAt) + '</td></tr>';
                     }).join('');
                 } else {
                     $('tokenRows').innerHTML = '<tr><td colspan="5" class="fresh">Prices Unavailable — provider unreachable, nothing estimated.</td></tr>';
                 }
                 if (pools && !pools.error && pools.value && pools.value.length) {
                     $('poolGrid').innerHTML = pools.value.map((p) =>
-                        '<div class="opportunity-card" data-live="1"><div class="opportunity-apy">' + (p.apr != null ? (p.apr * 100).toFixed(2) + '%' : 'n/a') + '</div>' +
-                        '<div class="opportunity-asset">' + p.name + '</div>' +
+                        '<div class="opportunity-card" data-live="1"><div class="opportunity-apy">' + formatAprPct(p.totalApr) + ' APR</div>' +
+                        '<div class="opportunity-asset">' + escapeHtml(p.name || 'Pool') + '</div>' +
                         '<div class="opportunity-protocol">via Aftermath Pools</div>' +
-                        '<div class="opportunity-metrics">TVL ' + fmtUsd(p.tvl) + ' · Vol 24h ' + fmtUsd(p.volume24h) + '</div>' +
-                        '<div class="fresh">Updated ' + ago(pools.updatedAt) + '</div></div>').join('');
+                        '<div class="opportunity-metrics">TVL ' + fmtUsdDash(p.tvl) + ' · Vol 24h ' + fmtUsdDash(p.volume24h) + '</div>' +
+                        '<div class="fresh">Source: ' + escapeHtml(p.source || 'Aftermath Pools') + ' · Updated ' + ago(p.updatedAt || pools.updatedAt || new Date().toISOString()) + ' ' + freshPill(p.updatedAt || pools.updatedAt) + '</div></div>').join('');
                 } else {
-                    $('poolGrid').innerHTML = '<div class="fresh">Pools Unavailable.</div>';
+                    $('poolGrid').innerHTML = '<div class="fresh">Pools temporarily unavailable — nothing is estimated. <button class="btn-ghost" style="margin-left:8px;" onclick="loadDiscover()">Retry</button></div>';
                 }
                 if (fr) fr.textContent = 'Live · Aftermath Prices + Pools · ' + new Date().toLocaleTimeString();
                 loadSuipump().catch(() => {});
@@ -4796,8 +5248,40 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
             $('discoverSuipump').style.display = src === 'suipump' ? '' : 'none';
             $('discoverPerpsplexity').style.display = src === 'perpsplexity' ? '' : 'none';
             $('discoverPools').style.display = src === 'pools' ? '' : 'none';
+            const eco = $('discoverEcosystem'); if (eco) eco.style.display = src === 'ecosystem' ? '' : 'none';
             if (src === 'suipump') loadSuipump();
             if (src === 'perpsplexity') loadPerpsplexity();
+            if (src === 'ecosystem') renderEcosystem();
+        }
+        /* ---- Ecosystem terminal (spec §22-23): filters + cards from the registry.
+           Cards show only sourced facts; a missing metric is simply omitted. ---- */
+        const ECO = { filter: 'ALL' };
+        const ECO_FILTERS = ['ALL', 'DEX', 'TRADING', 'LENDING', 'EARN', 'STAKING', 'BTCFI', 'BRIDGE', 'INFRASTRUCTURE'];
+        function renderEcosystem() {
+            const grid = $('ecoGrid'); if (!grid) return;
+            const fl = $('ecoFilters');
+            if (fl && !fl.dataset.built) {
+                fl.innerHTML = ECO_FILTERS.map((f) => '<button class="filter-btn' + (f === 'ALL' ? ' active' : '') + '" onclick="setEcoFilter(\'' + f + '\')">' + (f === 'ALL' ? 'All' : f) + '</button>').join('');
+                fl.dataset.built = '1';
+            }
+            const rows = REGISTRY.filter((p) => ECO.filter === 'ALL' || ((window.CAP_MATRIX[p.id] || {}).bucket === ECO.filter));
+            grid.innerHTML = rows.map((p) => {
+                const c = (window.CAP_MATRIX[p.id] || {});
+                const caps = ['data', 'swap', 'trade', 'earn', 'position', 'execution'].filter((k) => c[k]);
+                const meta = STATUS_META[p.status] || {};
+                return '<div class="opportunity-card" data-live="1" style="cursor:pointer;" onclick="openProto(\'' + p.id + '\')">' +
+                    '<div class="opportunity-asset">' + p.name + '</div>' +
+                    '<div class="opportunity-protocol">' + p.cat + '</div>' +
+                    '<span class="status-pill ' + statusClass(p.status) + '">' + (meta.label || p.status) + '</span>' +
+                    '<div class="opportunity-metrics">' + (caps.length ? caps.join(' · ') : 'discovery only') + '</div>' +
+                    '<div class="fresh">' + (p.note || '') + '</div></div>';
+            }).join('');
+            const ev = $('ecoVerified'); if (ev && REGISTRY[0]) ev.textContent = REGISTRY[0].last;
+        }
+        function setEcoFilter(f) {
+            ECO.filter = f;
+            document.querySelectorAll('#ecoFilters .filter-btn').forEach((b) => b.classList.toggle('active', b.textContent.toLowerCase() === f.toLowerCase()));
+            renderEcosystem();
         }
         function setSuipumpFilter(f) {
             DISC.suipumpFilter = f;
@@ -4928,34 +5412,45 @@ Example: When SUI reaches $5, show me the best place to earn yield." id="automat
                 const pools = await apiGet('/api/aftermath/pools?limit=50', 25000);
                 const mine = pools && !pools.error ? pools.value.filter((p) => (p.name || '').toUpperCase().includes(sym)) : [];
                 $('tokenPools').innerHTML = mine.length ? mine.slice(0, 8).map((p) =>
-                    '<tr><td>' + p.name + '</td><td class="value">' + fmtUsd(p.tvl) + '</td><td class="yield">' + (p.apr != null ? (p.apr * 100).toFixed(2) + '%' : 'n/a') + '</td><td class="fresh">Aftermath · ' + ago(pools.updatedAt) + '</td></tr>').join('')
+                    '<tr><td>' + escapeHtml(p.name || 'Pool') + '</td><td class="value">' + fmtUsdDash(p.tvl) + '</td><td class="yield">' + formatAprPct(p.totalApr) + '</td><td class="fresh">' + escapeHtml(p.source || 'Aftermath') + ' · ' + ago(p.updatedAt || pools.updatedAt || new Date().toISOString()) + '</td></tr>').join('')
                     : '<tr><td colspan="4" class="fresh">No pools contain ' + sym + ' in the top-50 by TVL.</td></tr>';
             } catch (e) { $('tokenPools').innerHTML = '<tr><td colspan="4" class="fresh">Unavailable.</td></tr>'; }
         }
         async function loadEarn() {
             const fr = $('earnFresh');
             try {
-                const [apy, pools] = await Promise.all([
+                const t0 = Date.now();
+                const [apyRaw, poolsRaw] = await Promise.all([
                     apiGet('/api/aftermath/staking-apy', 20000).catch(() => ({ error: 1 })),
                     apiGet('/api/aftermath/pools?limit=6', 25000).catch(() => ({ error: 1 })),
                 ]);
-                if (!apy.error && apy.value != null) {
-                    const pct = (Number(apy.value) * 100).toFixed(2);
-                    $('earnStaking').innerHTML = '<div class="opportunity-card" data-live="1"><div class="opportunity-apy">' + pct + '%</div>' +
+                const apy = shot('Aftermath', 'staking-apy', t0, apyRaw);
+                const pools = shot('Aftermath', 'pools', t0, poolsRaw);
+                // SDK returns a decimal RATIO (0.0143 = 1.43% APY) — never a percent.
+                const apyNum = (apy && !apy.error) ? Number(apy.value) : NaN;
+                if (Number.isFinite(apyNum)) {
+                    const pct = (apyNum * 100).toFixed(2);
+                    $('earnStaking').innerHTML = '<div class="opportunity-card" data-live="1"><div class="opportunity-apy">' + pct + '% APY</div>' +
                         '<div class="opportunity-asset">SUI liquid staking (afSUI)</div>' +
                         '<div class="opportunity-protocol">via Aftermath</div>' +
                         '<div class="opportunity-metrics">Variable APY — verify on provider before acting</div>' +
-                        '<div class="fresh">Source: Aftermath Staking SDK · Updated ' + ago(apy.updatedAt) + '</div>' +
+                        '<div class="fresh">Source: Aftermath Staking SDK · Updated ' + ago(apy.updatedAt) + ' ' + freshPill(apy.updatedAt) + '</div>' +
                         '<div class="opportunity-action" onclick="openStaking()">Details →</div></div>';
-                } else { $('earnStaking').innerHTML = '<div class="fresh">Staking APY Unavailable.</div>'; }
-                if (!pools.error && pools.value && pools.value.length) {
-                    $('earnPools').innerHTML = pools.value.map((p) =>
-                        '<div class="opportunity-card" data-live="1"><div class="opportunity-apy">' + (p.apr != null ? (p.apr * 100).toFixed(2) + '%' : 'n/a') + ' APR</div>' +
-                        '<div class="opportunity-asset">' + p.name + ' LP</div>' +
+                } else { $('earnStaking').innerHTML = '<div class="fresh">Staking APY — ' + (apy && apy.error ? 'unavailable (provider unreachable)' : 'unknown') + '.</div>'; }
+                window._earnPools = (pools && !pools.error && pools.value) ? pools.value : [];
+                if (window._earnPools.length) {
+                    $('earnPools').innerHTML = window._earnPools.map((p) =>
+                        '<div class="opportunity-card" data-live="1">' +
+                        '<div class="opportunity-apy">' + formatAprPct(p.totalApr) + ' APR</div>' +
+                        '<div class="opportunity-asset">' + escapeHtml(p.name || 'Pool') + '</div>' +
                         '<div class="opportunity-protocol">via Aftermath Pools</div>' +
-                        '<div class="opportunity-metrics">TVL ' + fmtUsd(p.tvl) + ' · Fees 24h ' + fmtUsd(p.fees24h) + '</div>' +
-                        '<div class="fresh">Updated ' + ago(pools.updatedAt) + ' · rewards split: trading fees only (incentives: n/a)</div></div>').join('');
-                } else { $('earnPools').innerHTML = '<div class="fresh">Pools Unavailable.</div>'; }
+                        '<div class="opportunity-metrics">Fee APR ' + (p.feeApr != null ? formatAprPct(p.feeApr) : '—') + (p.aprBasis === 'computed-fees' ? ' (est. fees/TVL)' : '') + ' · Reward APR ' + (p.rewardApr != null ? formatAprPct(p.rewardApr) : '—') + '</div>' +
+                        '<div class="opportunity-metrics">TVL ' + fmtUsdDash(p.tvl) + ' · Fees 24h ' + fmtUsdDash(p.fees24h) + '</div>' +
+                        '<div class="fresh">Source: ' + escapeHtml(p.source || 'Aftermath Pools') + ' · Updated ' + ago(p.updatedAt || pools.updatedAt || new Date().toISOString()) + ' ' + freshPill(p.updatedAt || pools.updatedAt) + '</div>' +
+                        '<div class="opportunity-action" onclick="openLiquidity()">View pool →</div></div>').join('');
+                } else {
+                    $('earnPools').innerHTML = '<div class="panel" style="padding:20px;"><div class="fresh">Liquidity pools — DATA TEMPORARILY UNAVAILABLE. Nothing is estimated.</div><button class="btn-ghost" style="margin-top:10px;" onclick="loadEarn()">Retry</button></div>';
+                }
                 if (fr) fr.textContent = 'Live · Aftermath · ' + new Date().toLocaleTimeString();
             } catch (e) { if (fr) fr.textContent = 'Earn data Unavailable.'; }
             const ec = $('earnCapital');

@@ -9,6 +9,7 @@ import { Aftermath } from 'aftermath-ts-sdk';
 import { DeepBookClient, mainnetPools, testnetPools } from '@mysten/deepbook-v3';
 import { db } from './db.js';
 import { sui, NETWORK, getBalances, getStakes } from './sui.js';
+import { normalizePool } from '../../shared/earn-normalize.js';
 
 const COIN_TYPES = {
   mainnet: {
@@ -106,7 +107,8 @@ export const cetusAdapter = {
 
 export const aftermathAdapter = {
   id: 'aftermath',
-  capabilities: { read: true, quote: true, build: true, simulate: true, execute: true, rewards: true, referral: true },
+  // Honest split: live DATA + QUOTE only. No build/simulate/execute path is wired.
+  capabilities: { read: true, quote: true, build: false, simulate: false, execute: false, rewards: true, referral: true },
   /** REAL quote — official Smart Order Router REST. */
   async getQuote({ from, to, amountMist }) {
     const fromType = coinType(from);
@@ -139,10 +141,11 @@ export const aftermathAdapter = {
     const m = await afPost('/api/prices', { coinTypes });
     return envelope(m, 'Aftermath Prices', 'https://docs.aftermath.finance/for-developers/api/rest-api/prices');
   },
-  /** REAL staking APY — official SDK. */
+  /** REAL staking APY — official SDK (decimal RATIO, never percent). */
   async getStakingApy() {
     const apy = await aftermath.Staking().getApy({});
-    return envelope(apy, 'Aftermath Staking SDK', 'https://docs.aftermath.finance/liquid-staking-afsui/fees');
+    const env = envelope(apy, 'Aftermath Staking SDK', 'https://docs.aftermath.finance/liquid-staking-afsui/fees');
+    return { ...env, kind: 'apy', unit: 'ratio', basis: 'provider' };
   },
   /** REAL claimable rewards. */
   async getClaimableRewards(wallet) {
@@ -157,14 +160,15 @@ export const aftermathAdapter = {
   /** REAL pool summaries: TVL + 24h volume/fees + APR. */
   async getPoolSummaries(limit = 12) {
     const all = await afPost('/api/pools/summary', { poolIds: null }, 25000);
+    const updatedAt = new Date().toISOString();
     const rows = (Array.isArray(all) ? all : [])
-      .map((s) => ({
+      .map((s) => normalizePool({
         name: s.pool?.name, poolId: s.pool?.objectId,
         tvl: s.stats?.tvl, volume24h: s.stats?.volume,
         fees24h: s.stats?.fees, apr: s.stats?.apr,
         lpPrice: s.stats?.lpPrice,
-      }))
-      .filter((p) => p.tvl > 0)
+      }, { source: 'Aftermath Pools', updatedAt }))
+      .filter((p) => p.tvl !== null && p.tvl > 0)
       .sort((a, b) => b.tvl - a.tvl)
       .slice(0, limit);
     return envelope(rows, 'Aftermath Pools API', 'https://docs.aftermath.finance/for-developers/api/rest-api/pools');

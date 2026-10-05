@@ -13,6 +13,7 @@
     "build": "node scripts/build-check.mjs",
     "test": "cd server && npm test",
     "test:integration": "cd server && npm run test:integration",
+    "test:data": "cd server && npm run test:data",
     "test:api": "node --test --test-concurrency=1 server/test/api.test.js",
     "test:pg": "node --test server/test/pg.test.js"
   },

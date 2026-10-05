@@ -3,6 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { randomBytes } from 'node:crypto';
+import { PROTOCOLS } from '../../shared/registry.js';
 
 const DB_PATH = process.env.DB_PATH || './data/hub.db';
 mkdirSync(dirname(DB_PATH), { recursive: true });
@@ -225,19 +226,14 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at)')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rev_digest_unique ON revenue_entries(digest)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rew_revenue_unique ON referral_rewards(revenue_id)');
 
-const SEED = [
-  ['cetus', 'Cetus', 'swap', 'https://app.cetus.zone', 'https://cetus-1.gitbook.io/cetus-developer-docs', 'LIVE_EXECUTION', '["quote","build-tx","simulate","execute"]', 'pool fee + platform bps', 'partner closed to new teams → policy 0', '2026-10-01'],
-  ['sui-native', 'Sui Native Staking', 'staking', 'https://sui.io', 'https://docs.sui.io', 'PARTIAL', '["read","simulate"]', 'validator commission', '—', '2026-10-01'],
-  ['navi', 'NAVI', 'lending', 'https://naviprotocol.io', 'https://docs.naviprotocol.io', 'BLOCKED', '[]', 'referral-share first', 'terms unverified → policy 0', '2026-10-01'],
-  ['suilend', 'Suilend', 'lending', 'https://suilend.fi', 'https://docs.suilend.fi', 'BLOCKED', '[]', 'referral-share first', 'terms unverified → policy 0', '2026-10-01'],
-  ['aftermath', 'Aftermath', 'swap/lst', 'https://aftermath.finance', 'https://docs.aftermath.finance', 'PARTIAL', '["quote","prices","pools","rewards","staking-apy"]', 'router: no protocol fee; pools 0.30%/0.10% + 0.005%', 'perps 10%/5%; router 2.5% of integrator fee', '2026-10-01'],
-  ['deepbook', 'DeepBook', 'trading', 'https://deepbook.tech', 'https://docs.sui.io', 'PARTIAL', '["markets","orderbook"]', 'verify', '—', '2026-10-01'],
-  ['turbos', 'Turbos', 'swap', 'https://turbos.finance', 'https://docs.turbos.finance', 'DEEP_LINK_ONLY', '["pools"]', 'verify', 'verify', '2026-09-30'],
-  ['haedal', 'Haedal', 'lst', 'https://haedal.xyz', 'https://docs.haedal.xyz', 'READ_ONLY', '["stake-quote","positions"]', 'verify', 'verify', '2026-09-30'],
-  ['bluefin', 'Bluefin', 'trading', 'https://bluefin.io', 'https://docs.bluefin.io', 'DEEP_LINK_ONLY', '["markets"]', 'verify', 'verify', '2026-09-30'],
-  ['scallop', 'Scallop', 'lending', 'https://scallop.io', 'https://docs.scallop.io', 'DEEP_LINK_ONLY', '["markets"]', 'verify', 'verify', '2026-09-30'],
-  ['volo', 'Volo', 'lst', 'https://volo.fi', 'https://docs.volo.fi', 'DEEP_LINK_ONLY', '["pools"]', 'verify', 'verify', '2026-09-30'],
-];
+// Seed derives from the single canonical registry (shared/registry.js) — no
+// protocol data is duplicated here. Old status vocabulary (LIVE_EXECUTION /
+// READ_ONLY / DISCOVERY_ONLY / DEEP_LINK_ONLY / BLOCKED) is replaced by the
+// unified LIVE / PARTIAL / DISCOVER / COMING_SOON scale.
+const SEED = PROTOCOLS.map((x) => [
+  x.id, x.name, x.category, x.url, x.docs, x.status,
+  JSON.stringify(x.actions), x.fee, x.ref, x.last,
+]);
 const upsert = db.prepare(`INSERT INTO protocols
   (id,name,category,website,docs,status,capabilities,fee_model,referral_support,last_verified)
   VALUES (?,?,?,?,?,?,?,?,?,?)

@@ -24,3 +24,6 @@ public/
 Thumbs.db
 .vercel
 .env*
+
+# Pre-change backups (tag/branch/bundle) — kept on disk, never committed
+backups/

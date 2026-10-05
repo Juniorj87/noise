@@ -53,7 +53,9 @@ export function normalizeValidators(state, apysRaw) {
   const apyMap = new Map();
   for (const a of apysRaw?.apys ?? []) {
     if (!a || !a.address) continue;
-    apyMap.set(String(a.address).toLowerCase(), Number(a.apy ?? 0));
+    // Missing APY stays missing (null) — never silently 0.
+    const v = a.apy === null || a.apy === undefined || a.apy === '' ? null : Number(a.apy);
+    apyMap.set(String(a.address).toLowerCase(), Number.isFinite(v) ? v : null);
   }
   return (state?.activeValidators ?? []).map((v) => ({
     suiAddress: v.suiAddress,

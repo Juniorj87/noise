@@ -4,6 +4,7 @@ import { handler } from '../http.js';
 import { cetusAdapter, aftermathAdapter, compareRoutes, coinType, deepLink } from '../adapters.js';
 import { feeBreakdown } from '../services.js';
 import { cached, withBreaker } from '../util.js';
+import { swapProviders } from '../../../shared/swap-providers.js';
 
 export default handler(async (req, res, url) => {
   const from = (url.searchParams.get('from') || '').toUpperCase();
@@ -34,7 +35,21 @@ export default handler(async (req, res, url) => {
     const fb = await feeBreakdown(amount, 'swap');
     fb.platformFeeAsset = from;
     const compared = compareRoutes(ok, { platformFee: fb.platformFee, gasEst: 0 });
-    return { ...compared, failed, fees: fb };
+    // Honest per-provider status: a provider with no adapter reported (never a
+    // fabricated rate), and a quotable provider that failed says so (spec §9).
+    const match = (q, id) => String(q.provider || '').toLowerCase().includes(id === 'aftermath' ? 'aftermath' : id);
+    const providers = swapProviders().map((p) => {
+      if (!p.quote) return { id: p.id, name: p.name, available: false, reason: p.reason };
+      const got = ok.find((q) => match(q, p.id));
+      const bad = failed.find((f) => match(f, p.id));
+      return {
+        id: p.id, name: p.name,
+        available: Boolean(got),
+        reason: got ? null : (bad?.error || 'PROVIDER_UNAVAILABLE'),
+        build: p.build,
+      };
+    });
+    return { ...compared, failed, fees: fb, providers };
   }
 
   try {

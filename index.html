@@ -723,12 +723,18 @@
         /* Security / Privacy (per PRIVACY_SECURITY_MEMORY spec) */
         .sec-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 1px;
             background: var(--line);
             border: 1px solid var(--line);
             margin-top: 60px;
         }
+        /* Scroll-independent reveal for card grids: content is visible by
+           default and only animates in via IntersectionObserver. A stuck
+           scroll-trigger must never leave an empty grid. */
+        .reveal { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+        .reveal.in { opacity: 1; transform: none; }
+        @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
         .sec-item {
             background: var(--bg);
             padding: 32px 24px;
@@ -1144,7 +1150,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
         <p class="section-lede">Noise turns Sui activity into usable signals: assets, markets, liquidity and supported protocols — then gives you a direct path into the action.</p>
         
         <div class="discover-grid">
-            <div class="discover-item">
+            <div class="discover-item" onclick="goApp('#discover')">
                 <div>
                     <div class="discover-badge">NETWORK SIGNAL</div>
                     <div class="discover-title">DEEP</div>
@@ -1168,7 +1174,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
                     <div class="discover-action">Explore →</div>
                 </div>
             </div>
-            <div class="discover-item">
+            <div class="discover-item" onclick="goApp('#earn')">
                 <div>
                     <div class="discover-badge">OPPORTUNITY</div>
                     <div class="discover-title">Stake</div>
@@ -1188,7 +1194,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
                     <div class="discover-action">Explore →</div>
                 </div>
             </div>
-            <div class="discover-item">
+            <div class="discover-item" onclick="goApp('#trade')">
                 <div>
                     <div class="discover-badge">NEW MARKET</div>
                     <div class="discover-title">SUI / USDC</div>
@@ -1368,7 +1374,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
             <a href="docs.html#fees">Fees</a>
             <a href="docs.html#security">Security</a>
             <a href="docs.html#faq">FAQ</a>
-            <a href="https://x.com/Soulpureaux" target="_blank" rel="noopener noreferrer">X</a>
+            <a href="https://x.com/NoiseHubSui" target="_blank" rel="noopener noreferrer">X</a>
             <a href="https://github.com/Juniorj87/noise" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
     </footer>
@@ -1382,6 +1388,17 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
         if (!window.gsap) { window.gsap = { from: function () {}, registerPlugin: function () {}, utils: { toArray: function () { return []; } } }; }
         if (!window.ScrollTrigger) { window.ScrollTrigger = {}; }
         gsap.registerPlugin(ScrollTrigger);
+
+        /* ScrollTrigger measurement can strand below-fold tweens (webfont /
+           canvas layout shifts after measure). Re-measure on full load + font
+           settle so every section trigger fires. */
+        (function () {
+            try {
+                var refresh = function () { if (window.ScrollTrigger && window.ScrollTrigger.refresh) window.ScrollTrigger.refresh(); };
+                window.addEventListener('load', function () { setTimeout(refresh, 300); });
+                if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { setTimeout(refresh, 100); });
+            } catch (e) {}
+        })();
 
         // Hero animation
         gsap.from('.hero-badge', {
@@ -1478,17 +1495,21 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
             delay: 0.2
         });
 
-        // Discover grid
-        gsap.from('.discover-item', {
-            scrollTrigger: {
-                trigger: '.discover-grid',
-                start: 'top 70%',
-            },
-            opacity: 0,
-            y: 20,
-            duration: 0.6,
-            stagger: 0.1
-        });
+        // Discover grid — IntersectionObserver reveal, independent of
+        // ScrollTrigger measurement (a stranded trigger must never leave an
+        // empty grid). No-JS / no-IO environments keep static-visible cards.
+        (function () {
+            try {
+                if (!('IntersectionObserver' in window)) return;
+                var els = document.querySelectorAll('.discover-item');
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+                    });
+                }, { threshold: 0.12 });
+                els.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
+            } catch (e) {}
+        })();
 
         // One action
         gsap.from('.one-action-interface', {

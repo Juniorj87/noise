@@ -27,7 +27,7 @@ if (bad) { console.error(bad + ' file(s) with syntax errors'); process.exit(1); 
 console.log('build check OK — static frontend, ' + files.length + ' serverless modules parse');
 
 // Prepare public/ directory for static frontend deployment
-import { mkdirSync, cpSync, existsSync } from 'node:fs';
+import { mkdirSync, cpSync, existsSync, writeFileSync } from 'node:fs';
 
 const publicDir = join(process.cwd(), 'public');
 if (!existsSync(publicDir)) {
@@ -41,4 +41,8 @@ const assetsDir = join(process.cwd(), 'assets');
 if (existsSync(assetsDir)) {
   cpSync(assetsDir, join(publicDir, 'assets'), { recursive: true });
 }
+// Emit the canonical ProtocolRegistry as a static artifact (single source of truth).
+const { serializeRegistry } = await import('../shared/registry.js');
+writeFileSync(join(publicDir, 'registry.json'), serializeRegistry());
+console.log('public/registry.json written');
 console.log('public directory prepared successfully');

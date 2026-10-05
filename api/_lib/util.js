@@ -9,6 +9,8 @@ export function cached(key, ttlMs, fn, forceRefresh = false) {
   return Promise.resolve(fn()).then((v) => { cache.set(key, { at: now, value: v }); return v; });
 }
 
+export function cacheSize() { return cache.size; }
+
 export function invalidateCache(prefixOrKey) {
   for (const k of cache.keys()) {
     if (k === prefixOrKey || k.startsWith(prefixOrKey)) cache.delete(k);
@@ -23,6 +25,24 @@ export function rateLimit(key, max = 60, windowMs = 60_000) {
   b.count += 1;
   buckets.set(key, b);
   return { allowed: b.count <= max, remaining: Math.max(0, max - b.count) };
+}
+
+/** Health snapshot of every provider the circuit breaker has seen (spec #3).
+ *  OPERATIONAL · DEGRADED (recent failures) · OFFLINE (breaker open). */
+export function providerHealth() {
+  const now = Date.now();
+  const out = [];
+  for (const [provider, b] of breakers.entries()) {
+    const open = now < (b.openUntil || 0);
+    out.push({
+      provider,
+      status: open ? 'OFFLINE' : (b.fails > 0 ? 'DEGRADED' : 'OPERATIONAL'),
+      fails: b.fails || 0,
+      latencyMs: b.latencyMs ?? null,
+      retryAt: open ? new Date(b.openUntil).toISOString() : null,
+    });
+  }
+  return out.sort((a, c) => a.provider.localeCompare(c.provider));
 }
 
 const breakers = new Map();

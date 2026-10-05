@@ -14,6 +14,8 @@ import cronHandler from './handlers/cron.js';
 import earnHandler from './handlers/earn.js';
 import feesHandler from './handlers/fees.js';
 import memoryHandler from './handlers/memory.js';
+import providersHandler from './handlers/providers.js';
+import skillsHandler from './handlers/skills.js';
 import referralHandler from './handlers/referral.js';
 import revenueHandler from './handlers/revenue.js';
 import tradeHandler from './handlers/trade.js';
@@ -33,6 +35,8 @@ export async function handleRequest(req, res) {
 
   if (pathname === '/health' || pathname === '/api/health') return healthHandler(req, res);
   if (pathname === '/api/protocols') return activityHandler(req, res);
+  if (pathname === '/api/providers' || pathname.startsWith('/api/providers/')) return providersHandler(req, res);
+  if (pathname === '/api/skills' || pathname.startsWith('/api/skills/')) return skillsHandler(req, res);
   if (pathname === '/api/activity' || pathname.startsWith('/api/activity/')) return activityHandler(req, res);
   if (pathname === '/api/capital' || pathname === '/api/notifications' || pathname.startsWith('/api/capital/') || pathname.startsWith('/api/notifications/')) return capitalHandler(req, res);
   if (pathname === '/api/prices' || pathname === '/api/prices-info' || pathname.startsWith('/api/prices/')) return pricesHandler(req, res);
