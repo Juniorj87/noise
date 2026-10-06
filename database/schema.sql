@@ -239,3 +239,16 @@ CREATE TABLE IF NOT EXISTS config (
 
 -- Fee configuration indexes for faster lookups
 CREATE INDEX IF NOT EXISTS idx_config_fee_prefix ON config(key) WHERE key LIKE 'fee:%';
+
+-- Noise Memory extension (idempotent — rerunnable on every deploy).
+-- Application-level memory in the Noise database: per-wallet, consent-gated.
+-- Secrets are rejected at write and never reach storage.
+ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS owner TEXT;
+ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS namespace TEXT NOT NULL DEFAULT 'personal';
+ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE memory_records ADD COLUMN IF NOT EXISTS encryption TEXT NOT NULL DEFAULT 'local';
+UPDATE memory_records SET owner = wallet WHERE owner IS NULL;
+CREATE INDEX IF NOT EXISTS idx_mem_wallet ON memory_records(wallet);
+CREATE INDEX IF NOT EXISTS idx_mem_owner ON memory_records(owner);
+CREATE INDEX IF NOT EXISTS idx_mem_status ON memory_records(status);

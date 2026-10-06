@@ -51,7 +51,6 @@ test('registry: required ecosystem protocols are present', () => {
     'cetus', 'aftermath', 'turbos', 'flowx', 'momentum', 'kriya',
     'bluefin-spot', 'bluefin-perps', 'navi', 'suilend', 'scallop', 'bucket',
     'haedal', 'volo', 'springsui', 'suipump', 'suibridge', 'wormhole',
-    'walrus', 'seal',
   ];
   for (const id of required) assert.ok(getProtocol(id), `missing protocol ${id}`);
 });
@@ -69,11 +68,9 @@ test('registry: DeepBook is the central Trade liquidity layer (spot live, margin
   assert.equal(getProtocol('deepbook-margin').status, 'COMING_SOON');
 });
 
-test('registry: Walrus and Seal are not claimed as live execution', () => {
+test('registry: Walrus and Seal are not listed — Noise does not integrate them', () => {
   for (const id of ['walrus', 'seal']) {
-    const p = getProtocol(id);
-    assert.equal(p.capability.execution, false);
-    assert.ok(['DISCOVER', 'COMING_SOON', 'PARTIAL'].includes(p.status), `${id} must not be LIVE`);
+    assert.equal(getProtocol(id), null, `${id} must be removed from the registry`);
   }
 });
 

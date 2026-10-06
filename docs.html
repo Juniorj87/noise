@@ -126,10 +126,10 @@ compounding only where the protocol actually compounds</pre>
             <pre>User → AI → structured intent → validation → permission engine → tx builder → simulation → Review → wallet signs</pre>
 
             <h2 id="memory">Memory</h2>
-            <p>Auto-save: UI preferences. Ask-before-save: strategies, notes, context. Never-save: seeds, keys, passwords, secrets. Enable / view / delete / clear in Security. Backend milestone: Seal-encrypted records in Walrus Memory.</p>
+            <p>Auto-save: UI preferences. Ask-before-save: strategies, notes, context. Never-save: seeds, keys, passwords, secrets. Plain application memory in the Noise database — per wallet, only with consent. Manage it in AI Assistant or Security.</p>
 
             <h2 id="privacy">Privacy</h2>
-            <p>Seal = encryption &amp; access control; Walrus = decentralized storage (blobs are public — private data is always Seal-encrypted first); Sui = settlement &amp; execution.</p>
+            <p>Non-custodial: your keys never leave your wallet. App memory holds preferences and context only — secrets are rejected at write and never stored. Sui = settlement &amp; execution.</p>
 
             <h2 id="security">Security</h2>
             <ul>
@@ -177,11 +177,14 @@ e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pr
                 <tr><td>Turbos</td><td>Swap</td><td><span class="pill">DISCOVER</span></td><td>No public quote+build path wired — discovery + deep link only</td></tr>
                 <tr><td>Bluefin Spot · Bluefin Perps</td><td>Trading</td><td><span class="pill">DISCOVER</span></td><td>Kept separate; discovery + deep link only</td></tr>
                 <tr><td>Volo · SpringSui</td><td>Liquid staking</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
-                <tr><td>FlowX · Momentum · Kriya · Metastable · Obric</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Some routed via the Cetus aggregator; not direct adapters</td></tr>
+                <tr><td>FlowX · Obric</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Usable inside Swap via Cetus Aggregator routing when selected; deep-link for direct use</td></tr>
+                <tr><td>Metastable · Momentum</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Domains dead at audit 2026-10-06 — deep-link disabled, no data shown rather than a dead link</td></tr>
+                <tr><td>SuiPump · Perpsplexity</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>Wired API: <code>/api/discover/suipump/tokens</code> (684+ tokens) · <code>/api/discover/perpsplexity/markets</code> (live venue read)</td></tr>
+                <tr><td>Momentum · Turbos</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link; no public quote+build path wired</td></tr>
+                <tr><td>Kriya</td><td>DEX</td><td><span class="pill">SUNSET</span></td><td>Protocol winding down — excluded from routing/quotes; withdraw via provider, no new positions through Noise</td></tr>
                 <tr><td>Typus · Sudo</td><td>Derivatives</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
-                <tr><td>Walrus · Seal</td><td>Data / Security</td><td><span class="pill">COMING SOON</span></td><td>Persistent storage + threshold encryption; not installed — encrypt-before-store only, no plaintext</td></tr>
             </table>
-            <p>Verified 2026-10-04. One source of truth: <code>shared/registry.js</code> (35 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
+            <p>Verified 2026-10-04. One source of truth: <code>shared/registry.js</code> (33 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
 
             <h2 id="predict">DeepBook Predict</h2>
             <p>A binary instrument: pick an asset, a strike and an expiry, take UP (settles above strike) or DOWN (settles below). Settlement is automatic and on-chain. Quotes show the exact fee components from a simulated chain quote — premium, trading fee, subsidy, builder fee, penalty, inventory impact — plus gas. There is no separate Noise Hub debit on Predict: builder/referral revenue is a split of protocol proceeds, not a trader charge. Minimum premium 1.00 USDC, quantity lots of 0.01.</p>

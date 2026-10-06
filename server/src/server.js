@@ -4,6 +4,8 @@ import { db, uid } from './db.js';
 import { sui, simulate } from './sui.js';
 import { NETWORK } from './sui.js';
 import { cetusAdapter, aftermathAdapter, deepbookAdapter, deepbookOpenOrders, suiAdapter, listProtocols, deepLink, compareRoutes, coinType } from './adapters.js';
+import { suipumpAdapter } from '../../api/_lib/suipump.js';
+import { perpsplexityAdapter } from '../../api/_lib/perpsplexity.js';
 import {
   getReferralStats, getReferralActivity, getLeaderboard, getRevenueSeries,
   getNetworkStats, getRevenueSummary, getReconciliationExpected,
@@ -421,8 +423,46 @@ const routes = {
   'GET /api/memory': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
-    return { items: db.prepare('SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? ORDER BY created_at DESC').all(wallet) };
+    return { items: db.prepare("SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active') ORDER BY created_at DESC").all(wallet) };
   },
+  'GET /api/memory/search': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    const { searchMemory: searchMem } = await import('./services.js');
+    return { items: searchMem({ wallet, query: url.searchParams.get('q') || url.searchParams.get('query') || '', limit: url.searchParams.get('limit') || 8 }), updatedAt: new Date().toISOString(), source: 'Noise memory index' };
+  },
+  'GET /api/memory/export': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    return { wallet, items: db.prepare("SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active') ORDER BY created_at DESC").all(wallet), exportedAt: new Date().toISOString(), source: 'Noise memory index' };
+  },
+  'GET /api/memory/status': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    const total = db.prepare("SELECT COUNT(*) AS n, MAX(created_at) AS last FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active')").get(wallet);
+    return {
+      wallet, hasRecords: Number(total?.n) > 0, total: Number(total?.n) || 0,
+      lastSync: total?.last || null, storage: 'Noise database',
+      updatedAt: new Date().toISOString(), source: 'Noise memory index',
+    };
+  },
+  'GET /api/leaderboard': async (_, url) => {
+    if (String(process.env.LEADERBOARD_ENABLED || 'true') === 'false') return { error: 'LEADERBOARD_DISABLED', code: 503 };
+    if ((url.searchParams.get('metric') || 'earned') === 'volume') {
+      return { period: url.searchParams.get('period') || 'all', metric: 'volume', status: 'COMING_SOON', items: [], viewer: null, total: 0, message: 'Volume ranking is COMING SOON — no verified on-chain volume source exists in Noise accounting yet.', updatedAt: new Date().toISOString(), source: 'Noise accounting' };
+    }
+    return getLeaderboard({
+      period: url.searchParams.get('period') || 'all',
+      metric: url.searchParams.get('metric') || 'earned',
+      limit: url.searchParams.get('limit') || 50,
+      viewer: url.searchParams.get('wallet') || null,
+    });
+  },
+  'GET /api/leaderboard/referrals': async (_, url) => getLeaderboard({ period: url.searchParams.get('period') || 'all', metric: 'referrals', limit: url.searchParams.get('limit') || 50, viewer: url.searchParams.get('wallet') || null }),
+  'GET /api/leaderboard/activity': async (_, url) => getLeaderboard({ period: url.searchParams.get('period') || 'all', metric: 'active', limit: url.searchParams.get('limit') || 50, viewer: url.searchParams.get('wallet') || null }),
+  'GET /api/leaderboard/earnings': async (_, url) => getLeaderboard({ period: url.searchParams.get('period') || 'all', metric: 'earned', limit: url.searchParams.get('limit') || 50, viewer: url.searchParams.get('wallet') || null }),
+  'GET /api/leaderboard/volume': async () => ({ status: 'COMING_SOON', items: [], total: 0, message: 'Volume ranking is COMING SOON — no verified on-chain volume source exists in Noise accounting yet.', updatedAt: new Date().toISOString(), source: 'Noise accounting' }),
+  'GET /api/leaderboard/network': async () => getNetworkStats(),
   'POST /api/memory': async (req) => {
     const b = await readJson(req);
     if (!isWalletAddress(b.wallet) || !b.category || !b.content) return { error: 'INVALID_MEMORY', code: 400 };
@@ -578,6 +618,20 @@ const routes = {
     try {
       return await withBreaker('aftermath', () =>
         cached('af:lp:' + wallet, 60_000, () => aftermathAdapter.getOwnedLp(wallet)));
+    } catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+
+  /* Ecosystem discovery (live reads, cached; honest 502 when a venue is down). */
+  'GET /api/discover/suipump/tokens': async () => {
+    try {
+      return await withBreaker('suipump', () =>
+        cached('discover:suipump:tokens', 60_000, () => suipumpAdapter.getTokens()));
+    } catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/perpsplexity/markets': async () => {
+    try {
+      return await withBreaker('perpsplexity', () =>
+        cached('discover:ppx:markets', 60_000, () => perpsplexityAdapter.getMarkets()));
     } catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
   },
 

@@ -114,7 +114,10 @@ export function assignRanks(rows) {
   return [...rows].sort(compareLeaderboardRows).map((r, i) => ({ ...r, rank: i + 1 }));
 }
 export const LEADERBOARD_PERIODS = ['week', 'month', 'all'];
-export const LEADERBOARD_METRICS = ['earned', 'revenue', 'active'];
+export const LEADERBOARD_METRICS = ['earned', 'revenue', 'active', 'referrals'];
+/** VOLUME has no verified on-chain source in Noise accounting — callers must
+ *  treat it as COMING_SOON and never invent values. */
+export const LEADERBOARD_VOLUME_STATUS = 'COMING_SOON';
 /** Metric modes reorder the primary key; tie-breaks stay deterministic. */
 export function compareLeaderboardRowsRevenue(a, b) {
   const num = (v) => Number(v) || 0;
@@ -133,7 +136,29 @@ export function compareLeaderboardRowsActive(a, b) {
 export function leaderboardComparator(metric) {
   if (metric === 'revenue') return compareLeaderboardRowsRevenue;
   if (metric === 'active') return compareLeaderboardRowsActive;
+  if (metric === 'referrals') return compareLeaderboardRowsReferrals;
   return compareLeaderboardRows;
+}
+/** Referrals metric: most attributed wallets first; deterministic tie-breaks. */
+export function compareLeaderboardRowsReferrals(a, b) {
+  if ((b.referred || 0) !== (a.referred || 0)) return (b.referred || 0) - (a.referred || 0);
+  const num = (v) => Number(v) || 0;
+  if (num(b.earned) !== num(a.earned)) return num(b.earned) - num(a.earned);
+  if (num(b.eligibleRevenue) !== num(a.eligibleRevenue)) return num(b.eligibleRevenue) - num(a.eligibleRevenue);
+  return String(a.wallet || '').localeCompare(String(b.wallet || ''));
+}
+
+/** Secret scan shared by every memory write path (frontend hint + backend gate).
+ *  Never store: private keys, seeds, recovery phrases, passwords, auth secrets —
+ *  even encrypted. Returns the matched kind or null. */
+export function findSecretKind(text) {
+  const s = String(text || '').toLowerCase();
+  if (/\b(suiprivkey|0x[0-9a-f]{64})\b/.test(s) && /priv/.test(s)) return 'private-key';
+  if (/(private[\s_-]?key|secret[\s_-]?key)/.test(s)) return 'private-key';
+  if (/(seed[\s_-]?phrase|mnemonic|recovery[\s_-]?phrase)/.test(s)) return 'seed-phrase';
+  if (/(wallet[\s_-]?password|auth[\s_-]?secret|api[\s_-]?key|bearer\s+[a-z0-9._-]+)/.test(s)) return 'auth-secret';
+  if (/\b(password|passwd|pwd)\b/.test(s)) return 'password';
+  return null;
 }
 
 /* ---------- reconciliation: DB expected vs wallet observed (pure, testable) ---------- */

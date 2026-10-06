@@ -175,7 +175,6 @@
             alert(r.ok ? 'Payout confirmed.' : 'Failed: ' + (r.error + ': ' + (r.message || '')));
             loadRevenue();
         }
-        }
         async function toggleProto(id, enabled) {
             await call('/api/admin/protocol', 'POST', { id, enabled, status: enabled ? 'LIVE_EXECUTION' : 'MAINTENANCE' });
             loadAll();

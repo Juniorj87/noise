@@ -47,6 +47,36 @@ export async function aiChat({ wallet, message, history = [], provider, model })
   const toolHint = 'Live tools: getCapital, getBalances, getEarnApy, getDeepBookMarkets, getPredictMarkets, llmChat. Trading actions are NEVER executed by AI — the user signs every order in their wallet.';
   await persistConversation(wallet, 'user', String(message).slice(0, 4000));
 
+  // Memory → AI: owner-scoped recall from the Noise memory index (consent-gated
+  // at write; secrets are rejected at write and never reach the index).
+  let memoriesUsed = [];
+  let memoryOn = false;
+  if (wallet && /^0x[0-9a-fA-F]{64}$/.test(String(wallet))) {
+    try {
+      const { getPool, ensureSchema } = await import('./pg.js');
+      await ensureSchema();
+      let rows = [];
+      try {
+        rows = (await getPool().query(
+          "SELECT id, category, content_cipher AS content FROM memory_records WHERE wallet = $1 AND (status IS NULL OR status = 'active') ORDER BY created_at DESC LIMIT 200",
+          [wallet])).rows;
+      } catch {
+        rows = (await getPool().query(
+          'SELECT id, category, content_cipher AS content FROM memory_records WHERE wallet = $1 ORDER BY created_at DESC LIMIT 200',
+          [wallet])).rows;
+      }
+      memoryOn = rows.length > 0;
+      const tokens = String(message || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2).slice(0, 12);
+      const scored = rows.map((r) => {
+        const hay = String(r.content || '').toLowerCase();
+        let s = 0;
+        for (const t of tokens) if (hay.includes(t)) s += 1;
+        return { ...r, s };
+      }).filter((r) => r.s).sort((a, b) => b.s - a.s).slice(0, 3);
+      memoriesUsed = scored.map((r) => ({ id: r.id, category: r.category, content: String(r.content).slice(0, 280) }));
+    } catch { /* memory recall is best-effort, never blocks the answer */ }
+  }
+
   const msgLower = String(message || '').toLowerCase();
   const capital = wallet ? await suiAdapter.getCapital(wallet).catch(() => null) : null;
   const nowIso = new Date().toISOString();
@@ -129,6 +159,11 @@ export async function aiChat({ wallet, message, history = [], provider, model })
 
   const sys = 'You are NOISE HUB assistant. ' + toolHint +
     ' Never invent balances, APY, TVL, prices, fees, capabilities or transaction status. Say Unavailable when data is missing. Always cite Source + Updated. You cannot sign anything.\n\n' +
+    (memoriesUsed.length
+      ? 'Saved user context (owner-scoped Noise Memory — preferences only, never secrets):\n' +
+        memoriesUsed.map((m) => `- [${m.category}] ${m.content}`).join('\n') +
+        '\nUse it when relevant and say which saved preference you used.\n\n'
+      : '') +
     'Verified live facts:\n' + fallbackAnswer;
 
   const chain = [provider || process.env.AI_PROVIDER || 'openrouter', process.env.AI_FALLBACK_PROVIDER || null].filter(Boolean);
@@ -137,14 +172,14 @@ export async function aiChat({ wallet, message, history = [], provider, model })
     try {
       const answer = await callProvider(aiConfig(name), { model, messages: [{ role: 'system', content: sys }, ...history.slice(-10), { role: 'user', content: String(message).slice(0, 4000) }] });
       await persistConversation(wallet, 'assistant', String(answer).slice(0, 8000));
-      return { answer, source: 'llm:' + name + ':' + (model || aiConfig(name).model), updated: new Date().toISOString() };
+      return { answer, source: 'llm:' + name + ':' + (model || aiConfig(name).model), updated: new Date().toISOString(), memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
     } catch (e) { lastErr = e; }
   }
   if (lastErr && !['NO_API_KEY', 'NO_MODEL', 'NO_BASE_URL'].includes(lastErr.code)) {
     throw Object.assign(new Error('AI_UNAVAILABLE'), { code: 'AI_UNAVAILABLE', status: 502 });
   }
   await persistConversation(wallet, 'assistant', fallbackAnswer);
-  return { answer: fallbackAnswer, source: fallbackSource, updated: nowIso };
+  return { answer: fallbackAnswer, source: fallbackSource, updated: nowIso, memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
 }
 
 async function persistConversation(wallet, role, content) {

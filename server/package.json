@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js test/referral-analytics.test.js test/registry.test.js test/ecosystem.test.js test/earn-data.test.js test/capabilities.test.js",
+    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js test/referral-analytics.test.js test/registry.test.js test/ecosystem.test.js test/earn-data.test.js test/capabilities.test.js test/memory-leaderboard.test.js",
     "test:integration": "node --test test/integration.test.js",
     "test:data": "node --test --test-concurrency=1 test/data-coverage.test.js test/earn-data.test.js test/earn-logic.test.js test/registry.test.js test/ecosystem.test.js test/capabilities.test.js",
     "test:pg": "node --test test/pg.test.js"

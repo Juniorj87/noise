@@ -469,6 +469,24 @@ export async function aiChat({ wallet, message, history = [], provider, model })
   const toolHint = 'Live tools: getCapital, getBalances, getEarn, getProtocols, getActivity, compareOpportunities.';
   db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
     .run(uid('ai'), wallet || null, 'user', String(message).slice(0, 4000));
+
+  // Memory → AI: owner-scoped recall (best-effort, never blocks).
+  let memoriesUsed = [];
+  let memoryOn = false;
+  if (wallet && /^0x[0-9a-fA-F]{64}$/.test(String(wallet))) {
+    try {
+      const rows = db.prepare('SELECT id,category,content_cipher AS content FROM memory_records WHERE wallet = ? ORDER BY created_at DESC LIMIT 200').all(wallet);
+      memoryOn = rows.length > 0;
+      const tokens = String(message || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2).slice(0, 12);
+      memoriesUsed = rows.map((r) => {
+        const hay = String(r.content || '').toLowerCase();
+        let s = 0;
+        for (const t of tokens) if (hay.includes(t)) s += 1;
+        return { ...r, s };
+      }).filter((r) => r.s).sort((a, b) => b.s - a.s).slice(0, 3)
+        .map((r) => ({ id: r.id, category: r.category, content: String(r.content).slice(0, 280) }));
+    } catch { /* best-effort */ }
+  }
   
   const msgLower = String(message || '').toLowerCase();
   const capital = wallet ? await aiTools.getCapital({ wallet }).catch(() => null) : null;
@@ -533,6 +551,11 @@ Source: Action Hub Core Protocols · Updated: ${nowIso}`;
 
   const sys = 'You are NOISE HUB assistant. ' + toolHint +
     ' Never invent balances, APY, TVL, prices, fees, capabilities or transaction status. Say Unavailable when data is missing. Always cite Source + Updated. You cannot sign anything.\n\n' +
+    (memoriesUsed.length
+      ? 'Saved user context (owner-scoped Noise Memory — preferences only, never secrets):\n' +
+        memoriesUsed.map((m) => `- [${m.category}] ${m.content}`).join('\n') +
+        '\nUse it when relevant and say which saved preference you used.\n\n'
+      : '') +
     'Verified live facts:\n' + fallbackAnswer;
 
   const chain = [
@@ -546,7 +569,7 @@ Source: Action Hub Core Protocols · Updated: ${nowIso}`;
       const answer = await callProvider(aiConfig(name), { model, messages: [{ role: 'system', content: sys }, ...history.slice(-10), { role: 'user', content: String(message).slice(0, 4000) }] });
       db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
         .run(uid('ai'), wallet || null, 'assistant', String(answer).slice(0, 8000));
-      return { answer, source: 'llm:' + name + ':' + (model || aiConfig(name).model), updated: new Date().toISOString() };
+      return { answer, source: 'llm:' + name + ':' + (model || aiConfig(name).model), updated: new Date().toISOString(), memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
     } catch (e) { lastErr = e; }
   }
 
@@ -556,21 +579,51 @@ Source: Action Hub Core Protocols · Updated: ${nowIso}`;
 
   db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
     .run(uid('ai'), wallet || null, 'assistant', fallbackAnswer);
-  return { answer: fallbackAnswer, source: fallbackSource, updated: nowIso };
+  return { answer: fallbackAnswer, source: fallbackSource, updated: nowIso, memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
 }
 
-/* ---------- Memory records (consent-gated prefs; Seal/Walrus milestone) ---------- */
-export function saveMemory({ wallet, category, content }) {
-  const allowed = ['preference', 'protocol-preference', 'notification-preference', 'workflow-preference'];
+/* ---------- Memory records (consent-gated app-level prefs; Noise database) ----------
+ * Secrets are rejected at write. */
+export function saveMemory({ wallet, category, content, namespace = 'personal' }) {
+  const allowed = ['preference', 'protocol-preference', 'notification-preference', 'workflow-preference',
+    'project-context', 'user-instruction', 'ai-fact'];
   if (!allowed.includes(category)) throw Object.assign(new Error('INVALID_CATEGORY'), { code: 'INVALID_CATEGORY' });
-  const forbidden = ['seed', 'privatekey', 'private-key', 'password', 'secret', 'mnemonic'];
-  if (forbidden.some((w) => String(content).toLowerCase().includes(w))) {
+  const s = String(category) + ' ' + String(content);
+  const sl = s.toLowerCase();
+  if (/(private[\s_-]?key|secret[\s_-]?key)/.test(sl)
+    || /(seed[\s_-]?phrase|mnemonic|recovery[\s_-]?phrase)/.test(sl)
+    || /(wallet[\s_-]?password|auth[\s_-]?secret|api[\s_-]?key)/.test(sl)
+    || /\b(password|passwd)\b/.test(sl)
+    || ['seed', 'privatekey', 'private-key', 'mnemonic'].some((w) => sl.includes(w))) {
     throw Object.assign(new Error('FORBIDDEN_CONTENT'), { code: 'FORBIDDEN_CONTENT' });
   }
   const id = uid('mem');
-  db.prepare('INSERT INTO memory_records (id,wallet,category,content_cipher) VALUES (?,?,?,?)')
-    .run(id, wallet, category, String(content).slice(0, 2000));
+  try {
+    db.prepare('INSERT INTO memory_records (id,wallet,owner,namespace,category,content_cipher,status,encryption) VALUES (?,?,?,?,?,?,?,?)')
+      .run(id, wallet, wallet, String(namespace || 'personal').slice(0, 40), category, String(content).slice(0, 2000), 'active', 'local');
+  } catch {
+    db.prepare('INSERT INTO memory_records (id,wallet,category,content_cipher) VALUES (?,?,?,?)')
+      .run(id, wallet, category, String(content).slice(0, 2000));
+  }
   return { id };
+}
+
+export function searchMemory({ wallet, query, limit = 8 }) {
+  const lim = Math.max(1, Math.min(25, Number(limit) || 8));
+  let rows = [];
+  try {
+    rows = db.prepare("SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active') ORDER BY created_at DESC LIMIT 200").all(wallet);
+  } catch {
+    rows = db.prepare('SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? ORDER BY created_at DESC LIMIT 200').all(wallet);
+  }
+  const tokens = String(query || '').toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2).slice(0, 12);
+  if (!tokens.length) return rows.slice(0, lim).map((r) => ({ ...r, score: 0 }));
+  return rows.map((r) => {
+    const hay = String(r.content || '').toLowerCase();
+    let score = 0;
+    for (const t of tokens) if (hay.includes(t)) score += 1;
+    return { ...r, score };
+  }).filter((r) => r.score > 0).sort((a, b) => b.score - a.score).slice(0, lim);
 }
 
 /* ---------- Cache / rate-limit / circuit-breaker (§37, discovery §32) ---------- */

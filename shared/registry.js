@@ -70,7 +70,7 @@ export const PROTOCOLS = [
     actions: ['stake', 'unstake', 'rewards', 'validators', 'position'],
     capability: C.d({ data: true, earn: true, position: true, execution: true }),
     dataSource: 'Sui RPC (system state)', fee: 'validator commission', ref: '—',
-    url: 'https://sui.io', docs: 'https://docs.sui.io/concepts/tokenomics/staking',
+    url: 'https://sui.io', docs: '',
     note: 'Native validator staking: stake, unstake, rewards and validators.',
   }),
 
@@ -104,57 +104,57 @@ export const PROTOCOLS = [
     actions: ['markets', 'predict_mint', 'predict_redeem', 'predict_claim', 'predict_settlement', 'position'],
     capability: C.d({ data: true, trade: true, position: true, execution: true }),
     dataSource: '@mysten/deepbook-v3/predict', fee: 'predict fee (simulated pre-sign)', ref: '—',
-    url: 'https://deepbook.tech', docs: 'https://docs.sui.io/standards/deepbookv3/predict',
+    url: 'https://deepbook.tech', docs: '',
     note: 'Live prediction markets: UP/DOWN mint, redeem, claim-settled, positions.',
   }),
   p({
     id: 'deepbook-margin', name: 'DeepBook Margin', category: 'trading', bucket: 'TRADING', status: 'COMING_SOON',
     actions: [], capability: C.d({ data: true }),
     dataSource: '—', fee: '—', ref: '—',
-    url: 'https://deepbook.tech', docs: 'https://docs.sui.io/standards/deepbookv3/margin',
+    url: 'https://deepbook.tech', docs: '',
     note: 'Margin is a live Sui primitive; no SDK/execution path is wired into Noise yet.',
   }),
   p({
     id: 'turbos', name: 'Turbos', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
     actions: ['pools'], capability: C.d(),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://turbos.finance', docs: 'https://docs.turbos.finance',
+    url: 'https://turbos.finance', docs: '',
     note: 'CLMM DEX / DLMM. No public quote+build path wired — discovery + deep link only.',
   }),
   p({
     id: 'flowx', name: 'FlowX', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
     actions: ['pools'], capability: C.d(),
-    dataSource: '—', fee: 'verify', ref: 'verify',
+    dataSource: 'Cetus Aggregator (routed liquidity)', fee: 'pool fee (provider)', ref: 'verify',
     url: 'https://flowx.finance', docs: 'https://docs.flowx.finance',
-    note: 'Reachable as a Cetus aggregation provider (routed, not a direct adapter).',
+    note: 'Usable inside Swap via Cetus Aggregator routing when the router selects it — no separate FlowX adapter; deep-link for direct use.',
   }),
   p({
     id: 'momentum', name: 'Momentum', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: ['pools'], capability: C.d(),
+    actions: [], capability: C.d(),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://momentum.xyz', docs: '',
-    note: 'Ecosystem discovery only.',
+    url: '', docs: '',
+    note: 'Site unreachable at audit 2026-10-06 (TLS/DNS fail) — deep-link disabled until a verified domain exists. No data shown rather than a dead link.',
   }),
   p({
     id: 'kriya', name: 'Kriya', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: ['pools'], capability: C.d(),
-    dataSource: '—', fee: 'verify', ref: 'verify',
+    actions: [], capability: C.d(),
+    dataSource: '—', fee: '—', ref: '—',
     url: 'https://kriya.finance', docs: 'https://docs.kriya.finance',
-    note: 'Reachable as a Cetus aggregation provider (routed, not a direct adapter).',
+    note: 'SUNSET — protocol is winding down. Excluded from routing and quotes; card stays for history with a deep-link only.',
   }),
   p({
     id: 'metastable', name: 'Metastable', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: ['pools'], capability: C.d(),
+    actions: [], capability: C.d(),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://metastable.io', docs: '',
-    note: 'Reachable as a Cetus aggregation provider (routed, not a direct adapter).',
+    url: '', docs: '',
+    note: 'Domain does not resolve at audit 2026-10-06 (ENOTFOUND) — deep-link disabled until verified. Previously reachable via Cetus routing.',
   }),
   p({
     id: 'obric', name: 'Obric', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
     actions: ['pools'], capability: C.d(),
-    dataSource: '—', fee: 'verify', ref: 'verify',
+    dataSource: 'Cetus Aggregator (routed liquidity)', fee: 'pool fee (provider)', ref: 'verify',
     url: 'https://obric.xyz', docs: '',
-    note: 'Reachable as a Cetus aggregation provider (routed, not a direct adapter).',
+    note: 'Usable inside Swap via Cetus Aggregator routing when selected — deep-link for direct use.',
   }),
 
   // ---- perpetuals / derivatives ---------------------------------------------
@@ -237,14 +237,14 @@ export const PROTOCOLS = [
     actions: ['stake', 'unstake', 'position', 'apy'],
     capability: C.d({ data: true, earn: true, position: false, execution: false }),
     dataSource: 'Haedal (pending SDK/API)', fee: 'verify', ref: 'verify',
-    url: 'https://haedal.xyz', docs: 'https://docs.haedal.xyz',
+    url: 'https://haedal.xyz', docs: '',
     note: 'Liquid staking. Staking APY/position surface pending; execution intentionally OFF until the SDK path is verified.',
   }),
   p({
     id: 'volo', name: 'Volo', category: 'liquid-staking', bucket: 'STAKING', status: 'DISCOVER',
     actions: [], capability: C.d(),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://volo.fi', docs: 'https://docs.volo.fi',
+    url: 'https://volo.fi', docs: '',
     note: 'Liquid staking. Discovery only.',
   }),
   p({
@@ -298,7 +298,7 @@ export const PROTOCOLS = [
     id: 'suibridge', name: 'Sui Bridge', category: 'bridge', bucket: 'BRIDGE', status: 'DISCOVER',
     actions: [], capability: C.d(),
     dataSource: '—', fee: 'provider fee', ref: '—',
-    url: 'https://bridge.sui.io', docs: 'https://docs.sui.io/concepts/bridge',
+    url: 'https://bridge.sui.io', docs: '',
     note: 'Native bridge. Deep link — execution leaves Noise Hub.',
   }),
   p({
@@ -310,20 +310,8 @@ export const PROTOCOLS = [
   }),
 
   // ---- data / security layer (spec §25-35) ----------------------------------
-  p({
-    id: 'walrus', name: 'Walrus', category: 'data', bucket: 'INFRASTRUCTURE', status: 'COMING_SOON',
-    actions: [], capability: C.d(),
-    dataSource: '—', fee: 'storage cost', ref: '—',
-    url: 'https://walrus.xyz', docs: 'https://docs.wal.app',
-    note: 'Persistent decentralized (content-addressed) storage. Needs funded objects + a publisher; not installed on purpose — no plain-text is ever stored.',
-  }),
-  p({
-    id: 'seal', name: 'Seal', category: 'security', bucket: 'INFRASTRUCTURE', status: 'COMING_SOON',
-    actions: [], capability: C.d(),
-    dataSource: '—', fee: 'key-server fees', ref: '—',
-    url: 'https://seal-docs.wal.app', docs: 'https://seal-docs.wal.app',
-    note: 'Threshold encryption + programmable on-chain access control for Noise data. Not installed — encrypt-before-store only.',
-  }),
+  // NOTE: Walrus / Seal intentionally not listed — Noise Hub does not integrate
+  // them. The hub stores app memory in its own database (see AI Assistant).
 ];
 
 /* ------------------------------ helpers ---------------------------------- */

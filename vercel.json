@@ -11,6 +11,9 @@
   "rewrites": [
     { "source": "/health", "destination": "/api/health" },
     { "source": "/app", "destination": "/app.html" },
+    { "source": "/app/leaderboard", "destination": "/app.html" },
+    { "source": "/app/skills", "destination": "/app.html" },
+    { "source": "/app/referral", "destination": "/app.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/api/swap/build", "destination": "/api/swap" },

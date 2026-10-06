@@ -1468,52 +1468,6 @@
         @media(max-width:900px){.ai-purpose-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:768px){.topbar-utilities{width:100%;order:2;justify-content:space-between;margin:0;padding-top:4px;gap:8px}.topbar-utilities a{font-size:10px}.ai-purpose-grid{grid-template-columns:1fr}.ai-prompt{min-height:70px}.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="skills"]{display:none}}
 </style>
-
-<style id="noise-app-unified">
-/* NOISE APP UNIFIED — same tokens as the landing. Kills gray wash + stuck blocks. */
-:root{--radius:0}
-*{border-radius:0 !important}
-.page{scroll-margin-top:20px}
-.main{padding:48px 56px 88px !important}
-.main>*{max-width:1240px;margin-left:auto;margin-right:auto}
-.page-header{margin-bottom:36px !important}
-.page-title{font-size:clamp(40px,4vw,60px) !important;letter-spacing:-2.8px !important;line-height:.98 !important;font-weight:300 !important}
-.page-subtitle{max-width:680px !important;line-height:1.7 !important}
-.section-label{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
-/* Panels: ink, not smoke */
-.panel,.available-capital,.action-composer,.generated-automation,.rewards-block,.nft-preview,
-.chart-container,.opportunity-card,.automation-item,.command-intro,.how,.noise-live-panel{
-  background:rgba(10,10,10,.55) !important;
-  border:1px solid var(--line) !important;
-}
-.opportunity-card:hover,.quick-action:hover,.intent-item:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
-.asset-item,.token-metric,.command-step,.eco-node{background:#0a0a0a !important}
-.ai-prompt{background:rgba(10,10,10,.55) !important}
-.ai-prompt:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
-/* Breathing room: no stuck grids, no gray voids in half-filled rows */
-.opportunity-grid,.token-grid{gap:16px !important;margin-bottom:40px !important}
-.assets-grid,.token-metrics{background:transparent !important;border:none !important;gap:12px !important}
-.asset-item,.token-metric{border:1px solid var(--line) !important}
-.asset-item:hover{border-color:rgba(0,102,255,.55) !important}
-.quick-actions{gap:12px !important;margin-bottom:40px !important}
-.command-intro{padding:28px 30px !important;margin-bottom:32px !important}
-.panel{padding:26px !important;margin-bottom:22px !important}
-.positions-table td,.token-table td{padding:18px 16px !important}
-/* Status pills: one language */
-.status-pill{border-radius:0 !important;font-size:9px !important;letter-spacing:1.8px !important}
-.status-pill.sunset{color:#ff8844 !important;border-color:rgba(255,136,68,.5) !important;background:rgba(255,136,68,.06) !important}
-/* Sidebar = landing nav */
-.sidebar{background:rgba(10,10,10,.92) !important}
-.nav-item{border-left:1px solid transparent !important}
-.nav-item:hover{border-left-color:rgba(255,255,255,.18) !important}
-.nav-item.active{border-left-color:var(--accent) !important;background:transparent !important}
-#noiseField{opacity:.22 !important}
-@media(max-width:768px){
-  .main{padding:24px 20px 56px !important}
-  .command-intro,.panel{padding:20px !important}
-  .opportunity-grid,.token-grid{gap:12px !important}
-}
-</style>
 </head>
 <body>
     <canvas id="noiseField" aria-label="Ambient noise"></canvas>
@@ -1523,7 +1477,7 @@
             <div class="sidebar-logo"><a href="index.html"><span>noise</span><b> hub</b></a></div>
                         <nav class="sidebar-nav">
                 <div class="nav-group-label">OVERVIEW</div>
-                <a class="nav-item active" data-page="capital">Portfolio</a>
+                <a class="nav-item active" data-page="capital">Capital</a>
                 <a class="nav-item" data-page="activity">Activity</a>
                 <div class="nav-group-label">TRADE</div>
                 <a class="nav-item" data-page="trade">Trade</a>
@@ -1563,11 +1517,11 @@
             </div>
             <div id="searchResults" style="margin-bottom:24px; display:none;"></div>
             <div class="fresh" style="margin:-10px auto 28px;max-width:1240px;line-height:1.7;">NON-CUSTODIAL · WALLET AUTHORIZATION · LIVE SOURCES · REVIEW BEFORE SIGN</div>
-            <!-- Portfolio Page -->
+            <!-- Capital Page -->
             <div class="page active" id="capital">
                 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <div>
-                        <h1 class="page-title">PORTFOLIO</h1>
+                        <h1 class="page-title">MY CAPITAL</h1>
                     </div>
                     <div style="display:flex; gap:12px; align-items:center; margin-bottom:8px;">
                         <span id="capitalTimeAgo" style="font-size:11px; color:var(--text-dim);"></span>
@@ -1590,7 +1544,7 @@
                 <div class="quick-actions">
                     <div class="quick-action" onclick="navigateTo('actions');openSwapComposer()"><div class="qa-label">MOVE</div><strong>Swap</strong><span>Compare supported routes →</span></div>
                     <div class="quick-action" onclick="navigateTo('trade')"><div class="qa-label">MARKETS</div><strong>Trade</strong><span>DeepBook Spot &amp; Predict →</span></div>
-                    <div class="quick-action" onclick="navigateTo('earn')"><div class="qa-label">PORTFOLIO</div><strong>Earn</strong><span>Staking &amp; liquidity →</span></div>
+                    <div class="quick-action" onclick="navigateTo('earn')"><div class="qa-label">CAPITAL</div><strong>Earn</strong><span>Staking &amp; liquidity →</span></div>
                     <div class="quick-action" onclick="navigateTo('discover')"><div class="qa-label">SIGNAL</div><strong>Discover</strong><span>Explore live Sui activity →</span></div>
                 </div>
 
@@ -1599,7 +1553,7 @@
                 <div class="fresh" id="capitalFresh">Waiting for wallet…</div>
 
                 <details class="how">
-                    <summary>How Portfolio works — where are my funds?</summary>
+                    <summary>How Capital works — where are my funds?</summary>
                     <div>Wallet assets + DeFi positions (staking, lending, LP, rewards, open orders) aggregated without double counting: deposited tokens are not counted as free balance. Every value carries source + timestamp. If price is unavailable: “Price unavailable” — never invented. Net value = Available + DeFi + Staked + Rewards − Borrowed.</div>
                 </details>
 
@@ -1759,17 +1713,6 @@
                     <h3>UNAVAILABLE — REASON DOCUMENTED</h3>
                     <div style="font-size:13px; line-height:1.8;">NAVI SDK hardcodes a deprecated RPC endpoint; Suilend SDK needs an unverified gRPC client shape. No market data is shown rather than invented data. Open providers directly: <a href="https://naviprotocol.io" target="_blank" style="color:var(--accent)">NAVI</a> · <a href="https://suilend.fi" target="_blank" style="color:var(--accent)">Suilend</a>. <span class="status-pill">DEEP LINK</span></div>
                 </div>
-
-                <div class="section-label" style="margin-top:32px;">MORE WAYS TO EARN — FULL DIRECTORY</div>
-                <div class="fresh" style="margin-bottom:12px;">LIVE = verified data + execution inside Noise. DISCOVER = research + 1-click provider — APYs are never invented, so a card without a live number links you straight to the source.</div>
-                <div class="sub-tabs" style="margin-bottom:16px;" id="earnDirFilters">
-                    <button class="filter-btn active" onclick="setEarnDir('ALL')">All</button>
-                    <button class="filter-btn" onclick="setEarnDir('STAKING')">Staking</button>
-                    <button class="filter-btn" onclick="setEarnDir('LENDING')">Lending</button>
-                    <button class="filter-btn" onclick="setEarnDir('EARN')">Yield</button>
-                    <button class="filter-btn" onclick="setEarnDir('BTCFI')">BTCFi</button>
-                </div>
-                <div class="opportunity-grid" id="earnDir"><div class="fresh">Loading directory…</div></div>
 
                 <details class="how">
                     <summary>How Earn works — where are my funds? · Risks · APY math</summary>
@@ -2844,7 +2787,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
            Regenerate:  node scripts/gen-ui-registry.mjs
            server/test/registry.test.js fails if this mirror drifts. */
         /* REGISTRY_JSON_START */
-        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","objects","stakes"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-04"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"","fee":"validator commission","ref":"—","last":"2026-10-04"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate","position"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-04"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"PARTIAL","caps":["swap-quote","pools","staking-apy","rewards","position"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-04"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","cancel_order","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-04"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-04"},{"id":"deepbook-margin","name":"DeepBook Margin","cat":"trading","status":"COMING_SOON","caps":[],"url":"https://deepbook.tech","docs":"","fee":"—","ref":"—","last":"2026-10-04"},{"id":"turbos","name":"Turbos","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://turbos.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"flowx","name":"FlowX","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"momentum","name":"Momentum","cat":"dex","status":"DISCOVER","caps":[],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kriya","name":"Kriya","cat":"dex","status":"DISCOVER","caps":[],"url":"https://kriya.finance","docs":"https://docs.kriya.finance","fee":"—","ref":"—","last":"2026-10-04"},{"id":"metastable","name":"Metastable","cat":"dex","status":"DISCOVER","caps":[],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"obric","name":"Obric","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://obric.xyz","docs":"","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"DISCOVER","caps":["markets"],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-perps","name":"Bluefin Perps","cat":"trading","status":"DISCOVER","caps":[],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"typus","name":"Typus","cat":"trading","status":"DISCOVER","caps":[],"url":"https://typus.finance","docs":"https://docs.typus.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"sudo","name":"Sudo","cat":"trading","status":"DISCOVER","caps":[],"url":"https://sudo.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"perpsplexity","name":"Perpsplexity","cat":"trading","status":"DISCOVER","caps":["markets"],"url":"https://perpsplexity.app","docs":"","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"navi","name":"NAVI","cat":"lending","status":"DISCOVER","caps":[],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"suilend","name":"Suilend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"scallop","name":"Scallop","cat":"lending","status":"DISCOVER","caps":[],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bucket","name":"Bucket","cat":"lending","status":"DISCOVER","caps":[],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphalend","name":"AlphaLend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://alphalend.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"PARTIAL","caps":["stake","unstake","position","apy"],"url":"https://haedal.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://volo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphafi","name":"AlphaFi","cat":"yield","status":"DISCOVER","caps":[],"url":"https://alphafi.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kai","name":"Kai","cat":"yield","status":"DISCOVER","caps":[],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"nemo","name":"Nemo","cat":"btcfi","status":"DISCOVER","caps":[],"url":"https://nemo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"suipump","name":"SuiPump","cat":"launchpad","status":"LIVE","caps":["tokens","price","volume","trades","bonding","graduation"],"url":"https://suipump.fun","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"suibridge","name":"Sui Bridge","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://bridge.sui.io","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-04"}];
+        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","objects","stakes"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-04"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"https://docs.sui.io/concepts/tokenomics/staking","fee":"validator commission","ref":"—","last":"2026-10-04"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate","position"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-04"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"PARTIAL","caps":["swap-quote","pools","staking-apy","rewards","position"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-04"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","cancel_order","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-04"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3/predict","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-04"},{"id":"deepbook-margin","name":"DeepBook Margin","cat":"trading","status":"COMING_SOON","caps":[],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3/margin","fee":"—","ref":"—","last":"2026-10-04"},{"id":"turbos","name":"Turbos","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://turbos.finance","docs":"https://docs.turbos.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"flowx","name":"FlowX","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"momentum","name":"Momentum","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://momentum.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kriya","name":"Kriya","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://kriya.finance","docs":"https://docs.kriya.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"metastable","name":"Metastable","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://metastable.io","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"obric","name":"Obric","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://obric.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"DISCOVER","caps":["markets"],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-perps","name":"Bluefin Perps","cat":"trading","status":"DISCOVER","caps":[],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"typus","name":"Typus","cat":"trading","status":"DISCOVER","caps":[],"url":"https://typus.finance","docs":"https://docs.typus.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"sudo","name":"Sudo","cat":"trading","status":"DISCOVER","caps":[],"url":"https://sudo.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"perpsplexity","name":"Perpsplexity","cat":"trading","status":"DISCOVER","caps":["markets"],"url":"https://perpsplexity.app","docs":"","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"navi","name":"NAVI","cat":"lending","status":"DISCOVER","caps":[],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"suilend","name":"Suilend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"scallop","name":"Scallop","cat":"lending","status":"DISCOVER","caps":[],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bucket","name":"Bucket","cat":"lending","status":"DISCOVER","caps":[],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphalend","name":"AlphaLend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://alphalend.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"PARTIAL","caps":["stake","unstake","position","apy"],"url":"https://haedal.xyz","docs":"https://docs.haedal.xyz","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://volo.fi","docs":"https://docs.volo.fi","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphafi","name":"AlphaFi","cat":"yield","status":"DISCOVER","caps":[],"url":"https://alphafi.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kai","name":"Kai","cat":"yield","status":"DISCOVER","caps":[],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"nemo","name":"Nemo","cat":"btcfi","status":"DISCOVER","caps":[],"url":"https://nemo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"suipump","name":"SuiPump","cat":"launchpad","status":"LIVE","caps":["tokens","price","volume","trades","bonding","graduation"],"url":"https://suipump.fun","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"suibridge","name":"Sui Bridge","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://bridge.sui.io","docs":"https://docs.sui.io/concepts/bridge","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-04"}];
         /* REGISTRY_JSON_END */
         /* CAP_JSON_START */
         window.ACTION_CAPABILITIES = {"swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Cetus","url":"https://app.cetus.zone","note":"Cetus router: quote → build → simulate → wallet sign."},"stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native stake PTB built + simulated; wallet signs."},"unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native unstake PTB built + simulated; wallet signs."},"liquid_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath","url":"https://aftermath.finance","note":"Liquid stake/unstake PTB built + simulated; wallet signs."},"predict_mint":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_redeem":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"spot_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"limit_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"market_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"cancel_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"setup_trading_account":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"liquidity":{"data":"LIVE","quote":"LIVE","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Cetus / Aftermath pools","url":"https://app.cetus.zone","note":"Pool TVL/APR are live; pool add-liquidity build is not wired."},"claim":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Aftermath","url":"https://aftermath.finance","note":"Rewards are readable; protocol reward claim needs a provider adapter."},"supply":{"data":"UNAVAILABLE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending SDKs are blocked — no markets are shown rather than invented."},"borrow":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"repay":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"withdraw":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"transfer":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Sui","url":"https://sui.io","note":"Transfers are not built in Noise."}};
@@ -2865,7 +2808,6 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
            Keeps the registry's status set while naming the real action available. */
         function protoLabel(p) {
             if (!p) return 'UNAVAILABLE';
-            if (p.id === 'kriya') return 'SUNSET';
             if (p.status === 'PARTIAL') {
                 const c = (window.CAP_MATRIX || {})[p.id] || {};
                 if (c.swap && !c.execution) return 'QUOTE ONLY';
@@ -3422,7 +3364,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
         function openNftPanel() {
             const p = $('extraActionPanel'); p.style.display = 'block';
             $('extraActionTitle').textContent = 'NFT — READ ONLY';
-            $('extraActionBody').innerHTML = 'Wallet NFT count is live (Portfolio → NFTs). Buy/sell/list need a marketplace SDK — not integrated yet. Execution leaves the hub: use the marketplace directly. <span class="status-pill ro">DEEP LINK MILESTONE</span>';
+            $('extraActionBody').innerHTML = 'Wallet NFT count is live (Capital → NFTs). Buy/sell/list need a marketplace SDK — not integrated yet. Execution leaves the hub: use the marketplace directly. <span class="status-pill ro">DEEP LINK MILESTONE</span>';
             p.scrollIntoView({ behavior: 'smooth' });
         }
         /* ---- Trade panel — DeepBook V3 live integration (§9) ---- */
@@ -3645,7 +3587,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     tBookAt = Date.now(); tradeFreshTick();
                 } catch (e) {
                 set('tMid', 'Unavailable'); set('tBid', '—'); set('tAsk', '—'); set('tSpread', '—');
-                $('tAsks').innerHTML = '<tr><td colspan="3" class="fresh">Order book unavailable — DeepBook RPC unreachable or market not found. Nothing is estimated or faked. <button class="btn-ghost" style="margin-left:8px;padding:4px 10px;" onclick="tradeOnMarketChange()">Retry</button></td></tr>';
+                $('tAsks').innerHTML = '<tr><td colspan="3" class="fresh">Order book unavailable — DeepBook RPC unreachable or market not found. Nothing is estimated or faked.</td></tr>';
                 $('tBids').innerHTML = '';
                 $('tFresh').textContent = 'Source: DeepBook V3 SDK · last attempt ' + new Date().toLocaleTimeString();
             }
@@ -4629,9 +4571,8 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             const p = REGISTRY.find(r => r.id === id); if (!p) return;
             $('protoName').textContent = p.name;
             $('protoMeta').textContent = p.cat + ' · ' + protoLabel(p) + ' · verified ' + p.last;
-            $('protoBody').innerHTML = (p.id === 'kriya' ? '<div style="padding:10px;border:1px solid rgba(255,136,68,.5);background:rgba(255,136,68,.06);margin-bottom:10px;">SUNSET — Kriya is winding down. Excluded from Swap routing and quotes. Withdraw via the provider; do not open new positions through Noise.</div>' : '') + 'Capabilities: ' + p.caps.join(', ') + '<br>Fee: ' + p.fee + '<br>Referral: ' + p.ref + '<br>Docs: ' + (p.docs || '—');
-            if (p.url) { $('protoOpen').style.display = ''; $('protoOpen').onclick = () => window.open(p.url, '_blank'); }
-            else { $('protoOpen').style.display = 'none'; }
+            $('protoBody').innerHTML = 'Capabilities: ' + p.caps.join(', ') + '<br>Fee: ' + p.fee + '<br>Referral: ' + p.ref + '<br>Docs: ' + p.docs;
+            $('protoOpen').onclick = () => window.open(p.url, '_blank');
             openModal('protoModal');
         }
 
@@ -4893,7 +4834,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
 
         /* ---- AI tool router — live backend tools only, never invented (§22, §27) ---- */
         const tools = {
-            getPortfolio: () => ({ total: $('totalValue').textContent, avail: $('vAvailable').textContent, src: 'Portfolio aggregator (live RPC)', at: new Date().toLocaleTimeString() }),
+            getPortfolio: () => ({ total: $('totalValue').textContent, avail: $('vAvailable').textContent, src: 'Capital aggregator (live RPC)', at: new Date().toLocaleTimeString() }),
             getBalances: async () => {
                 if (!wallet) return { wallet: 'not connected' };
                 try {
@@ -5024,7 +4965,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                             const pp = r?.predictPositions?.positions || [];
                             if (dbo.length) parts.push('DeepBook spot orders: ' + dbo.length + ' (' + dbo.slice(0, 3).map((o) => (o.market || '') + ' ' + o.side).join(', ') + ')');
                             if (pp.length) parts.push('Predict positions: ' + pp.length + ' (' + pp.slice(0, 3).map((p) => (p.underlying || '') + ' ' + (p.side || '')).join(', ') + ')');
-                            aiSay(parts.length ? parts.join('<br>') + '<br>Details in Portfolio; manage on Trade.' : 'No DeepBook/Predict positions found. Balances and staking are in Portfolio.', 'hub portfolio (live)');
+                            aiSay(parts.length ? parts.join('<br>') + '<br>Details on Capital; manage on Trade.' : 'No DeepBook/Predict positions found. Balances and staking are on Capital.', 'hub capital (live)');
                         } catch (e) { done(); aiSay('Positions unavailable right now.', 'hub tools'); }
                     }
                 } else if (l.includes('fee') || l.includes('commission') || l.includes('how do you make') || l.includes('how does')) {
@@ -5703,8 +5644,8 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 return '<div class="opportunity-card" data-live="1" style="cursor:pointer;" onclick="openProto(\'' + p.id + '\')">' +
                     '<div class="opportunity-asset">' + p.name + '</div>' +
                     '<div class="opportunity-protocol">' + p.cat + '</div>' +
-                    '<span class="status-pill ' + (p.id === 'kriya' ? 'sunset' : statusClass(p.status)) + '">' + protoLabel(p) + '</span>' +
-                    '<div class="opportunity-metrics">' + (p.id === 'kriya' ? 'sunset · no routing' : (caps.length ? caps.join(' · ') : 'discovery only')) + '</div>' +
+                    '<span class="status-pill ' + statusClass(p.status) + '">' + protoLabel(p) + '</span>' +
+                    '<div class="opportunity-metrics">' + (caps.length ? caps.join(' · ') : 'discovery only') + '</div>' +
                     '<div class="fresh">' + (p.note || '') + '</div></div>';
             }).join('');
             const ev = $('ecoVerified'); if (ev && REGISTRY[0]) ev.textContent = REGISTRY[0].last;
@@ -5798,7 +5739,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 '<tr><td>Token type</td><td style="font-size:10px; word-break:break-all;">' + escapeHtml(t.tokenType || '—') + '</td></tr>';
             $('reviewCustody').textContent = 'In-hub Swap supports SUI, USDC, DEEP, CETUS and NAVX. This token trades on its bonding curve / post-graduation pool — use the provider venue. Hub buy/sell for it is unavailable.';
             setReviewStatus('Status: <span class="status-pill live">DISCOVERY</span> — research only.');
-            setConfirm('Open in SuiPump ↗', () => window.open('https://suipump.fun', '_blank'));
+            setConfirm('Open in SuiPump ↗', () => window.open('https://suipump.org', '_blank'));
         }
         async function loadPerpsplexity() {
             const panel = $('ppxPanel');
@@ -5847,38 +5788,11 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     : '<tr><td colspan="4" class="fresh">No pools contain ' + sym + ' in the top-50 by TVL.</td></tr>';
             } catch (e) { $('tokenPools').innerHTML = '<tr><td colspan="4" class="fresh">Unavailable.</td></tr>'; }
         }
-        /* Earn directory — every yield-bearing protocol from the registry.
-           LIVE rows stay executable above; here everything is one honest card:
-           live numbers where verified, deep-link where not, sunset excluded. */
-        const EARN_DIR = { filter: 'ALL' };
-        function setEarnDir(f) {
-            EARN_DIR.filter = f;
-            document.querySelectorAll('#earnDirFilters .filter-btn').forEach((b) => b.classList.toggle('active', b.textContent.toUpperCase() === f || (f === 'ALL' && b.textContent === 'All')));
-            renderEarnDir();
-        }
-        function renderEarnDir() {
-            const grid = $('earnDir'); if (!grid) return;
-            const rows = (window.REGISTRY || []).filter((p) => {
-                if (p.id === 'kriya') return false;
-                if (!['STAKING', 'LENDING', 'EARN', 'BTCFI'].includes(((window.CAP_MATRIX[p.id] || {}).bucket))) return false;
-                return EARN_DIR.filter === 'ALL' || ((window.CAP_MATRIX[p.id] || {}).bucket === EARN_DIR.filter);
-            });
-            if (!rows.length) { grid.innerHTML = '<div class="fresh">No venues in this bucket yet.</div>'; return; }
-            grid.innerHTML = rows.map((p) => {
-                const live = p.status === 'LIVE' || p.status === 'PARTIAL';
-                return '<div class="opportunity-card" data-live="1" style="cursor:pointer;" onclick="openProto(\'' + p.id + '\')">' +
-                    '<div class="opportunity-asset">' + p.name + '</div>' +
-                    '<div class="opportunity-protocol">' + p.cat + '</div>' +
-                    '<span class="status-pill ' + statusClass(p.status) + '">' + protoLabel(p) + '</span>' +
-                    '<div class="opportunity-metrics">' + (live ? 'Live data in Noise — open for details' : 'Research + 1-click provider — no invented APY') + '</div>' +
-                    (p.url ? '<div class="opportunity-action" onclick="event.stopPropagation();window.open(\'' + p.url + '\',\'_blank\')">Open ' + p.name + ' ↗</div>' : '<div class="fresh">Deep-link pending verification</div>') + '</div>';
-            }).join('');
-        }
         function selectEarnProvider(provider) {
             const note = $('earnProviderNote');
             const grid = $('earnStaking');
             if (provider === 'native') {
-                grid.innerHTML = '<div class="opportunity-card"><div class="opportunity-asset">SUI native staking</div><div class="opportunity-protocol">Sui validators</div><div class="opportunity-metrics">Validator commission and reward rate vary by validator. Noise shows the route, but does not invent a universal APY.</div><div class="fresh">Live validator/stake data is available in Portfolio. Execution is shown only when a supported build path is available.</div><div class="opportunity-action" onclick="navigateTo(\'capital\')">View validators →</div></div>';
+                grid.innerHTML = '<div class="opportunity-card"><div class="opportunity-asset">SUI native staking</div><div class="opportunity-protocol">Sui validators</div><div class="opportunity-metrics">Validator commission and reward rate vary by validator. Noise shows the route, but does not invent a universal APY.</div><div class="fresh">Live validator/stake data is available in Capital. Execution is shown only when a supported build path is available.</div><div class="opportunity-action" onclick="navigateTo(\'capital\')">View validators →</div></div>';
                 note.textContent = 'Native staking has no single universal APY: validator reward rate and commission determine the result. Choose a validator in the supported flow.';
             } else {
                 loadEarn();
@@ -5934,9 +5848,8 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 }
                 if (fr) fr.textContent = 'Live · Aftermath · ' + new Date().toLocaleTimeString();
             } catch (e) { if (fr) fr.textContent = 'Earn data Unavailable.'; }
-            try { renderEarnDir(); } catch (e) {}
             const ec = $('earnCapital');
-            if (ec) ec.textContent = wallet ? ($('vAvailable') ? $('vAvailable').textContent : 'see Portfolio') : 'connect wallet → live';
+            if (ec) ec.textContent = wallet ? ($('vAvailable') ? $('vAvailable').textContent : 'see Capital') : 'connect wallet → live';
         }
         async function loadPositions() {
             const tb = $('positionsRows');

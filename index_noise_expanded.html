@@ -972,93 +972,13 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
 @media(max-width:520px){.noise-product-map,.noise-architecture,.noise-flow,.noise-deepbook,.noise-security{padding:58px 0}.noise-cap-grid{grid-template-columns:1fr}.noise-stack-row{grid-template-columns:1fr;gap:8px}.noise-final-cta{padding:72px 0}}
 </style>
 
-<style id="noise-unified">
-/* NOISE UNIFIED — landing is the visual source of truth. Single spacing scale,
-   no gray wash, no stuck blocks. UI-only: no logic touched. */
-:root{
-  --space-section:120px;
-  --space-section-mobile:72px;
-  --space-block:48px;
-  --space-card:28px;
-  --radius:0;
-}
-html{scroll-behavior:smooth}
-section{scroll-margin-top:84px}
-section,.hero,.ecosystem,.cta{
-  padding-left:48px !important;
-  padding-right:48px !important;
-  max-width:1296px;
-  margin-left:auto !important;
-  margin-right:auto !important;
-}
-section{padding-top:var(--space-section) !important;padding-bottom:var(--space-section) !important}
-.hero{padding-top:170px !important;padding-bottom:90px !important;max-width:1296px}
-/* Kill gray wash: panels are ink, not smoke. Borders carry the structure. */
-.hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface,
-.discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,
-.noise-live-panel,.flow-icon,.generated-action{
-  background:rgba(10,10,10,.55) !important;
-  border-radius:var(--radius) !important;
-}
-.capital-item,.eco-node,.command-step{background:#0a0a0a !important;border-radius:var(--radius) !important}
-.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
-.asset-item:hover,.action-item:hover{padding-left:0 !important}
-/* One label / title language everywhere */
-.section-label,.noise-eyebrow{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
-.section-title,.noise-product-map h2,.noise-flow h2,.noise-deepbook h2,.noise-security h2{
-  letter-spacing:-2.5px !important;margin-bottom:32px !important;
-}
-.section-lede,.noise-product-lead{margin-bottom:40px !important}
-/* Grids breathe: no stuck edges */
-.capital-grid,.discover-grid,.protocol-build-grid,.noise-cap-grid,.noise-security-grid,.ecosystem-diagram{gap:1px}
-.actions{ gap:48px !important;align-items:start !important}
-.action-flow,.action-result{padding:36px !important}
-.hero-interface{padding:40px !important;margin-top:88px !important}
-.capital-interface{padding:44px !important}
-.one-action-interface{padding:44px !important}
-/* Marquee / rails: quiet, single line */
-.tech-marquee{margin-top:48px !important}
-.infrastructure-rail{margin-top:56px !important}
-/* Buttons: one shape, one motion */
-.btn-primary,.btn-secondary,.nav-cta,.result-cta{border-radius:var(--radius) !important}
-/* No stuck empties: flow panel follows the steps instead of stretching void */
-.noise-flow-grid{align-items:start !important}
-.noise-live-panel{min-height:auto !important;position:sticky;top:96px}
-/* Discover cards are content — never invisible, never a gray void */
-.discover-item,.capital-item,.eco-node,.sec-item{opacity:1 !important;transform:none !important}
-.discover-grid{background:var(--line)}
-.protocol-mark{background:transparent !important}
-.sui-mark{border-color:rgba(255,255,255,.16) !important;color:var(--text) !important}
-/* Security: 4 cards = 4 columns, no orphan gray cell */
-.sec-grid{grid-template-columns:repeat(4,1fr) !important}
-footer{max-width:1296px;margin:0 auto}
-/* Ecosystem matrix (rendered from registry.json) */
-.eco-matrix{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:32px}
-.eco-cell{background:#0a0a0a;padding:22px;min-height:132px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;text-decoration:none;color:var(--text)}
-.eco-cell:hover{border-color:rgba(0,102,255,.55)}
-.eco-cell b{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:500}
-.eco-cell small{font-size:10px;letter-spacing:1.6px;color:var(--text-dim)}
-.eco-pill{align-self:flex-start;font-size:9px;letter-spacing:2px;padding:4px 8px;border:1px solid var(--line);color:var(--text-dim)}
-.eco-pill.live{color:#fff;border-color:rgba(0,102,255,.6)}
-.eco-pill.sunset{color:#ff8844;border-color:rgba(255,136,68,.5)}
-@media(max-width:1024px){.eco-matrix{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:768px){
-  section,.hero,.ecosystem,.cta{padding-left:24px !important;padding-right:24px !important}
-  section{padding-top:var(--space-section-mobile) !important;padding-bottom:var(--space-section-mobile) !important}
-  .hero{padding-top:140px !important}
-  .hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface{padding:28px !important}
-  .eco-matrix{grid-template-columns:1fr}
-}
-@media(prefers-reduced-motion:reduce){.marquee-track{animation:none}}
-</style>
-
 </head>
 <body>
     <canvas id="noiseField" aria-label="Noise dissolving into signal"></canvas>
     <nav>
         <div class="logo"><a class="logo-noise" href="index.html">noise</a></div>
         <div class="nav-links">
-            <a href="#capital">Portfolio</a>
+            <a href="#capital">Capital</a>
             <a href="#actions">Actions</a>
             <a href="#discover">Discover</a>
             <a href="#automation">Automation</a>
@@ -1128,7 +1048,7 @@ footer{max-width:1296px;margin:0 auto}
     </section>
 
     <section class="capital" id="capital">
-        <div class="section-label">PORTFOLIO</div>
+        <div class="section-label">CAPITAL</div>
         <h2 class="section-title">Your capital.<br>One view.</h2>
         
         <div class="capital-interface">
@@ -1402,15 +1322,6 @@ footer{max-width:1296px;margin:0 auto}
         </div>
     </section>
 
-<script id="ecoRegistry" type="application/json">{"verifiedAt":"2026-10-04","protocols":[{"id":"sui","name":"Sui","category":"infrastructure","status":"LIVE","url":"https://sui.io"},{"id":"sui-native","name":"Sui Native Staking","category":"staking","status":"LIVE","url":"https://sui.io"},{"id":"cetus","name":"Cetus","category":"dex","status":"LIVE","url":"https://app.cetus.zone"},{"id":"aftermath","name":"Aftermath","category":"dex","status":"PARTIAL","url":"https://aftermath.finance"},{"id":"deepbook","name":"DeepBook","category":"trading","status":"LIVE","url":"https://deepbook.tech"},{"id":"deepbook-predict","name":"DeepBook Predict","category":"trading","status":"LIVE","url":"https://deepbook.tech"},{"id":"deepbook-margin","name":"DeepBook Margin","category":"trading","status":"COMING_SOON","url":"https://deepbook.tech"},{"id":"turbos","name":"Turbos","category":"dex","status":"DISCOVER","url":"https://turbos.finance"},{"id":"flowx","name":"FlowX","category":"dex","status":"DISCOVER","url":"https://flowx.finance"},{"id":"momentum","name":"Momentum","category":"dex","status":"DISCOVER","url":""},{"id":"kriya","name":"Kriya","category":"dex","status":"DISCOVER","url":"https://kriya.finance"},{"id":"metastable","name":"Metastable","category":"dex","status":"DISCOVER","url":""},{"id":"obric","name":"Obric","category":"dex","status":"DISCOVER","url":"https://obric.xyz"},{"id":"bluefin-spot","name":"Bluefin Spot","category":"dex","status":"DISCOVER","url":"https://bluefin.io"},{"id":"bluefin-perps","name":"Bluefin Perps","category":"trading","status":"DISCOVER","url":"https://bluefin.io"},{"id":"typus","name":"Typus","category":"trading","status":"DISCOVER","url":"https://typus.finance"},{"id":"sudo","name":"Sudo","category":"trading","status":"DISCOVER","url":"https://sudo.finance"},{"id":"perpsplexity","name":"Perpsplexity","category":"trading","status":"DISCOVER","url":"https://perpsplexity.app"},{"id":"navi","name":"NAVI","category":"lending","status":"DISCOVER","url":"https://naviprotocol.io"},{"id":"suilend","name":"Suilend","category":"lending","status":"DISCOVER","url":"https://suilend.fi"},{"id":"scallop","name":"Scallop","category":"lending","status":"DISCOVER","url":"https://scallop.io"},{"id":"bucket","name":"Bucket","category":"lending","status":"DISCOVER","url":"https://bucketprotocol.io"},{"id":"alphalend","name":"AlphaLend","category":"lending","status":"DISCOVER","url":"https://alphalend.xyz"},{"id":"haedal","name":"Haedal","category":"liquid-staking","status":"PARTIAL","url":"https://haedal.xyz"},{"id":"volo","name":"Volo","category":"liquid-staking","status":"DISCOVER","url":"https://volo.fi"},{"id":"springsui","name":"SpringSui","category":"liquid-staking","status":"DISCOVER","url":"https://springsui.com"},{"id":"alphafi","name":"AlphaFi","category":"yield","status":"DISCOVER","url":"https://alphafi.xyz"},{"id":"kai","name":"Kai","category":"yield","status":"DISCOVER","url":"https://kai.finance"},{"id":"nemo","name":"Nemo","category":"btcfi","status":"DISCOVER","url":"https://nemo.fi"},{"id":"steamm","name":"STEAMM","category":"yield","status":"DISCOVER","url":"https://suilend.fi"},{"id":"suipump","name":"SuiPump","category":"launchpad","status":"LIVE","url":"https://suipump.fun"},{"id":"suibridge","name":"Sui Bridge","category":"bridge","status":"DISCOVER","url":"https://bridge.sui.io"},{"id":"wormhole","name":"Wormhole / Portal","category":"bridge","status":"DISCOVER","url":"https://portalbridge.com"}]}</script>
-    <section class="ecosystem-matrix" id="protocols">
-        <div class="section-label">ECOSYSTEM · PROTOCOL MATRIX</div>
-        <h2 class="section-title">Every protocol.<br>One honest status.</h2>
-        <p class="section-lede">LIVE means you can work here now — data, quotes and wallet-signed execution. PARTIAL means live data with execution on the way. DISCOVER means research + 1-click deep-link to the provider. Kriya is winding down and stays out of routing.</p>
-        <div class="eco-matrix" id="ecoMatrix"><div class="fresh" style="padding:22px;">Loading protocol matrix…</div></div>
-        <div class="fresh" style="margin-top:14px;" id="ecoMatrixFresh">Source: registry.json · verified 2026-10-04</div>
-    </section>
-
     <section class="one-action" id="automation">
         <div class="section-label">AUTOMATION</div>
         <h2 class="section-title">One intent.<br>Multiple actions.</h2>
@@ -1448,8 +1359,8 @@ footer{max-width:1296px;margin:0 auto}
             <div class="eco-node">TRADE</div>
             <div class="eco-node">STAKE</div>
             <div class="eco-node">DEEPBOOK</div>
-            <div class="eco-node">CETUS</div>
-            <div class="eco-node">AFTERMATH</div>
+            <div class="eco-node">WALRUS</div>
+            <div class="eco-node">SEAL</div>
             <div class="eco-node">DISCOVER</div>
             <div class="eco-node">ACTIVITY</div>
         </div>
@@ -1458,11 +1369,11 @@ footer{max-width:1296px;margin:0 auto}
     <section class="cta" style="min-height:auto; padding-top:80px;">
         <div class="section-label">SECURITY</div>
         <h2>Built for control.</h2>
-        <p>Non-custodial execution. Transactions require your wallet authorization. App memory lives in the Noise database — preferences with consent, never keys. Simulation before signing where supported.</p>
+        <p>Non-custodial execution. Transactions require your wallet authorization. Sensitive app data can be encrypted with Seal and stored through Walrus. Simulation before signing where supported.</p>
         <div class="sec-grid" style="max-width:1100px; width:100%; text-align:left;">
             <div class="sec-item"><h3>Non-custodial</h3><p>Your wallet signs. No seed phrases. No private keys. Nothing to steal from us.</p></div>
             <div class="sec-item"><h3>Transparent</h3><p>Fees and providers are visible before signing. Best route via Cetus — always attributed.</p></div>
-            <div class="sec-item"><h3>Private</h3><p>Memory is per-wallet and consent-gated. Secrets are refused at the door — keys never leave your wallet.</p></div>
+            <div class="sec-item"><h3>Private</h3><p>Sensitive application data can be encrypted with Seal and stored through Walrus.</p></div>
             <div class="sec-item"><h3>Auditable</h3><p>Transactions and activity are traceable. Every automation run is logged.</p></div>
         </div>
         <div style="margin-top:32px; display:flex; gap:16px; flex-wrap:wrap; justify-content:center;">
@@ -1472,8 +1383,8 @@ footer{max-width:1296px;margin:0 auto}
         <div class="infrastructure-rail" aria-label="Sui infrastructure used by Noise">
             <div><span>SUI</span><small>EXECUTION</small></div>
             <div><span>DEEPBOOK</span><small>LIQUIDITY</small></div>
-            <div><span>CETUS</span><small>SWAP ROUTER</small></div>
-            <div><span>AFTERMATH</span><small>POOLS · STAKING</small></div>
+            <div><span>WALRUS</span><small>STORAGE</small></div>
+            <div><span>SEAL</span><small>ACCESS CONTROL</small></div>
         </div>
     </section>
 
@@ -1482,13 +1393,13 @@ footer{max-width:1296px;margin:0 auto}
         <h2 class="section-title">Your data.<br>Your control.</h2>
         <p style="font-size:15px; color:var(--text-dim); max-width:520px; margin-bottom:32px;">Noise can use encrypted application data without taking custody of your wallet or signing transactions for you. Memory: auto-save preferences, ask-before-save context, never-save secrets.</p>
         <div>
-            <span class="pill">CETUS — SWAP ROUTER</span>
-            <span class="pill">AFTERMATH — POOLS · STAKING</span>
+            <span class="pill">SEAL — ACCESS CONTROL</span>
+            <span class="pill">WALRUS — VERIFIABLE STORAGE</span>
             <span class="pill">SUI — SETTLEMENT &amp; EXECUTION</span>
         </div>
         <div class="tech-marquee"><div class="marquee-track">
-            <span><b>SUI</b> · SETTLEMENT</span><span><b>CETUS</b> · SWAP</span><span><b>AFTERMATH</b> · SWAP / LST</span><span><b>DEEPBOOK</b> · TRADING</span><span><b>SUIPUMP</b> · LAUNCHPAD</span><span><b>NAVI</b> · LENDING</span><span><b>SUILEND</b> · LENDING</span><span><b>HAEDAL</b> · LIQUID STAKING</span><span><b>TURBOS</b> · SWAP</span>
-            <span><b>SUI</b> · SETTLEMENT</span><span><b>CETUS</b> · SWAP</span><span><b>AFTERMATH</b> · SWAP / LST</span><span><b>DEEPBOOK</b> · TRADING</span><span><b>SUIPUMP</b> · LAUNCHPAD</span><span><b>NAVI</b> · LENDING</span><span><b>SUILEND</b> · LENDING</span><span><b>HAEDAL</b> · LIQUID STAKING</span><span><b>TURBOS</b> · SWAP</span>
+            <span><b>SUI</b> · SETTLEMENT</span><span><b>WALRUS</b> · STORAGE</span><span><b>SEAL</b> · ENCRYPTION</span><span><b>CETUS</b> · SWAP</span><span><b>NAVI</b> · LENDING</span><span><b>SUILEND</b> · LENDING</span><span><b>AFTERMATH</b> · SWAP / LST</span><span><b>DEEPBOOK</b> · TRADING</span><span><b>TURBOS</b> · SWAP</span>
+            <span><b>SUI</b> · SETTLEMENT</span><span><b>WALRUS</b> · STORAGE</span><span><b>SEAL</b> · ENCRYPTION</span><span><b>CETUS</b> · SWAP</span><span><b>NAVI</b> · LENDING</span><span><b>SUILEND</b> · LENDING</span><span><b>AFTERMATH</b> · SWAP / LST</span><span><b>DEEPBOOK</b> · TRADING</span><span><b>TURBOS</b> · SWAP</span>
         </div></div>
     </section>
 
@@ -1758,52 +1669,6 @@ footer{max-width:1296px;margin:0 auto}
                 }
             });
         });
-
-        /* Ecosystem matrix — honest registry status on the landing.
-           Source: public/registry.json (generated from shared/registry.js). */
-        (function () {
-            var box = document.getElementById('ecoMatrix');
-            if (!box) return;
-            function pill(p) {
-                if (p.id === 'kriya') return '<span class="eco-pill sunset">SUNSET</span>';
-                if (p.status === 'LIVE') return '<span class="eco-pill live">LIVE</span>';
-                if (p.status === 'PARTIAL') return '<span class="eco-pill">PARTIAL</span>';
-                if (p.status === 'COMING_SOON') return '<span class="eco-pill">SOON</span>';
-                return '<span class="eco-pill">DISCOVER</span>';
-            }
-            function render(list, verifiedAt) {
-                box.innerHTML = list.map(function (p) {
-                    var work = p.status === 'LIVE' ? 'Work in app →'
-                        : p.id === 'kriya' ? 'Winding down · no routing'
-                        : p.status === 'PARTIAL' ? 'Live data · open →'
-                        : (p.url ? 'Deep-link →' : 'In app →');
-                    var href = p.url || 'app.html#discover';
-                    var blank = p.url ? ' target="_blank" rel="noopener"' : '';
-                    return '<a class="eco-cell" href="' + href + '"' + blank + '>' +
-                        '<div><b>' + p.name + '</b><br><small>' + (p.category || '').toUpperCase() + '</small></div>' +
-                        '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' + pill(p) +
-                        '<small style="color:var(--accent);">' + work + '</small></div></a>';
-                }).join('');
-                var f = document.getElementById('ecoMatrixFresh');
-                if (f) f.textContent = 'Source: registry.json · ' + list.length + ' protocols · verified ' + (verifiedAt || '2026-10-04');
-            }
-            function inline() {
-                try {
-                    var el = document.getElementById('ecoRegistry');
-                    if (el) { var j = JSON.parse(el.textContent); return j; }
-                } catch (e) {}
-                return null;
-            }
-            var j0 = inline();
-            if (j0 && j0.protocols) {
-                render(j0.protocols, j0.verifiedAt);
-            } else {
-                box.innerHTML = '<div class="fresh" style="padding:22px;">Matrix lives in the app → <a href="app.html#discover" style="color:var(--accent)">Discover</a></div>';
-            }
-            fetch('public/registry.json').then(function (r) { return r.ok ? r.json() : Promise.reject(); })
-                .then(function (j) { if (j.protocols) render(j.protocols, j.verifiedAt); })
-                .catch(function () {});
-        })();
     </script>
 </body>
 </html>

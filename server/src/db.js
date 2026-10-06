@@ -226,6 +226,17 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at)')
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rev_digest_unique ON revenue_entries(digest)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_rew_revenue_unique ON referral_rewards(revenue_id)');
 
+// Noise Memory extension (SQLite parity with database/schema.sql — idempotent).
+// Application-level memory in the Noise database: per-wallet, consent-gated.
+['owner TEXT', 'namespace TEXT',
+ 'updated_at TEXT', 'status TEXT',
+ 'encryption TEXT',
+].forEach((ddl) => ensureColumn('memory_records', ddl));
+db.exec(`UPDATE memory_records SET owner = wallet WHERE owner IS NULL`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_mem_wallet ON memory_records(wallet)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_mem_owner ON memory_records(owner)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_mem_status ON memory_records(status)`);
+
 // Seed derives from the single canonical registry (shared/registry.js) — no
 // protocol data is duplicated here. Old status vocabulary (LIVE_EXECUTION /
 // READ_ONLY / DISCOVERY_ONLY / DEEP_LINK_ONLY / BLOCKED) is replaced by the

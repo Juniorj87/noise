@@ -15,7 +15,7 @@ export function skill(entry) {
     dataAccess: entry.dataAccess || [],   // read-only data sources
     executionAccess: entry.executionAccess || [], // build/request-signature only
     permissions: entry.permissions || [],
-    requires: entry.requires || [],       // e.g. ['walrus','seal']
+    requires: entry.requires || [],       // e.g. ['deepbook']
     never: ['private-key', 'auto-sign'],
     docs: entry.docs || '',
   };
@@ -23,27 +23,11 @@ export function skill(entry) {
 
 export const SKILLS = [
   skill({
-    id: 'sui_memory', name: 'Sui Memory', status: 'AVAILABLE',
-    purpose: 'Store your preferences and AI context (consent-gated) and return them to Noise.',
+    id: 'sui_memory', name: 'Noise Memory', status: 'AVAILABLE',
+    purpose: 'Store your preferences and AI context (consent-gated) in the Noise database and return them to Noise.',
     dataAccess: ['memory_records (owner-scoped)'], executionAccess: [],
     permissions: ['read-data'],
-    docs: '/app/memory',
-  }),
-  skill({
-    id: 'walrus_storage', name: 'Walrus Storage', status: 'COMING_SOON',
-    purpose: 'Persist encrypted Noise data as content-addressed blobs off the Sui hot path.',
-    dataAccess: [], executionAccess: [],
-    permissions: [],
-    requires: ['walrus'],
-    docs: 'https://docs.wal.app',
-  }),
-  skill({
-    id: 'seal_encryption', name: 'Seal Encryption', status: 'COMING_SOON',
-    purpose: 'Threshold encryption + on-chain access control for private Noise data.',
-    dataAccess: [], executionAccess: [],
-    permissions: [],
-    requires: ['seal'],
-    docs: 'https://seal-docs.wal.app',
+    docs: '/app/ai',
   }),
   skill({
     id: 'deepbook_market_data', name: 'DeepBook Market Data', status: 'AVAILABLE',
@@ -56,6 +40,25 @@ export const SKILLS = [
     purpose: 'Read balances, stakes and objects for the connected wallet.',
     dataAccess: ['Sui RPC'], executionAccess: [],
     permissions: ['read-data'], docs: 'https://docs.sui.io',
+  }),
+  skill({
+    id: 'sui_ecosystem', name: 'Sui Ecosystem', status: 'AVAILABLE',
+    purpose: 'Read the Noise protocol registry: status, capabilities, fees and docs for every Sui protocol.',
+    dataAccess: ['Noise ProtocolRegistry'], executionAccess: [],
+    permissions: ['read-data'], docs: '/app/discover',
+  }),
+  skill({
+    id: 'personal_preferences', name: 'Personal Preferences', status: 'AVAILABLE',
+    purpose: 'Recall your saved preferences and workflow context (owner-scoped, consent-gated) to personalize answers.',
+    dataAccess: ['memory_records (owner-scoped)'], executionAccess: [],
+    permissions: ['read-data'],
+    docs: '/app/ai',
+  }),
+  skill({
+    id: 'trading_research', name: 'Trading Research', status: 'AVAILABLE',
+    purpose: 'Read live DeepBook markets/order books and SuiPump discovery data for research. Never executes.',
+    dataAccess: ['DeepBook v3 SDK', 'SuiPump API'], executionAccess: [],
+    permissions: ['read-data'], docs: '/app/trade',
   }),
   skill({
     id: 'suipump_discovery', name: 'SuiPump Discovery', status: 'AVAILABLE',

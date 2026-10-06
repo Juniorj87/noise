@@ -11,11 +11,13 @@ import aftermathHandler from './handlers/aftermath.js';
 import aiHandler from './handlers/ai.js';
 import automationHandler from './handlers/automation.js';
 import cronHandler from './handlers/cron.js';
+import discoverHandler from './handlers/discover.js';
 import earnHandler from './handlers/earn.js';
 import feesHandler from './handlers/fees.js';
 import memoryHandler from './handlers/memory.js';
 import providersHandler from './handlers/providers.js';
 import skillsHandler from './handlers/skills.js';
+import leaderboardHandler from './handlers/leaderboard.js';
 import referralHandler from './handlers/referral.js';
 import revenueHandler from './handlers/revenue.js';
 import tradeHandler from './handlers/trade.js';
@@ -52,13 +54,15 @@ export async function handleRequest(req, res) {
   if (pathname.startsWith('/api/scheduler-tick') || pathname.startsWith('/api/cron-tick')) return cronHandler(req, res);
   if (pathname.startsWith('/api/automation')) return automationHandler(req, res);
   if (pathname.startsWith('/api/cron')) return cronHandler(req, res);
+  if (pathname.startsWith('/api/discover')) return discoverHandler(req, res);
   if (pathname.startsWith('/api/memory')) return memoryHandler(req, res);
+  if (pathname.startsWith('/api/leaderboard')) return leaderboardHandler(req, res);
   if (pathname.startsWith('/api/ai')) return aiHandler(req, res);
   if (pathname.startsWith('/api/admin')) return adminHandler(req, res);
   if (pathname.startsWith('/api/tx')) return txHandler(req, res);
 
   if (pathname === '/api' || pathname === '') {
-    return json(res, 200, { ok: true, name: 'Noise Hub API', routes: ['/api/health', '/api/capital', '/api/quote', '/api/swap', '/api/trade', '/api/earn'] }, req);
+    return json(res, 200, { ok: true, name: 'Noise Hub API', routes: ['/api/health', '/api/capital', '/api/quote', '/api/swap', '/api/trade', '/api/earn', '/api/discover/suipump/tokens', '/api/discover/perpsplexity/markets'] }, req);
   }
 
   return json(res, 404, { error: 'NOT_FOUND', message: `Route ${pathname} not found.` }, req);

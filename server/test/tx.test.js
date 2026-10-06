@@ -3,6 +3,10 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 
+// Isolate this suite's SQLite dev DB so `npm test` never writes fixture
+// wallets into the app's dev leaderboard (which must show real accounting only).
+process.env.DB_PATH = './data/test-tx.db';
+
 const RUN_ID = Date.now().toString(36) + randomBytes(3).toString('hex');
 const W1 = '0x1111111111111111111111111111111111111111111111111111111111111111';
 const W2 = '0x2222222222222222222222222222222222222222222222222222222222222222';

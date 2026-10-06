@@ -430,19 +430,76 @@ export async function automationTick() {
   return { checked: due.length, at: nowIso };
 }
 
-/* ---------- memory (consent-gated prefs; identical forbidden list) ---------- */
-export async function saveMemory({ wallet, category, content }) {
-  const allowed = ['preference', 'protocol-preference', 'notification-preference', 'workflow-preference'];
+/* ---------- memory (consent-gated app-level prefs; PostgreSQL storage) ----------
+ * Noise Memory is plain application memory: AI -> Noise backend -> PostgreSQL.
+ * Secrets (private keys, seeds, passwords, auth secrets) are rejected at write
+ * and never reach storage. See shared/logic.js findSecretKind. */
+export async function saveMemory({ wallet, category, content, namespace = 'personal' }) {
+  const allowed = ['preference', 'protocol-preference', 'notification-preference', 'workflow-preference',
+    'project-context', 'user-instruction', 'ai-fact'];
   if (!allowed.includes(category)) throw Object.assign(new Error('INVALID_CATEGORY'), { code: 'INVALID_CATEGORY' });
-  const forbidden = ['seed', 'privatekey', 'private-key', 'password', 'secret', 'mnemonic'];
-  if (forbidden.some((w) => String(content).toLowerCase().includes(w))) {
+  const { findSecretKind } = await import('../../shared/logic.js');
+  const kind = findSecretKind(String(category) + ' ' + String(content));
+  if (kind) {
+    throw Object.assign(new Error('FORBIDDEN_CONTENT'), { code: 'FORBIDDEN_CONTENT' });
+  }
+  const legacy = ['seed', 'privatekey', 'private-key', 'mnemonic'];
+  if (legacy.some((w) => String(content).toLowerCase().includes(w))) {
     throw Object.assign(new Error('FORBIDDEN_CONTENT'), { code: 'FORBIDDEN_CONTENT' });
   }
   await ensureSchema();
   const id = uid('mem');
-  await getPool().query('INSERT INTO memory_records (id, wallet, category, content_cipher) VALUES ($1,$2,$3,$4)',
-    [id, wallet, category, String(content).slice(0, 2000)]);
+  const ns = String(namespace || 'personal').slice(0, 40);
+  const body = String(content).slice(0, 2000);
+  try {
+    await getPool().query(
+      'INSERT INTO memory_records (id, wallet, owner, namespace, category, content_cipher, status, encryption) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [id, wallet, wallet, ns, category, body, 'active', 'local']);
+  } catch {
+    // Legacy schema fallback (pre-migration DBs).
+    await getPool().query('INSERT INTO memory_records (id, wallet, category, content_cipher) VALUES ($1,$2,$3,$4)',
+      [id, wallet, category, body]);
+  }
   return { id };
+}
+
+/** Owner-scoped keyword search over the Noise memory index (rebuildable cache).
+ *  Simple token overlap — no invented embeddings; real semantic index later. */
+export async function searchMemory({ wallet, query, limit = 8 }) {
+  await ensureSchema();
+  const lim = Math.max(1, Math.min(25, Number(limit) || 8));
+  const q = String(query || '').toLowerCase();
+  const tokens = q.split(/[^a-z0-9]+/).filter((t) => t.length > 2).slice(0, 12);
+  let rows;
+  try {
+    rows = (await getPool().query(
+      "SELECT id, category, content_cipher AS content, created_at FROM memory_records WHERE wallet = $1 AND (status IS NULL OR status = 'active') ORDER BY created_at DESC LIMIT 200",
+      [wallet])).rows;
+  } catch {
+    rows = (await getPool().query(
+      'SELECT id, category, content_cipher AS content, created_at FROM memory_records WHERE wallet = $1 ORDER BY created_at DESC LIMIT 200',
+      [wallet])).rows;
+  }
+  if (!tokens.length) return rows.slice(0, lim).map((r) => ({ ...r, score: 0 }));
+  const scored = rows.map((r) => {
+    const hay = String(r.content || '').toLowerCase();
+    let score = 0;
+    for (const t of tokens) if (hay.includes(t)) score += 1;
+    return { ...r, score };
+  }).filter((r) => r.score > 0).sort((a, b) => b.score - a.score || String(b.created_at).localeCompare(String(a.created_at)));
+  return scored.slice(0, lim);
+}
+
+export async function memoryStats(wallet) {
+  await ensureSchema();
+  try {
+    const r = (await getPool().query(
+      "SELECT COUNT(*)::int AS total, MAX(created_at) AS last FROM memory_records WHERE wallet = $1 AND (status IS NULL OR status = 'active')",
+      [wallet])).rows[0];
+    return { total: Number(r?.total) || 0, lastSync: r?.last || null };
+  } catch {
+    return { total: 0, lastSync: null };
+  }
 }
 
 /* ---------- AI providers (identical registry; keys env-only) ---------- */
