@@ -1494,6 +1494,8 @@
 .opportunity-grid,.token-grid{gap:16px !important;margin-bottom:40px !important}
 .assets-grid,.token-metrics{background:transparent !important;border:none !important;gap:12px !important}
 .asset-item,.token-metric{border:1px solid var(--line) !important}
+.action-intents{background:transparent !important;border:none !important;gap:12px !important}
+.intent-item{border:1px solid var(--line) !important}
 .asset-item:hover{border-color:rgba(0,102,255,.55) !important}
 .quick-actions{gap:12px !important;margin-bottom:40px !important}
 .command-intro{padding:28px 30px !important;margin-bottom:32px !important}
@@ -2842,13 +2844,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     <div class="kv"><span>Rewards distributed</span><b id="netPaid">—</b></div>
                     <div class="fresh" style="margin-top:8px;">Real data only — building until activity exists.</div>
                 </div>
-                <div class="panel">
-                    <h3>REVENUE WALLET</h3>
-                    <div class="kv"><span>Settlement address</span><b style="font-family:ui-monospace,monospace; font-size:11px; word-break:break-all;">0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1</b></div>
-                    <div class="kv"><span>Observed balance</span><b id="revWalletBal">—</b></div>
-                    <div class="fresh" style="margin-top:8px;">Public settlement/verification address (server config NOISE_HUB_REVENUE_WALLET). Referral rewards are paid from Noise revenue — never added to your fee. No private key exists anywhere in Noise.</div>
-                </div>
-                <div class="fresh" style="margin-top:8px;">Volume ranking appears only when a verified volume source exists — until then it stays COMING SOON. Positions are deterministic: metric first, then earned, revenue, active referrals, wallet.</div>
+                <div class="fresh" style="margin-top:8px;">Referral rewards are paid from Noise revenue — never added to your fee. Volume ranking appears only when a verified volume source exists — until then it stays COMING SOON. Positions are deterministic: metric first, then earned, revenue, active referrals, wallet.</div>
             </div>
             <!-- Skills are an internal capability registry, not a user-facing product page. -->
             <div class="page" id="skills" style="display:none" aria-hidden="true"></div>
@@ -3961,29 +3957,34 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     tradeCheckManager();
                     tBookAt = Date.now(); tradeFreshTick();
                 } catch (e) {
-                set('tMid', 'Unavailable'); set('tBid', '—'); set('tAsk', '—'); set('tSpread', '—');
-                $('tAsks').innerHTML = '<tr><td colspan="3" class="fresh">Order book unavailable — DeepBook RPC unreachable or market not found. Nothing is estimated or faked. <button class="btn-ghost" style="margin-left:8px;padding:4px 10px;" onclick="tradeOnMarketChange()">Retry</button></td></tr>';
-                $('tBids').innerHTML = '';
-                $('tFresh').textContent = 'Source: DeepBook V3 SDK · last attempt ' + new Date().toLocaleTimeString();
+                // Never wipe last-good data on a transient failure — mark stale instead.
+                if (T.book && T.book.midPrice != null) {
+                    $('tFresh').textContent = 'Source: DeepBook V3 SDK · showing last good book (stale) · retrying…';
+                    const bf = $('tBookFresh'); if (bf) { bf.classList.add('stale'); bf.textContent = 'Stale data — refreshing…'; }
+                } else {
+                    set('tMid', 'Unavailable'); set('tBid', '—'); set('tAsk', '—'); set('tSpread', '—');
+                    $('tAsks').innerHTML = '<tr><td colspan="3" class="fresh">Order book unavailable — DeepBook RPC unreachable or market not found. Nothing is estimated or faked. <button class="btn-ghost" style="margin-left:8px;padding:4px 10px;" onclick="tradeOnMarketChange()">Retry</button></td></tr>';
+                    $('tBids').innerHTML = '';
+                    $('tFresh').textContent = 'Source: DeepBook V3 SDK · last attempt ' + new Date().toLocaleTimeString();
+                }
             }
         }
         /* 24h change comes from Aftermath price-info (sourced, per-asset).
            24h volume stays unavailable: no verified per-market source exists. */
         async function tradeLoad24h(sym) {
-            const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-            set('t24hChange', '…');
-            if (!sym || !SYM_TYPE[sym]) { set('t24hChange', 'Unavailable'); return; }
+            const el = $('t24hChange');
+            const keep = el && el.textContent && el.textContent !== '…' && el.textContent !== 'Unavailable';
+            if (!sym || !SYM_TYPE[sym]) { if (!keep && el) el.textContent = 'Unavailable'; return; }
             try {
                 const pi = await apiGet('/api/prices-info?coins=' + encodeURIComponent(sym), 20000);
                 const d = pi && !pi.error && pi.value ? pi.value[SYM_TYPE[sym]] : null;
-                if (d && d.priceChange24HoursPercentage != null) {
+                if (d && d.priceChange24HoursPercentage != null && el) {
                     const v = Number(d.priceChange24HoursPercentage);
-                    const el = $('t24hChange');
                     el.textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
                     el.style.color = v >= 0 ? '#00ff88' : '#ff4444';
                     $('tFresh').textContent += ' · 24h Δ via Aftermath Prices';
-                } else set('t24hChange', 'Unavailable');
-            } catch (e) { set('t24hChange', 'Unavailable'); }
+                } else if (!keep && el) el.textContent = 'Unavailable';
+            } catch (e) { if (!keep && el) el.textContent = 'Unavailable'; }
         }
         function tradeRenderBook(book) {
             const fmtRow = (p, q, color, quote) => '<tr><td style="color:' + color + ';">' + p + '</td><td style="text-align:right;">' + q + '</td><td style="text-align:right; color:var(--text-dim);">' + (Number(p) * Number(q)).toFixed(quote === 'USDC' ? 2 : 4) + '</td></tr>';
@@ -5793,15 +5794,6 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             // paintRef fills YOUR POSITION from Noise accounting (live values only)
             // and refreshes the global ranking + network stats — one shared path.
             await paintRef();
-            loadRevenueWallet();
-        }
-        async function loadRevenueWallet() {
-            try {
-                const r = await apiGet('/api/revenue/wallet', 15000);
-                if (r && !r.error && $('revWalletBal')) {
-                    $('revWalletBal').textContent = r.balance != null ? (Number(r.balance).toFixed(4) + ' SUI · ' + (r.coverage || 'partial-scan')) : '— (observed-unavailable)';
-                }
-            } catch (e) { if ($('revWalletBal')) $('revWalletBal').textContent = '—'; }
         }
         async function loadNetwork() {
             try {
@@ -6050,7 +6042,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 loadSuipump().catch(() => {});
             } catch (e) {
                 if (fr) fr.textContent = 'Discover Unavailable — providers unreachable.';
-                $('tokenRows').innerHTML = '<tr><td colspan="5" class="fresh">Unavailable.</td></tr>';
+                $('tokenRows').innerHTML = '<tr><td colspan="5" class="fresh">Unavailable. <button class="btn-ghost" style="margin-left:8px;" onclick="loadDiscover()">Retry</button></td></tr>';
             }
         }
         function openToken(sym) { window._token = sym; navigateTo('token'); loadToken(sym); }
@@ -6115,18 +6107,37 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             if (h < 48) return h + 'h ago';
             return Math.floor(h / 24) + 'd ago';
         }
-        async function loadSuipump() {
+        async function loadSuipump(retry) {
             const grid = $('suipumpGrid');
             if (DISC.suipumpTokens.length) { renderSuipump(); return; }
-            grid.innerHTML = '<div class="fresh">Loading SuiPump tokens…</div>';
+            // Stale-while-revalidate: last good snapshot survives cold starts.
+            let cached = null;
+            try { cached = JSON.parse(localStorage.getItem('hub_suipump') || 'null'); } catch (e) {}
+            if (cached && cached.tokens && cached.tokens.length && !retry) {
+                DISC.suipumpTokens = cached.tokens;
+                DISC._rendered = cached.rendered || null;
+                renderSuipump();
+                $('suipumpFresh').textContent = 'Source: SuiPump Public API · cached snapshot · refreshing live…';
+            } else {
+                grid.innerHTML = '<div class="fresh">Loading SuiPump tokens…</div>';
+            }
             try {
-                const r = await apiGet('/api/discover/suipump/tokens', 30000);
+                const r = await apiGet('/api/discover/suipump/tokens', 60000);
                 if (!r || r.error) throw new Error((r && r.error) || 'PROVIDER_UNAVAILABLE');
                 DISC.suipumpTokens = r.tokens || [];
+                if (!DISC.suipumpTokens.length) throw new Error('EMPTY_SNAPSHOT');
                 renderSuipump();
+                try { localStorage.setItem('hub_suipump', JSON.stringify({ at: Date.now(), tokens: DISC.suipumpTokens.slice(0, 60) })); } catch (e) {}
                 $('suipumpFresh').textContent = 'Source: SuiPump Public API · ' + DISC.suipumpTokens.length + ' tokens · Updated ' + new Date(r.updatedAt || Date.now()).toLocaleTimeString() + ' · metrics are factual — never buy recommendations';
             } catch (e) {
-                grid.innerHTML = '<div class="fresh" style="color:#ff6666;">SuiPump temporarily unavailable — other Discover sources still work. <button class="btn-ghost" onclick="DISC.suipumpTokens=[];loadSuipump()">Retry</button></div>';
+                if (DISC.suipumpTokens.length) {
+                    renderSuipump();
+                    $('suipumpFresh').textContent = 'Source: SuiPump Public API · showing cached snapshot (live refresh failed) · metrics are factual — never buy recommendations';
+                } else {
+                    grid.innerHTML = '<div class="fresh" style="color:#ff6666;">SuiPump temporarily unavailable (cold start can take ~1 min) — other Discover sources still work. <button class="btn-ghost" onclick="DISC.suipumpTokens=[];loadSuipump(true)">Retry</button></div>';
+                    // One automatic retry for cold starts.
+                    if (!retry) setTimeout(() => { if (!DISC.suipumpTokens.length) loadSuipump(true); }, 15000);
+                }
             }
         }
         function renderSuipump() {
