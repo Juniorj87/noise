@@ -17,7 +17,7 @@ export { ACTIONS, PROVIDERS, isWalletAddress, isPositiveAmount, isValidBps, isVa
 
 /* ---------- Fee engine: integer-safe bps math ---------- */
 export const FEES = {
-  swapBps: Number(process.env.PLATFORM_SWAP_FEE_BPS ?? 20),
+  swapBps: Number(process.env.PLATFORM_SWAP_FEE_BPS ?? 2),
   earnBps: Number(process.env.PLATFORM_EARN_FEE_BPS ?? 0),
   refRate: Number(process.env.REFERRAL_DEFAULT_RATE ?? 30),
   refWindowDays: Number(process.env.REFERRAL_WINDOW_DAYS ?? 30),

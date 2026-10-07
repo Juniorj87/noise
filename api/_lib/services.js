@@ -22,7 +22,7 @@ export function bpsFee(amount, bps) { return Math.round(((amount * bps) / 10000)
 
 export async function feeConfig() {
   const [swap, earn] = await Promise.all([
-    getConfig('swapBps', String(Number(process.env.PLATFORM_SWAP_FEE_BPS ?? 20))),
+    getConfig('swapBps', String(Number(process.env.PLATFORM_SWAP_FEE_BPS ?? 2))),
     getConfig('earnBps', String(Number(process.env.PLATFORM_EARN_FEE_BPS ?? 0))),
   ]);
   return { swapBps: Number(swap), earnBps: Number(earn) };
