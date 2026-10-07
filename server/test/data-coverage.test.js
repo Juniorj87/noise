@@ -118,20 +118,29 @@ test('data: coverage matrix matches live code (honest DISCOVER, no invented DATA
     ['sui-native', 'validators', 'LIVE', typeof earnLib.getValidators === 'function'],
     ['deepbook', 'orderbook', 'LIVE', getProtocol('deepbook').capability.trade === true],
     ['deepbook', '24h-ticker', 'UNAVAILABLE', getProtocol('deepbook').note.length > 0],
-    ['navi', 'lending-DATA', 'UNAVAILABLE', getProtocol('navi').status === 'DISCOVER'],
-    ['suilend', 'lending-DATA', 'UNAVAILABLE', getProtocol('suilend').status === 'DISCOVER'],
-    ['scallop', 'lending-DATA', 'UNAVAILABLE', getProtocol('scallop').status === 'DISCOVER'],
+    ['navi', 'lending-DATA', 'LIVE', getProtocol('navi').status === 'PARTIAL' && getProtocol('navi').capability.data === true],
+    ['suilend', 'lending-DATA', 'LIVE', getProtocol('suilend').status === 'PARTIAL' && getProtocol('suilend').capability.data === true],
+    ['scallop', 'lending-DATA', 'LIVE', getProtocol('scallop').status === 'PARTIAL' && getProtocol('scallop').capability.data === true],
+    ['bucket', 'lending-DATA', 'LIVE', getProtocol('bucket').status === 'PARTIAL' && getProtocol('bucket').capability.data === true],
     ['haedal', 'staking-DATA', 'PENDING', getProtocol('haedal').status === 'PARTIAL'],
-    ['volo', 'staking-DATA', 'UNAVAILABLE', getProtocol('volo').status === 'DISCOVER'],
-    ['springsui', 'staking-DATA', 'UNAVAILABLE', getProtocol('springsui').status === 'DISCOVER'],
+    ['volo', 'staking-DATA', 'LIVE', getProtocol('volo').status === 'PARTIAL' && getProtocol('volo').capability.data === true],
+    ['springsui', 'staking-DATA', 'LIVE', getProtocol('springsui').status === 'PARTIAL' && getProtocol('springsui').capability.data === true],
+    ['turbos', 'swap-DATA', 'LIVE', getProtocol('turbos').status === 'PARTIAL' && getProtocol('turbos').capability.data === true],
+    ['bluefin-perps', 'trade-DATA', 'LIVE', getProtocol('bluefin-perps').status === 'PARTIAL' && getProtocol('bluefin-perps').capability.data === true],
+    ['metastable', 'vault-DATA', 'LIVE', getProtocol('metastable').status === 'PARTIAL' && getProtocol('metastable').capability.data === true],
+    ['obric', 'removed', 'REMOVED', getProtocol('obric') === null],
     ['deepbook-predict', 'markets', 'LIVE', getProtocol('deepbook-predict').status === 'LIVE'],
     ['deepbook-margin', 'execution', 'COMING_SOON', getProtocol('deepbook-margin').status === 'COMING_SOON'],
     ['cetus', 'swap', 'LIVE', getProtocol('cetus').capability.execution === true],
   ];
   const bad = matrix.filter(([, , , proof]) => !proof);
   assert.deepEqual(bad.map((b) => b[0] + '/' + b[1]), []);
-  // every matrix protocol exists in the canonical registry
-  for (const [id] of matrix) assert.ok(getProtocol(id), 'registry missing ' + id);
+  // every matrix protocol exists in the canonical registry — except rows that
+  // assert a deliberate removal (expected === 'REMOVED').
+  for (const [id, , expected] of matrix) {
+    if (expected === 'REMOVED') assert.equal(getProtocol(id), null, id + ' should stay removed');
+    else assert.ok(getProtocol(id), 'registry missing ' + id);
+  }
   assert.ok(PROTOCOLS.length >= 20, 'registry unexpectedly small');
 });
 

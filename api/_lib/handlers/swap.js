@@ -1,10 +1,11 @@
 // POST /api/swap — build the PTB (Cetus fastRouterSwap) + devInspect simulation.
 // Backend NEVER signs: wallet receives txBytes only (spec §23, §24).
 import { handler, readJson } from '../http.js';
-import { cetusAdapter, simulate } from '../adapters.js';
-import { isWalletAddress } from '../services.js';
+import { cetusAdapter, simulate, coinType } from '../adapters.js';
+import { isWalletAddress, feeConfig } from '../services.js';
 import { withBreaker } from '../util.js';
 import { calculateFeeBreakdown } from '../fee-engine.js';
+import { aftermathSwapBuild, normalizeLendingError } from '../lending.js';
 
 // Base units per whole token — the fee leg is carved from the input coin, so
 // the human-readable fee MUST be denominated in the input asset, not dollars.
@@ -23,6 +24,35 @@ export default handler(async (req) => {
   }
   if (!isWalletAddress(sender)) return { error: 'INVALID_WALLET', message: 'Sender must be a valid 0x… address.', status: 400 };
   if (!(Number(slippage) >= 0 && Number(slippage) < 1)) return { error: 'INVALID_SLIPPAGE', message: 'Slippage must be between 0 and 1.', status: 400 };
+  // Aftermath execution path: quote -> route -> tx (with Noise fee leg) -> simulate.
+  if (String(b.provider || '').toLowerCase() === 'aftermath') {
+    try {
+      const cfg = await feeConfig().catch(() => ({ swapBps: 20 }));
+      const r = await withBreaker('aftermath', () => aftermathSwapBuild({
+        wallet: sender,
+        fromType: coinType(String(from).toUpperCase()),
+        toType: coinType(String(to).toUpperCase()),
+        amountMist: String(amountMist),
+        slippage: Number(slippage),
+        feeBps: Number(cfg.swapBps || 0),
+        feeRecipient: null,
+      }));
+      const sim = await simulate(r.txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));
+      let gasEst = null;
+      if (sim && sim.effects && sim.effects.gasUsed) {
+        const gu = sim.effects.gasUsed;
+        gasEst = String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0)));
+      }
+      return {
+        provider: 'Aftermath', amountOut: String(r.meta?.amountOut ?? 0),
+        txBytes: r.txBytes, simulation: sim, gasEst, feeCollected: r.meta?.feeCollected || null,
+        builtAt: new Date().toISOString(),
+      };
+    } catch (e) {
+      const n = normalizeLendingError(e);
+      return { error: n.code || 'BUILD_FAILED', detail: String(n.message || e).slice(0, 200), status: /INVALID|INSUFFICIENT/.test(n.code) ? 400 : 502 };
+    }
+  }
   try {
     const { router, txBytes, feeCollected } = await withBreaker('cetus', () => cetusAdapter.buildSwap({ from: String(from).toUpperCase(), to: String(to).toUpperCase(), amountMist, sender, slippage }));
     const sim = await simulate(txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));

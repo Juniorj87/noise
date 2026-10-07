@@ -162,7 +162,7 @@ e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pr
             <table>
                 <tr><th>Protocol</th><th>Category</th><th>Status</th><th>Notes</th></tr>
                 <tr><td>Cetus (+Aggregator V3)</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes, tx build, devInspect simulation; wallet signs. SDK 1.7.3</td></tr>
-                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Quotes via official REST (<code>/api/router/trade-route</code>); compared against Cetus. Unsigned build is a milestone</td></tr>
+                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Quotes via official REST/SDK; <b>build wired</b> (router tx appended after the Noise fee leg, simulated pre-sign). Selectable in Swap → Execution route. E2E proof needs a funded wallet run</td></tr>
                 <tr><td>Aftermath Prices/Pools/Rewards</td><td>Data</td><td><span class="pill live">LIVE</span></td><td>Prices, pool TVL/APR, claimable rewards via REST; staking APY via SDK</td></tr>
                 <tr><td>Sui Native Staking</td><td>Staking</td><td><span class="pill live">LIVE</span></td><td>Balances, stakes, validators via RPC</td></tr>
                 <tr><td>DeepBook Spot</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Live market discovery, L2 orderbook, market/limit builds, open orders, cancel — via SDK 2.6.x; orders need your BalanceManager</td></tr>
@@ -170,21 +170,28 @@ e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pr
                 <tr><td>DeepBook Margin</td><td>Trading</td><td><span class="pill">COMING SOON</span></td><td>Live Sui primitive; no SDK/execution path wired into Noise yet</td></tr>
                 <tr><td>SuiPump</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>674+ launchpad tokens: price, volume, trades, bonding progress, graduation — factual metrics only, never recommendations</td></tr>
                 <tr><td>Perpsplexity</td><td>Discovery</td><td><span class="pill">DISCOVER</span></td><td>Perps venue: live status read; execution on the venue (no public token-discovery API — not scraped)</td></tr>
-                <tr><td>Haedal</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Staking surface pending; execution intentionally OFF until the SDK path is verified</td></tr>
-                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>SDK hardcodes deprecated RPC + undocumented pool args — see audit §C</td></tr>
-                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>SDK needs unverified gRPC client shape — see audit §C</td></tr>
+                <tr><td>Haedal</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live rate (1.0825), positions, tickets. Stake (min 1 SUI) / delayed + instant unstake / ticket claim PTBs build via the upgraded staking package; wallet signs. E2E proof needs a funded wallet run</td></tr>
+                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>New <code>@naviprotocol/lending</code> v2 (gRPC): 35 pools, positions, health, rewards live. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run</td></tr>
+                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td><code>@suilend/sdk</code> v12 (gRPC): 45 reserves, obligation positions live. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run</td></tr>
+                <tr><td>Sui Transfer</td><td>Transfer</td><td><span class="pill live">WIRED</span></td><td>Plain coin PTB (SUI/USDC/DEEP/CETUS/NAVX) builds + simulates; wallet signs. E2E proof needs a funded wallet run</td></tr>
+                <tr><td>DeepBook Margin</td><td>Trading</td><td><span class="pill">COMING SOON</span></td><td>On-chain preflight (SUI_USDC, DEEP_USDC enabled + pool ids) + margin-account creation wired. Leveraged borrow/trade needs a user MarginManager + fresh Pyth feeds</td></tr>
                 <tr><td>Scallop · Bucket · AlphaLend</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link; execution per milestone</td></tr>
-                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">DISCOVER</span></td><td>No public quote+build path wired — discovery + deep link only</td></tr>
-                <tr><td>Bluefin Spot · Bluefin Perps</td><td>Trading</td><td><span class="pill">DISCOVER</span></td><td>Kept separate; discovery + deep link only</td></tr>
-                <tr><td>Volo · SpringSui</td><td>Liquid staking</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
-                <tr><td>FlowX · Obric</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Usable inside Swap via Cetus Aggregator routing when selected; deep-link for direct use</td></tr>
-                <tr><td>Metastable · Momentum</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Domains dead at audit 2026-10-06 — deep-link disabled, no data shown rather than a dead link</td></tr>
+                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Live CLMM pools (TVL/volume/APR) + quotes compared in every Swap. Execution falls back to a buildable router and says so</td></tr>
+                <tr><td>Bluefin Spot · Bluefin Perps</td><td>Trading</td><td><span class="pill">PARTIAL</span></td><td>Kept separate. Perps: live markets, orderbook depth and 24h tickers in Discover; trading needs a venue account. Spot: deep-link only (no spot book in the public API)</td></tr>
+                <tr><td>Scallop</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>Live markets, obligations and portfolio. Supply/withdraw/borrow/repay PTBs build unsigned via the official SDK; wallet signs</td></tr>
+                <tr><td>Bucket</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>Live PSM pools, collaterals and USDB supply. PSM swaps build + simulate; sUSDB savings deposit blocked (SDK cannot enumerate lpType — upstream bug)</td></tr>
+                <tr><td>SpringSui</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live sSUI/SUI rate + 60M SUI TVL. Mint/redeem PTBs build + simulate; instant unstaking via SIP-33</td></tr>
+                <tr><td>Volo</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live totals + validator APYs via NAVI open API. Stake builds need unpublished StakePool/Metadata object IDs — blocked with exact reason</td></tr>
+                <tr><td>Metastable</td><td>Stablecoin vaults</td><td><span class="pill">PARTIAL</span></td><td>4 live vaults (mUSD/mSUI/mBTC/mETH). mSUI mint/burn builds; mUSD+ need a Pyth key the SDK cannot pass — honest blocker</td></tr>
+                <tr><td>FlowX</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Usable inside Swap via Cetus Aggregator routing when selected; deep-link for direct use</td></tr>
+                <tr><td>Momentum</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Domain dead at audit 2026-10-06 — deep-link disabled, no data shown rather than a dead link</td></tr>
+                <tr><td>Obric — REMOVED</td><td>—</td><td><span class="pill">REMOVED</span></td><td>Aptos/Solana protocol, not Sui. Removed from the registry 2026-10-06</td></tr>
+                <tr><td>AlphaFi · AlphaLend — SUNSET</td><td>Yield</td><td><span class="pill">SUNSET</span></td><td>Operator winding down. Withdraw via the provider; no new positions through Noise</td></tr>
                 <tr><td>SuiPump · Perpsplexity</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>Wired API: <code>/api/discover/suipump/tokens</code> (684+ tokens) · <code>/api/discover/perpsplexity/markets</code> (live venue read)</td></tr>
-                <tr><td>Momentum · Turbos</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link; no public quote+build path wired</td></tr>
                 <tr><td>Kriya</td><td>DEX</td><td><span class="pill">SUNSET</span></td><td>Protocol winding down — excluded from routing/quotes; withdraw via provider, no new positions through Noise</td></tr>
-                <tr><td>Typus · Sudo</td><td>Derivatives</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link</td></tr>
+                <tr><td>Typus · Sudo</td><td>Derivatives</td><td><span class="pill">DISCOVER</span></td><td>Sui-native perps/options venues — execution needs venue accounts. Deep-link only, docs verified</td></tr>
             </table>
-            <p>Verified 2026-10-04. One source of truth: <code>shared/registry.js</code> (33 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
+            <p>Verified 2026-10-06. One source of truth: <code>shared/registry.js</code> (32 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
 
             <h2 id="predict">DeepBook Predict</h2>
             <p>A binary instrument: pick an asset, a strike and an expiry, take UP (settles above strike) or DOWN (settles below). Settlement is automatic and on-chain. Quotes show the exact fee components from a simulated chain quote — premium, trading fee, subsidy, builder fee, penalty, inventory impact — plus gas. There is no separate Noise Hub debit on Predict: builder/referral revenue is a split of protocol proceeds, not a trader charge. Minimum premium 1.00 USDC, quantity lots of 0.01.</p>

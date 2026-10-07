@@ -13,6 +13,8 @@ import automationHandler from './handlers/automation.js';
 import cronHandler from './handlers/cron.js';
 import discoverHandler from './handlers/discover.js';
 import earnHandler from './handlers/earn.js';
+import lendingHandler from './handlers/lending.js';
+import transferHandler from './handlers/transfer.js';
 import feesHandler from './handlers/fees.js';
 import memoryHandler from './handlers/memory.js';
 import providersHandler from './handlers/providers.js';
@@ -55,6 +57,8 @@ export async function handleRequest(req, res) {
   if (pathname.startsWith('/api/automation')) return automationHandler(req, res);
   if (pathname.startsWith('/api/cron')) return cronHandler(req, res);
   if (pathname.startsWith('/api/discover')) return discoverHandler(req, res);
+  if (pathname.startsWith('/api/lending')) return lendingHandler(req, res);
+  if (pathname.startsWith('/api/transfer')) return transferHandler(req, res);
   if (pathname.startsWith('/api/memory')) return memoryHandler(req, res);
   if (pathname.startsWith('/api/leaderboard')) return leaderboardHandler(req, res);
   if (pathname.startsWith('/api/ai')) return aiHandler(req, res);

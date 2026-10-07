@@ -1,9 +1,10 @@
 // GET /api/quote — single-provider Cetus quote (legacy frontend path).
-// GET /api/quotes — Cetus + Aftermath compared by effective output (§7-8).
+// GET /api/quotes — Cetus + Aftermath + Turbos compared by effective output (§7-8).
 import { handler } from '../http.js';
 import { cetusAdapter, aftermathAdapter, compareRoutes, coinType, deepLink } from '../adapters.js';
 import { feeBreakdown } from '../services.js';
 import { cached, withBreaker } from '../util.js';
+import { turbosQuote } from '../lending.js';
 import { swapProviders } from '../../../shared/swap-providers.js';
 
 export default handler(async (req, res, url) => {
@@ -20,17 +21,20 @@ export default handler(async (req, res, url) => {
     try { coinType(from); coinType(to); }
     catch (e) { return { error: e.code || 'UNSUPPORTED_ASSET', message: 'Token not supported on the active network.', status: 400 }; }
 
-    const [cetus, aftermath] = await Promise.allSettled([
+    const [cetus, aftermath, turbos] = await Promise.allSettled([
       withBreaker('cetus', () => cached(`quote:cetus:${from}:${to}:${amountMist}`, 15_000, () => cetusAdapter.getQuote({ from, to, amountMist }))),
       withBreaker('aftermath', () => cached(`quote:af:${from}:${to}:${amountMist}`, 15_000, () => aftermathAdapter.getQuote({ from, to, amountMist }))),
+      withBreaker('turbos', () => cached(`quote:turbos:${from}:${to}:${amountMist}`, 15_000, () => turbosQuote({ fromType: coinType(from), toType: coinType(to), amountMist: String(amountMist) }))),
     ]);
     const ok = [], failed = [];
     if (cetus.status === 'fulfilled') ok.push(cetus.value);
     else failed.push({ provider: 'Cetus', error: cetus.reason?.code || 'PROVIDER_UNAVAILABLE' });
     if (aftermath.status === 'fulfilled') ok.push(aftermath.value);
     else failed.push({ provider: 'Aftermath Router', error: aftermath.reason?.code || 'PROVIDER_UNAVAILABLE' });
+    if (turbos.status === 'fulfilled') ok.push(turbos.value);
+    else failed.push({ provider: 'Turbos', error: turbos.reason?.code || 'PROVIDER_UNAVAILABLE' });
     if (!ok.length) {
-      return { error: 'ALL_PROVIDERS_UNAVAILABLE', failed, fallback: await deepLink('cetus', { from, to }), message: 'Both quote providers are unreachable right now.', status: 502 };
+      return { error: 'ALL_PROVIDERS_UNAVAILABLE', failed, fallback: await deepLink('cetus', { from, to }), message: 'All quote providers are unreachable right now.', status: 502 };
     }
     const fb = await feeBreakdown(amount, 'swap');
     fb.platformFeeAsset = from;

@@ -1702,6 +1702,8 @@
                 <div id="discoverPerpsplexity" style="display:none;">
                     <div class="section-label" style="margin-bottom:16px;">PERPS VENUE — LIVE STATUS</div>
                     <div id="ppxPanel"><div class="fresh">Checking venue status…</div></div>
+                    <div class="section-label" style="margin:24px 0 16px;">BLUEFIN PERPS — LIVE MARKETS</div>
+                    <div class="opportunity-grid" id="bluefinGrid"><div class="fresh">Loading Bluefin markets…</div></div>
                 </div>
 
                 <!-- Pools Section -->
@@ -1710,6 +1712,8 @@
                     <div class="opportunity-grid" id="poolGrid">
                         <div class="fresh">Loading live pools…</div>
                     </div>
+                    <div class="section-label" style="margin:24px 0 16px;">TURBOS CLMM POOLS — LIVE</div>
+                    <div class="opportunity-grid" id="turbosGrid"><div class="fresh">Loading Turbos pools…</div></div>
                 </div>
 
                 <!-- Ecosystem / Protocols Section (spec §21-23) — a real Sui ecosystem terminal,
@@ -1747,6 +1751,63 @@
                 <div class="fresh" id="earnProviderNote" style="margin:-4px 0 16px;">Live APY below is the provider's rate, not a Noise Hub return. It can change on-chain.</div>
                 <div class="opportunity-grid" id="earnStaking">
                     <div class="fresh">Loading…</div>
+                </div>
+
+                <div class="panel" style="margin-top:20px;">
+                    <h3>HASUI LIQUID STAKING — HAEDAL <span class="status-pill live">WIRED</span></h3>
+                    <div class="fresh" style="margin-bottom:12px;" id="haedalRateLine">Loading live haSUI/SUI rate…</div>
+                    <div class="chat-row" style="margin-bottom:12px;">
+                        <input class="search-input" id="haedalAmount" placeholder="Amount SUI (min 1)" inputmode="decimal" style="flex:1;">
+                        <select id="haedalMode" class="select-input">
+                            <option value="stake">Stake SUI → haSUI</option>
+                            <option value="delayed">Unstake (delayed, 1–2 epochs)</option>
+                            <option value="instant">Unstake (instant, 9% fee)</option>
+                        </select>
+                    </div>
+                    <div class="chat-row" style="margin-bottom:12px;">
+                        <input class="search-input" id="haedalValidator" placeholder="Validator 0x… (empty = Haedal auto)" style="flex:1;">
+                        <input class="search-input" id="haedalTicket" placeholder="Unstake ticket 0x… (claim only)" style="flex:1;">
+                    </div>
+                    <div class="chat-row">
+                        <button class="btn-solid" style="flex:1;" onclick="haedalReview()">Review &amp; Build</button>
+                        <button class="btn-ghost" style="flex:1;" onclick="haedalClaimReview()">Claim ticket</button>
+                    </div>
+                    <div class="fresh" style="margin-top:8px;" id="haedalPosLine">Connect wallet for your haSUI position.</div>
+                </div>
+
+                <div class="panel" style="margin-top:20px;">
+                    <h3>STABLECOIN VAULTS — METASTABLE <span class="status-pill live">WIRED</span></h3>
+                    <div class="fresh" style="margin-bottom:12px;" id="mstableVaultLine">Loading live vaults…</div>
+                    <div class="chat-row" style="margin-bottom:12px;">
+                        <select id="mstableVault" class="select-input" onchange="mstableAssets()"></select>
+                        <select id="mstableAsset" class="select-input" style="flex:1;"></select>
+                        <input class="search-input" id="mstableAmount" placeholder="Amount" inputmode="decimal" style="flex:1;">
+                    </div>
+                    <div class="chat-row">
+                        <button class="btn-solid" style="flex:1;" onclick="mstableReview('mint')">Mint (deposit)</button>
+                        <button class="btn-ghost" style="flex:1;" onclick="mstableReview('burn')">Burn (withdraw)</button>
+                    </div>
+                    <div class="fresh" style="margin-top:8px;">Deposit 0% fee · withdraw dynamic 0.01–1%. mSUI builds fully; mUSD/mBTC/mETH need a Pyth key the hub cannot pass — venue link in provider drawer.</div>
+                </div>
+
+                <div class="panel" style="margin-top:20px;">
+                    <h3>SPRINGSUI LIQUID STAKING — sSUI <span class="status-pill live">WIRED</span></h3>
+                    <div class="fresh" style="margin-bottom:12px;" id="springRateLine">Loading live sSUI/SUI rate…</div>
+                    <div class="chat-row" style="margin-bottom:12px;">
+                        <input class="search-input" id="springAmount" placeholder="Amount SUI" inputmode="decimal" style="flex:1;">
+                        <input class="search-input" id="springRedeemObj" placeholder="sSUI object (redeem auto-detects)" style="flex:1;">
+                    </div>
+                    <div class="chat-row">
+                        <button class="btn-solid" style="flex:1;" onclick="springReview('mint')">Stake SUI → sSUI</button>
+                        <button class="btn-ghost" style="flex:1;" onclick="springReview('redeem')">Redeem sSUI → SUI</button>
+                    </div>
+                    <div class="fresh" style="margin-top:8px;">Instant unstaking via SIP-33. Simulation gates signing.</div>
+                </div>
+
+                <div class="panel" style="margin-top:20px;">
+                    <h3>VOLO LIQUID STAKING — vSUI <span class="status-pill ro">STATS LIVE</span></h3>
+                    <div class="fresh" style="margin-bottom:8px;" id="voloStatsLine">Loading live vSUI stats…</div>
+                    <div class="fresh">Stake builds need StakePool/Metadata object IDs unpublished in verified docs — execution blocked with exact reason, never faked. Stake on the provider.</div>
                 </div>
 
                 <div class="section-label" style="margin-top:32px;">LIQUIDITY POOLS — LIVE TVL / APR</div>
@@ -1807,7 +1868,11 @@
                     </div>
                     <div class="intent-item" onclick="showAction('transfer')">
                         <div class="intent-title">Transfer</div>
-                        <div class="intent-desc">Where supported by wallet standard</div>
+                        <div class="intent-desc">Plain coin transfer — built, simulated, wallet signs</div>
+                    </div>
+                    <div class="intent-item" onclick="bucketPsmComposer()">
+                        <div class="intent-title">Stable swap (Bucket PSM)</div>
+                        <div class="intent-desc">USDC / USDT ↔ USDB at fair price, low fee</div>
                     </div>
                     <div class="intent-item" onclick="navigateTo('earn')">
                         <div class="intent-title">Move liquidity</div>
@@ -1912,6 +1977,16 @@
                             <div style="margin-bottom:16px;">
                                 <div class="settings-label" style="margin-bottom:8px;">Slippage tolerance</div>
                                 <input class="search-input" id="swapSlippage" value="0.5" style="width:100%;" inputmode="decimal">
+                            </div>
+
+                            <div style="margin-bottom:16px;">
+                                <div class="settings-label" style="margin-bottom:8px;">Execution route</div>
+                                <select id="swapExec" class="select-input" style="width:100%;">
+                                    <option value="best">Best execution (compare, build via winner)</option>
+                                    <option value="cetus">Cetus Aggregator</option>
+                                    <option value="aftermath">Aftermath Router</option>
+                                </select>
+                                <div class="fresh" style="margin-top:6px;">Both routers build, simulate and sign through the same Review flow. Aftermath keeps the Noise fee leg inside its PTB.</div>
                             </div>
 
                             <button class="btn-solid" style="width:100%; margin-bottom:12px;" onclick="getSwapQuote()">Get Quote</button>
@@ -2425,11 +2500,20 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
 
                 <!-- Margin Trading Section -->
                 <div id="tradeMarginSection" style="display:none;">
-                    <div class="panel" style="text-align:center; padding:40px;">
-                        <h3>Margin Trading</h3>
-                        <p style="color:var(--text-dim); margin:16px 0;">Leveraged trading on DeepBook.</p>
-                        <span class="status-pill ro">COMING SOON</span>
-                        <p style="color:var(--text-dim); margin-top:16px; font-size:13px;">Execution integration not yet available.</p>
+                    <div class="panel" style="padding:28px;">
+                        <h3>MARGIN TRADING — DEEPBOOK <span class="status-pill live">PREFLIGHT LIVE</span></h3>
+                        <div class="fresh" style="margin:8px 0 16px;">Isolated margin per pool. Leveraged borrow/trade unlocks after your margin account exists and passes risk preflight.</div>
+                        <div class="chat-row" style="margin-bottom:12px;">
+                            <select id="mPool" class="select-input" onchange="marginPreflightLoad()">
+                                <option value="SUI_USDC">SUI / USDC</option>
+                                <option value="DEEP_USDC">DEEP / USDC</option>
+                                <option value="DEEP_SUI">DEEP / SUI</option>
+                            </select>
+                            <button class="btn-ghost" onclick="marginPreflightLoad()">Check pool</button>
+                        </div>
+                        <div id="marginPreflightBox"><div class="fresh">Select a pool to read on-chain margin state.</div></div>
+                        <button class="btn-solid" style="width:100%; margin-top:12px;" onclick="marginSetupReview()">Create margin account</button>
+                        <div class="fresh" style="margin-top:8px;">Creates a MarginManager bound to the pool (gas only). Borrow / leveraged orders come next, gated on live risk ratio + fresh Pyth prices.</div>
                     </div>
                 </div>
             </div>
@@ -2844,14 +2928,14 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
            Regenerate:  node scripts/gen-ui-registry.mjs
            server/test/registry.test.js fails if this mirror drifts. */
         /* REGISTRY_JSON_START */
-        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","objects","stakes"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-04"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"","fee":"validator commission","ref":"—","last":"2026-10-04"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate","position"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-04"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"PARTIAL","caps":["swap-quote","pools","staking-apy","rewards","position"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-04"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","cancel_order","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-04"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-04"},{"id":"deepbook-margin","name":"DeepBook Margin","cat":"trading","status":"COMING_SOON","caps":[],"url":"https://deepbook.tech","docs":"","fee":"—","ref":"—","last":"2026-10-04"},{"id":"turbos","name":"Turbos","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://turbos.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"flowx","name":"FlowX","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"momentum","name":"Momentum","cat":"dex","status":"DISCOVER","caps":[],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kriya","name":"Kriya","cat":"dex","status":"DISCOVER","caps":[],"url":"https://kriya.finance","docs":"https://docs.kriya.finance","fee":"—","ref":"—","last":"2026-10-04"},{"id":"metastable","name":"Metastable","cat":"dex","status":"DISCOVER","caps":[],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"obric","name":"Obric","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://obric.xyz","docs":"","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"DISCOVER","caps":["markets"],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-perps","name":"Bluefin Perps","cat":"trading","status":"DISCOVER","caps":[],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"typus","name":"Typus","cat":"trading","status":"DISCOVER","caps":[],"url":"https://typus.finance","docs":"https://docs.typus.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"sudo","name":"Sudo","cat":"trading","status":"DISCOVER","caps":[],"url":"https://sudo.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"perpsplexity","name":"Perpsplexity","cat":"trading","status":"DISCOVER","caps":["markets"],"url":"https://perpsplexity.app","docs":"","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"navi","name":"NAVI","cat":"lending","status":"DISCOVER","caps":[],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"suilend","name":"Suilend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"scallop","name":"Scallop","cat":"lending","status":"DISCOVER","caps":[],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bucket","name":"Bucket","cat":"lending","status":"DISCOVER","caps":[],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphalend","name":"AlphaLend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://alphalend.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"PARTIAL","caps":["stake","unstake","position","apy"],"url":"https://haedal.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://volo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"DISCOVER","caps":[],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"alphafi","name":"AlphaFi","cat":"yield","status":"DISCOVER","caps":[],"url":"https://alphafi.xyz","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kai","name":"Kai","cat":"yield","status":"DISCOVER","caps":[],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"nemo","name":"Nemo","cat":"btcfi","status":"DISCOVER","caps":[],"url":"https://nemo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"suipump","name":"SuiPump","cat":"launchpad","status":"LIVE","caps":["tokens","price","volume","trades","bonding","graduation"],"url":"https://suipump.fun","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"suibridge","name":"Sui Bridge","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://bridge.sui.io","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-04"}];
+        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","objects","stakes","transfer"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-04"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"","fee":"validator commission","ref":"—","last":"2026-10-04"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate","position"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-04"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"PARTIAL","caps":["swap-quote","swap-build","pools","staking-apy","rewards","position"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-04"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","cancel_order","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-04"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-04"},{"id":"deepbook-margin","name":"DeepBook Margin","cat":"trading","status":"COMING_SOON","caps":["preflight","setup-margin-account"],"url":"https://deepbook.tech","docs":"","fee":"gas only for setup","ref":"—","last":"2026-10-04"},{"id":"turbos","name":"Turbos","cat":"dex","status":"PARTIAL","caps":["pools","swap-quote"],"url":"https://turbos.finance","docs":"","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"flowx","name":"FlowX","cat":"dex","status":"DISCOVER","caps":["pools"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"pool fee (provider)","ref":"verify","last":"2026-10-04"},{"id":"momentum","name":"Momentum","cat":"dex","status":"DISCOVER","caps":[],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"kriya","name":"Kriya","cat":"dex","status":"DISCOVER","caps":[],"url":"https://kriya.finance","docs":"https://docs.kriya.finance","fee":"—","ref":"—","last":"2026-10-04"},{"id":"metastable","name":"Metastable","cat":"stablecoin","status":"PARTIAL","caps":["vaults","mint-build","burn-build"],"url":"https://mstable.io","docs":"https://docs.mstable.io","fee":"deposit 0%; withdraw 0.01–1% dynamic","ref":"verify","last":"2026-10-04"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"DISCOVER","caps":[],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"bluefin-perps","name":"Bluefin Perps","cat":"trading","status":"PARTIAL","caps":["markets","orderbook","tickers"],"url":"https://bluefin.io","docs":"https://docs.bluefin.io","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"typus","name":"Typus","cat":"trading","status":"DISCOVER","caps":[],"url":"https://typus.finance","docs":"https://docs.typus.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"sudo","name":"Sudo","cat":"trading","status":"DISCOVER","caps":[],"url":"https://app.sudo.finance","docs":"https://docs.sudo.finance","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"perpsplexity","name":"Perpsplexity","cat":"trading","status":"DISCOVER","caps":["markets"],"url":"https://perpsplexity.app","docs":"","fee":"provider fee","ref":"verify","last":"2026-10-04"},{"id":"navi","name":"NAVI","cat":"lending","status":"PARTIAL","caps":["markets","position","rewards","supply-build","withdraw-build","borrow-build","repay-build","claim-build"],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"suilend","name":"Suilend","cat":"lending","status":"PARTIAL","caps":["markets","position","supply-build","withdraw-build","borrow-build","repay-build","claim-build"],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"scallop","name":"Scallop","cat":"lending","status":"PARTIAL","caps":["markets","position","supply-build","withdraw-build","borrow-build","repay-build"],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-04"},{"id":"bucket","name":"Bucket","cat":"lending","status":"PARTIAL","caps":["markets","position","psm-swap-build"],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"PSM low-fee swaps","ref":"verify","last":"2026-10-04"},{"id":"alphalend","name":"AlphaLend","cat":"lending","status":"DISCOVER","caps":[],"url":"https://alphalend.xyz","docs":"https://docs.alphafi.xyz/alphalend/introduction","fee":"—","ref":"—","last":"2026-10-04"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"PARTIAL","caps":["stake-build","unstake-build","claim-build","position","rate"],"url":"https://haedal.xyz","docs":"","fee":"instant unstake 9%; delayed free","ref":"verify","last":"2026-10-04"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"PARTIAL","caps":["stats"],"url":"https://volo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"PARTIAL","caps":["rate","mint-build","redeem-build","position"],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"protocol mint/redeem fees","ref":"verify","last":"2026-10-04"},{"id":"alphafi","name":"AlphaFi","cat":"yield","status":"DISCOVER","caps":[],"url":"https://alphafi.xyz","docs":"https://docs.alphafi.xyz","fee":"—","ref":"—","last":"2026-10-04"},{"id":"kai","name":"Kai","cat":"yield","status":"DISCOVER","caps":[],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"nemo","name":"Nemo","cat":"btcfi","status":"DISCOVER","caps":[],"url":"https://nemo.fi","docs":"","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"DISCOVER","caps":[],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-04"},{"id":"suipump","name":"SuiPump","cat":"launchpad","status":"LIVE","caps":["tokens","price","volume","trades","bonding","graduation"],"url":"https://suipump.fun","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"suibridge","name":"Sui Bridge","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://bridge.sui.io","docs":"","fee":"provider fee","ref":"—","last":"2026-10-04"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"DISCOVER","caps":[],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-04"}];
         /* REGISTRY_JSON_END */
         /* CAP_JSON_START */
-        window.ACTION_CAPABILITIES = {"swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Cetus","url":"https://app.cetus.zone","note":"Cetus router: quote → build → simulate → wallet sign."},"stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native stake PTB built + simulated; wallet signs."},"unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native unstake PTB built + simulated; wallet signs."},"liquid_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath","url":"https://aftermath.finance","note":"Liquid stake/unstake PTB built + simulated; wallet signs."},"predict_mint":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_redeem":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"spot_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"limit_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"market_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"cancel_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"setup_trading_account":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"liquidity":{"data":"LIVE","quote":"LIVE","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Cetus / Aftermath pools","url":"https://app.cetus.zone","note":"Pool TVL/APR are live; pool add-liquidity build is not wired."},"claim":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Aftermath","url":"https://aftermath.finance","note":"Rewards are readable; protocol reward claim needs a provider adapter."},"supply":{"data":"UNAVAILABLE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending SDKs are blocked — no markets are shown rather than invented."},"borrow":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"repay":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"withdraw":{"data":"UNAVAILABLE","quote":"—","build":"UNAVAILABLE","simulate":"UNAVAILABLE","execute":"UNAVAILABLE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Lending execution is unavailable in Noise."},"transfer":{"data":"LIVE","quote":"—","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Sui","url":"https://sui.io","note":"Transfers are not built in Noise."}};
+        window.ACTION_CAPABILITIES = {"swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Cetus","url":"https://app.cetus.zone","note":"Cetus router: quote → build → simulate → wallet sign."},"stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native stake PTB built + simulated; wallet signs."},"unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native unstake PTB built + simulated; wallet signs."},"liquid_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath","url":"https://aftermath.finance","note":"Liquid stake/unstake PTB built + simulated; wallet signs."},"predict_mint":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_redeem":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"spot_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"limit_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"market_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"cancel_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"setup_trading_account":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"liquidity":{"data":"LIVE","quote":"LIVE","build":"READ_ONLY","simulate":"UNAVAILABLE","execute":"READ_ONLY","provider":"Cetus / Aftermath pools","url":"https://app.cetus.zone","note":"Pool TVL/APR are live; pool add-liquidity build is not wired."},"claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Reward claims build + simulate for NAVI and Suilend; wallet signs. Aftermath/Cetus claims remain provider-side."},"supply":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Supply builds + simulates via official SDKs (NAVI lending v2, Suilend SDK v12, gRPC); wallet signs. E2E proof needs a funded wallet run."},"borrow":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Borrow builds with collateral/health preflight; wallet signs. E2E proof needs a funded wallet run."},"repay":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Partial/full repay builds; wallet signs. E2E proof needs a funded wallet run."},"withdraw":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Withdraw builds with health-gated preflight; wallet signs. E2E proof needs a funded wallet run."},"transfer":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui","url":"https://sui.io","note":"Plain coin transfer PTB built + simulated; wallet signs. Supported: SUI, USDC, DEEP, CETUS, NAVX."}};
         /* CAP_JSON_END */
         window.REGISTRY = REGISTRY;
         // Capability matrix keyed by id (spec: "Protocol capability matrix").
-        window.CAP_MATRIX = {"sui":{"id":"sui","name":"Sui","category":"infrastructure","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"sui-native":{"id":"sui-native","name":"Sui Native Staking","category":"staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"cetus":{"id":"cetus","name":"Cetus","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":true,"execution":true},"aftermath":{"id":"aftermath","name":"Aftermath","category":"dex","bucket":"DEX","status":"PARTIAL","data":true,"swap":true,"trade":false,"earn":true,"position":true,"execution":false},"deepbook":{"id":"deepbook","name":"DeepBook","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-predict":{"id":"deepbook-predict","name":"DeepBook Predict","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-margin":{"id":"deepbook-margin","name":"DeepBook Margin","category":"trading","bucket":"TRADING","status":"COMING_SOON","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"turbos":{"id":"turbos","name":"Turbos","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"flowx":{"id":"flowx","name":"FlowX","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"momentum":{"id":"momentum","name":"Momentum","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kriya":{"id":"kriya","name":"Kriya","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"metastable":{"id":"metastable","name":"Metastable","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"obric":{"id":"obric","name":"Obric","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-spot":{"id":"bluefin-spot","name":"Bluefin Spot","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-perps":{"id":"bluefin-perps","name":"Bluefin Perps","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"typus":{"id":"typus","name":"Typus","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"sudo":{"id":"sudo","name":"Sudo","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"perpsplexity":{"id":"perpsplexity","name":"Perpsplexity","category":"trading","bucket":"TRADING","status":"DISCOVER","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"navi":{"id":"navi","name":"NAVI","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suilend":{"id":"suilend","name":"Suilend","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"scallop":{"id":"scallop","name":"Scallop","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bucket":{"id":"bucket","name":"Bucket","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"alphalend":{"id":"alphalend","name":"AlphaLend","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"haedal":{"id":"haedal","name":"Haedal","category":"liquid-staking","bucket":"STAKING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":true,"position":false,"execution":false},"volo":{"id":"volo","name":"Volo","category":"liquid-staking","bucket":"STAKING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"springsui":{"id":"springsui","name":"SpringSui","category":"liquid-staking","bucket":"STAKING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"alphafi":{"id":"alphafi","name":"AlphaFi","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kai":{"id":"kai","name":"Kai","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"nemo":{"id":"nemo","name":"Nemo","category":"btcfi","bucket":"BTCFI","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"steamm":{"id":"steamm","name":"STEAMM","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suipump":{"id":"suipump","name":"SuiPump","category":"launchpad","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suibridge":{"id":"suibridge","name":"Sui Bridge","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"wormhole":{"id":"wormhole","name":"Wormhole / Portal","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false}};
+        window.CAP_MATRIX = {"sui":{"id":"sui","name":"Sui","category":"infrastructure","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":true},"sui-native":{"id":"sui-native","name":"Sui Native Staking","category":"staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"cetus":{"id":"cetus","name":"Cetus","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":true,"execution":true},"aftermath":{"id":"aftermath","name":"Aftermath","category":"dex","bucket":"DEX","status":"PARTIAL","data":true,"swap":true,"trade":false,"earn":true,"position":true,"execution":false},"deepbook":{"id":"deepbook","name":"DeepBook","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-predict":{"id":"deepbook-predict","name":"DeepBook Predict","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-margin":{"id":"deepbook-margin","name":"DeepBook Margin","category":"trading","bucket":"TRADING","status":"COMING_SOON","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"turbos":{"id":"turbos","name":"Turbos","category":"dex","bucket":"DEX","status":"PARTIAL","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":false},"flowx":{"id":"flowx","name":"FlowX","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"momentum":{"id":"momentum","name":"Momentum","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kriya":{"id":"kriya","name":"Kriya","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"metastable":{"id":"metastable","name":"Metastable","category":"stablecoin","bucket":"EARN","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-spot":{"id":"bluefin-spot","name":"Bluefin Spot","category":"dex","bucket":"DEX","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"bluefin-perps":{"id":"bluefin-perps","name":"Bluefin Perps","category":"trading","bucket":"TRADING","status":"PARTIAL","data":true,"swap":false,"trade":true,"earn":false,"position":false,"execution":false},"typus":{"id":"typus","name":"Typus","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"sudo":{"id":"sudo","name":"Sudo","category":"trading","bucket":"TRADING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"perpsplexity":{"id":"perpsplexity","name":"Perpsplexity","category":"trading","bucket":"TRADING","status":"DISCOVER","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"navi":{"id":"navi","name":"NAVI","category":"lending","bucket":"LENDING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":false},"suilend":{"id":"suilend","name":"Suilend","category":"lending","bucket":"LENDING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":false},"scallop":{"id":"scallop","name":"Scallop","category":"lending","bucket":"LENDING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":false},"bucket":{"id":"bucket","name":"Bucket","category":"lending","bucket":"LENDING","status":"PARTIAL","data":true,"swap":true,"trade":false,"earn":false,"position":true,"execution":false},"alphalend":{"id":"alphalend","name":"AlphaLend","category":"lending","bucket":"LENDING","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"haedal":{"id":"haedal","name":"Haedal","category":"liquid-staking","bucket":"STAKING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":false},"volo":{"id":"volo","name":"Volo","category":"liquid-staking","bucket":"STAKING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":true,"position":false,"execution":false},"springsui":{"id":"springsui","name":"SpringSui","category":"liquid-staking","bucket":"STAKING","status":"PARTIAL","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":false},"alphafi":{"id":"alphafi","name":"AlphaFi","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"kai":{"id":"kai","name":"Kai","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"nemo":{"id":"nemo","name":"Nemo","category":"btcfi","bucket":"BTCFI","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"steamm":{"id":"steamm","name":"STEAMM","category":"yield","bucket":"EARN","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suipump":{"id":"suipump","name":"SuiPump","category":"launchpad","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"suibridge":{"id":"suibridge","name":"Sui Bridge","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false},"wormhole":{"id":"wormhole","name":"Wormhole / Portal","category":"bridge","bucket":"BRIDGE","status":"DISCOVER","data":false,"swap":false,"trade":false,"earn":false,"position":false,"execution":false}};
         // Unified status scale (spec §2, §84): LIVE / PARTIAL / DISCOVER / COMING_SOON.
         const STATUS_META = {
             LIVE: { label: 'LIVE', cls: 'live', note: 'Noise can perform the advertised actions.' },
@@ -3293,29 +3377,258 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             if (to) $('swapTo').value = to;
             $('swapComposerPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
+        /* ---- Live action composers (same Review→Sim→Wallet→Track pipeline) ----
+           supply / withdraw / borrow / repay / claim build via official NAVI +
+           Suilend SDKs; transfer builds a plain coin PTB. No new pipeline. */
+        const LEND = { markets: {}, pos: {} };
+        function parseMist(str, decimals) {
+            const s = String(str || '').trim().replace(',', '.');
+            if (!/^\d+(\.\d{1,9})?$/.test(s)) return null;
+            const [i, f = ''] = s.split('.');
+            const d = Number(decimals ?? 9);
+            const frac = (f + '0'.repeat(d)).slice(0, d);
+            try { return (BigInt(i) * (10n ** BigInt(d)) + BigInt(frac || '0')).toString(); }
+            catch { return null; }
+        }
         function showAction(action) {
             $('swapComposerPanel').style.display = 'none';
             const p = $('otherActionPanel');
             p.style.display = 'block';
             $('otherActionTitle').textContent = action.toUpperCase();
-            
+            const live = ['supply', 'withdraw', 'borrow', 'repay', 'claim', 'transfer'];
+            if (live.includes(action)) { renderLiveComposer(action); p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
             const statusMap = {
-                supply: { status: 'UNAVAILABLE', note: 'Lending integration needs SDK updates. NAVI hardcodes deprecated RPC; Suilend needs gRPC client shape. Use protocols directly: <a href="https://naviprotocol.io" target="_blank" style="color:var(--accent)">NAVI</a> · <a href="https://suilend.fi" target="_blank" style="color:var(--accent)">Suilend</a>' },
                 stake: { status: 'AVAILABLE', note: 'Native staking available in Earn page. LST options: Aftermath afSUI, Haedal, Volo.' },
                 liquidity: { status: 'PARTIAL', note: 'Add liquidity via Cetus / Aftermath pools. Check Earn page for pool list.' },
-                withdraw: { status: 'PARTIAL', note: 'Use Earn page to unstake native SUI. LST unstake via provider.' },
                 unstake: { status: 'AVAILABLE', note: 'Native unstake available in Earn page.' },
-                borrow: { status: 'UNAVAILABLE', note: 'Same as supply — SDK limitations. Use protocols directly.' },
-                repay: { status: 'UNAVAILABLE', note: 'Same as supply — SDK limitations. Use protocols directly.' },
                 remove: { status: 'PARTIAL', note: 'Remove liquidity via Cetus / Aftermath pools.' },
-                claim: { status: 'PARTIAL', note: 'Claim rewards via Earn page for supported protocols.' },
                 bridge: { status: 'DEEP_LINK', note: 'Bridging leaves Noise Hub — no in-hub execution. Continue on <a href="https://bridge.sui.io" target="_blank" style="color:var(--accent)">Sui Bridge</a> (native) or <a href="https://portalbridge.com" target="_blank" style="color:var(--accent)">Portal</a> (Wormhole).' },
-                transfer: { status: 'WALLET_STANDARD', note: 'Transfer is signed by the connected wallet where supported by the wallet standard. No hub custody.' },
             };
-            
             const info = statusMap[action] || { status: 'COMING SOON', note: 'Action integration in progress.' };
             $('otherActionContent').innerHTML = '<span class="status-pill ' + (info.status === 'AVAILABLE' ? 'live' : 'ro') + '">' + info.status + '</span><p style="margin-top:12px; color:var(--text-dim);">' + info.note + '</p>';
             p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        function renderLiveComposer(action) {
+            const box = $('otherActionContent');
+            const isClaim = action === 'claim', isTransfer = action === 'transfer';
+            box.innerHTML =
+                '<span class="status-pill live">LIVE BUILD</span> <span class="fresh">Review → simulate → wallet signs → track. Hub never signs.</span>' +
+                (isTransfer
+                    ? '<div style="margin-top:12px;"><div class="settings-label" style="margin-bottom:6px;">Asset</div><div class="chat-row">'
+                      + '<input class="search-input" id="lcAmount" placeholder="0.00" style="flex:1;" inputmode="decimal">'
+                      + '<select id="lcAsset" class="select-input"><option value="SUI">SUI</option><option value="USDC">USDC</option><option value="DEEP">DEEP</option><option value="CETUS">CETUS</option><option value="NAVX">NAVX</option></select></div>'
+                      + '<div class="settings-label" style="margin:10px 0 6px;">Recipient (0x…)</div><input class="search-input" id="lcRecipient" placeholder="0x…" style="width:100%;"></div>'
+                    : '<div style="margin-top:12px;"><div class="settings-label" style="margin-bottom:6px;">Provider</div><div class="chat-row">'
+                      + '<select id="lcProvider" class="select-input" onchange="lcLoadMarkets()"><option value="navi">NAVI (lending v2)</option><option value="suilend">Suilend</option><option value="scallop">Scallop</option></select>'
+                      + '<select id="lcMarket" class="select-input" style="flex:1;"><option value="">Loading markets…</option></select></div>'
+                      + (isClaim ? '' : '<div class="settings-label" style="margin:10px 0 6px;">Amount</div><input class="search-input" id="lcAmount" placeholder="0.00" style="width:100%;" inputmode="decimal">')
+                      + '<div class="fresh" id="lcPreflight" style="margin-top:10px;">Connect wallet for position + health preflight.</div></div>')
+                + '<button class="btn-solid" style="width:100%; margin-top:12px;" onclick="lcReview(\'' + action + '\')">Review &amp; Build</button>'
+                + '<div class="fresh" style="margin-top:8px;">' + lcHint(action) + '</div>';
+            if (!isTransfer && !isClaim) lcLoadMarkets();
+            if (!isTransfer) lcPreflight(action);
+        }
+        function lcHint(action) {
+            return {
+                supply: 'Supply collateral into a lending obligation (first supply creates it). Health-gated on withdraw/borrow.',
+                withdraw: 'Withdraw collateral — blocked client-side if it would breach health.',
+                borrow: 'Borrow against collateral after liquidity + health preflight.',
+                repay: 'Partial or full repay into your obligation.',
+                claim: 'Claim available NAVI / Suilend rewards. Empty rewards = honest NO_POSITION.',
+                transfer: 'Plain coin transfer. Only assets Noise knows (type, decimals, balance).',
+            }[action] || '';
+        }
+        async function lcLoadMarkets() {
+            const prov = ($('lcProvider') && $('lcProvider').value) || 'navi';
+            const sel = $('lcMarket'); if (!sel) return;
+            try {
+                if (!LEND.markets[prov]) {
+                    const r = await apiGet('/api/lending/' + prov + '/markets', 25000);
+                    if (r && r.error) throw new Error(r.error);
+                    LEND.markets[prov] = Array.isArray(r) ? r : (r.markets || r.value || []);
+                }
+                const list = LEND.markets[prov] || [];
+                sel.innerHTML = list.length
+                    ? list.map((m, i) => '<option value="' + i + '">' + escapeHtml(m.symbol || (m.coinType || '').split('::').pop()) + (m.leftSupply != null || m.available != null ? ' · liq ' + escapeHtml(String(m.leftSupply ?? m.available ?? '')) : '') + '</option>').join('')
+                    : '<option value="">No markets</option>';
+            } catch (e) { sel.innerHTML = '<option value="">Markets unavailable</option>'; }
+        }
+        async function lcPreflight(action) {
+            const el = $('lcPreflight'); if (!el || !wallet) return;
+            const prov = ($('lcProvider') && $('lcProvider').value) || 'navi';
+            el.textContent = 'Loading position…';
+            try {
+                const r = await apiGet('/api/lending/' + prov + '/position?wallet=' + encodeURIComponent(wallet), 25000);
+                if (r && r.error) throw new Error(r.error);
+                if (prov === 'navi') {
+                    const n = (r.positions || []).length;
+                    el.innerHTML = 'Positions: <b>' + n + '</b> · Health: <b>' + (r.healthFactor != null ? Number(r.healthFactor).toFixed(2) : '—') + '</b> · <span class="fresh">borrow/withdraw gated on health</span>';
+                } else {
+                    const obs = r.obligations || [];
+                    el.innerHTML = 'Obligations: <b>' + obs.length + '</b>' + (obs[0] ? ' · deposits ' + obs[0].deposits.length + ' · borrows ' + obs[0].borrows.length : '') + ' · <span class="fresh">first supply creates one</span>';
+                }
+            } catch (e) { el.textContent = 'Position unavailable — you can still build; simulation gates signing.'; }
+        }
+        async function lcReview(action) {
+            if (!wallet) { toast('Connect wallet first — backend prepares, wallet signs.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet — read-only mode cannot sign.'); return; }
+            const isTransfer = action === 'transfer', isClaim = action === 'claim';
+            const provider = isTransfer ? 'sui' : (($('lcProvider') && $('lcProvider').value) || 'navi');
+            let coinType = null, decimals = 9, amountMist = null, extra = {};
+            if (isTransfer) {
+                const sym = ($('lcAsset') && $('lcAsset').value) || 'SUI';
+                coinType = sym; decimals = sym === 'SUI' ? 9 : 6;
+                amountMist = parseMist(($('lcAmount') || {}).value, decimals);
+                extra.recipient = (($('lcRecipient') || {}).value || '').trim();
+                if (!amountMist) { toast('Enter a positive amount.'); return; }
+                if (!/^0x[0-9a-fA-F]{64}$/.test(extra.recipient)) { toast('Recipient must be a 0x… address.'); return; }
+            } else if (!isClaim) {
+                const list = LEND.markets[provider] || [];
+                const m = list[Number(($('lcMarket') || {}).value) || 0];
+                if (!m || !m.coinType) { toast('Pick a market first.'); return; }
+                coinType = m.coinType;
+                const sym6 = { SUI: 9, USDC: 6, USDT: 6, DEEP: 6, CETUS: 6, NAVX: 6, WUSDC: 6, SUIUSDE: 6 };
+                decimals = m.decimals ?? sym6[String(m.symbol || '').toUpperCase()] ?? 9;
+                amountMist = parseMist(($('lcAmount') || {}).value, decimals);
+                if (!amountMist) { toast('Enter a positive amount.'); return; }
+                extra.pool = m.id;
+                if (provider === 'scallop') extra.coinName = String(m.name || m.symbol || '').toLowerCase();
+            }
+            const buildBody = isTransfer
+                ? { sender: wallet, coinType, amountMist, recipient: extra.recipient }
+                : Object.assign({ provider, action, wallet, coinType, amountMist },
+                    extra.pool !== undefined ? { pool: extra.pool } : {},
+                    extra.coinName ? { coinName: extra.coinName } : {});
+            const buildUrl = isTransfer ? '/api/transfer/build' : '/api/lending/build';
+            await execGeneric({
+                action, provider,
+                title: 'REVIEW ' + action.toUpperCase() + ' — ' + provider.toUpperCase(),
+                sub: isTransfer ? (amountMist + ' mist ' + coinType + ' → ' + extra.recipient.slice(0, 12) + '…')
+                    : isClaim ? ('Claim rewards on ' + provider)
+                    : (coinType.split('::').pop() + ' · ' + (Number(amountMist) / 10 ** decimals)),
+                inputAsset: coinType, inputAmount: isClaim ? '' : String(amountMist),
+                buildUrl, buildBody,
+                custody: isTransfer
+                    ? 'Plain transfer between wallets. The hub builds only; your wallet signs.'
+                    : 'Funds move into ' + provider + ' contracts. Hub never custodies. Variable rates and protocol risks apply.',
+                trackLabel: action + ' ' + (coinType || '').split('::').pop(),
+            });
+        }
+        function bucketPsmComposer() {
+            $('swapComposerPanel').style.display = 'none';
+            const p = $('otherActionPanel');
+            p.style.display = 'block';
+            $('otherActionTitle').textContent = 'BUCKET PSM SWAP';
+            $('otherActionContent').innerHTML =
+                '<span class="status-pill live">LIVE BUILD</span> <span class="fresh">Stablecoin ↔ USDB at fair price.</span>'
+                + '<div style="margin-top:12px;"><div class="chat-row">'
+                + '<input class="search-input" id="psmAmount" placeholder="0.00" style="flex:1;" inputmode="decimal">'
+                + '<select id="psmAsset" class="select-input"><option value="USDC">USDC</option><option value="USDT">USDT</option></select>'
+                + '<select id="psmDir" class="select-input"><option value="in">→ USDB</option><option value="out">USDB →</option></select></div></div>'
+                + '<button class="btn-solid" style="width:100%; margin-top:12px;" onclick="bucketPsmReview()">Review &amp; Build</button>';
+            p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        async function bucketPsmReview() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const sym = ($('psmAsset') || {}).value || 'USDC';
+            const dir = ($('psmDir') || {}).value || 'in';
+            const dec = 6;
+            const mist = parseMist(($('psmAmount') || {}).value, dec);
+            if (!mist) { toast('Enter a positive amount.'); return; }
+            const types = {
+                USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
+                USDT: '0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT',
+            };
+            await execGeneric({
+                action: 'swap', provider: 'bucket',
+                title: 'REVIEW PSM SWAP — BUCKET',
+                sub: (Number(mist) / 1e6) + ' ' + sym + (dir === 'in' ? ' → USDB' : ' USDB → ' + sym),
+                inputAsset: sym, inputAmount: mist,
+                buildUrl: '/api/lending/build',
+                buildBody: { provider: 'bucket', action: 'psm-swap', wallet, coinType: types[sym], amountMist: mist, dir },
+                custody: 'Peg-stability swap inside Bucket contracts. Low fee, fair price. Hub builds only; wallet signs.',
+                trackLabel: 'psm-swap bucket',
+            });
+        }
+        /* Generic pipeline executor: Review -> Build -> Simulate -> Wallet -> Track.
+           Same modal, same tracker, same activity ledger as swaps. No new pipeline. */
+        async function execGeneric(o) {
+            openModal('reviewModal');
+            $('reviewTitle').textContent = o.title;
+            $('reviewSub').textContent = o.sub;
+            $('reviewFees').innerHTML = '<tr><td>Action</td><td><b>' + o.action + ' via ' + o.provider + '</b></td></tr><tr><td>Estimated gas</td><td class="js-review-gas">awaiting simulation…</td></tr>';
+            $('reviewCustody').textContent = o.custody;
+            setReviewStatus('Status: <span class="status-pill pending">BUILDING</span> — building & simulating PTB…');
+            setConfirm('Building…', () => {});
+            let txRec = null;
+            try {
+                const init = await apiPost('/api/tx', {
+                    wallet, action: o.action, provider: o.provider,
+                    input_asset: o.inputAsset || '', input_amount: o.inputAmount || '',
+                    source: 'manual',
+                });
+                txRec = init?.tx || null;
+            } catch (e) { console.warn('tx record init failed', e); }
+            window._activeTxId = txRec?.id || null;
+            if (txRec?.id) { await apiPatch('/api/tx', { id: txRec.id, to: 'built' }).catch(() => {}); await apiPatch('/api/tx', { id: txRec.id, to: 'simulating' }).catch(() => {}); }
+            let b;
+            try {
+                b = await apiPost(o.buildUrl, o.buildBody, 60000);
+                if (!b || b.error || !b.txBytes) throw new Error((b && (b.error + (b.message ? ': ' + b.message : ''))) || 'BUILD_FAILED');
+            } catch (e) {
+                const msg = String(e.message || e);
+                if (txRec?.id) await apiPatch('/api/tx', { id: txRec.id, to: 'simulation_failed', extra: { failure_reason: msg.slice(0, 200) } }).catch(() => {});
+                setReviewStatus('<div style="color:#ff6666; margin-top:8px;"><b>BUILD FAILED:</b> ' + buildErrorMessage(msg) + '</div>');
+                setConfirm('Close', () => closeModal('reviewModal'));
+                loadActivityFeed();
+                return;
+            }
+            if (b.simulationStatus === 'failed' || b.error === 'SIMULATION_FAILED') {
+                if (txRec?.id) await apiPatch('/api/tx', { id: txRec.id, to: 'simulation_failed', extra: { failure_reason: 'sim failed' } }).catch(() => {});
+                setReviewStatus('<div style="padding:10px; background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.4); color:#ff6666; margin-top:8px;"><b>SIMULATION FAILED — SIGNING BLOCKED.</b><br>The transaction was not sent to your wallet.</div>');
+                setConfirm('Close', () => closeModal('reviewModal'));
+                return;
+            }
+            if (txRec?.id) await apiPatch('/api/tx', { id: txRec.id, to: 'ready_to_sign', extra: { gas: b.gasEst ? String(b.gasEst) : undefined } }).catch(() => {});
+            const gasEl = document.querySelector('#reviewFees .js-review-gas');
+            if (gasEl && b.gasEst) gasEl.textContent = (Number(b.gasEst) / 1e9).toFixed(6) + ' SUI';
+            let metaRows = '';
+            if (b.meta) {
+                for (const [k, v] of Object.entries(b.meta)) {
+                    if (v == null || v === '') continue;
+                    metaRows += '<tr><td>' + escapeHtml(k) + '</td><td><b>' + escapeHtml(String(v)).slice(0, 60) + '</b></td></tr>';
+                }
+                if (metaRows) $('reviewFees').innerHTML += metaRows;
+            }
+            secEvent('simulation-check');
+            setReviewStatus('Status: ' + (b.simulationStatus === 'success' ? '<span class="status-pill confirmed">SIMULATION PASSED</span>' : '<span class="status-pill pending">SIM UNAVAILABLE</span>') + ' — ready to sign.');
+            setConfirm('Sign & Execute in Wallet', () => execSign(b, { txId: txRec?.id || null, label: o.trackLabel, provider: o.provider }));
+        }
+        async function execSign(b, ctx) {
+            const txId = ctx.txId;
+            if (txId) await apiPatch('/api/tx', { id: txId, to: 'awaiting_wallet' }).catch(() => {});
+            setReviewStatus('Status: <span class="status-pill pending">AWAITING WALLET</span> — approve in your wallet…');
+            setConfirm('Waiting for wallet…', () => {});
+            let digest = null;
+            try {
+                digest = await window.HubWallet.signAndExecute(b.txBytes, { chain: walletChain });
+                if (!digest || typeof digest !== 'string') throw new Error('NO_DIGEST_RETURNED');
+            } catch (e) {
+                if (txId) await apiPatch('/api/tx', { id: txId, to: 'rejected', extra: { failure_reason: 'declined in wallet' } }).catch(() => {});
+                setReviewStatus('Status: <span class="status-pill rejected">REJECTED</span> — declined in wallet. Nothing was sent.');
+                setConfirm('Close', () => closeModal('reviewModal'));
+                loadActivityFeed();
+                return;
+            }
+            if (txId) await apiPatch('/api/tx', { id: txId, to: 'signed' }).catch(() => {});
+            submitDigest({ txId: txId || undefined, wallet, digest, action: ctx.label.split(' ')[0], provider: ctx.provider });
+            setReviewStatus('Status: <span class="status-pill submitted">SUBMITTED</span> — digest <code>' + String(digest).slice(0, 16) + '…</code><br>Tracking on chain…');
+            setConfirm('Tracking on chain…', () => {});
+            logActivity('Submitted', ctx.label, '', ctx.provider + '|' + digest);
+            loadActivityFeed();
+            trackTransaction(digest, { txId, action: ctx.label, provider: ctx.provider, amount: '' });
+            try { await loadCapital(true); } catch (e) {}
         }
         async function getSwapQuote() {
             const amount = $('swapAmount').value;
@@ -3344,7 +3657,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                         '<div style="font-size:12px; color:var(--text-dim);">Protocol fee: ' + (route.protocolFee || '0') + ' · effective output ranks routes</div>' +
                         '</div>'
                     ).join('') + (window._composerQuote.failed.length ? '<div class="fresh" style="color:#ff8844;">' + window._composerQuote.failed.map((f) => f.provider + ' unavailable (' + f.error + ')').join(' · ') + ' — shown routes still live.</div>' : '') +
-                    '<div class="fresh" style="margin-top:8px;">Execution builds via Cetus Aggregator in this build; Aftermath quotes are compared for best execution.</div>';
+                    '<div class="fresh" style="margin-top:8px;">Execution builds via Cetus or Aftermath (pick the route); Turbos quotes are compared, execution falls back to a buildable router and says so.</div>';
 
                     // Fee breakdown comes as `fees` from /api/quotes (platform = estimate; exact after build)
                     const fb = r.fees;
@@ -3546,6 +3859,9 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             if (mode === 'predict') {
                 predictInit();
             }
+            if (mode === 'margin') {
+                try { marginPreflightLoad(); } catch (e) {}
+            }
         }
         /* ---- Spot upgrades: live market list, auto-refresh, freshness, mobile tabs ---- */
         let tBookTimer = null, tBookAt = 0;
@@ -3637,6 +3953,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 set('tAsk', book.bestAsk != null ? String(book.bestAsk) : '—');
                 set('tSpread', book.spread != null ? Number(book.spread).toPrecision(4) : '—');
                 $('tFresh').textContent = 'Source: DeepBook V3 SDK (live) · Updated: ' + new Date().toLocaleTimeString();
+                tradeLoad24h((info.baseAsset || '').toUpperCase());
                 $('tBookSource').textContent = 'Source: DeepBook V3 SDK (getLevel2TicksFromMid) · tick ' + info.tickSize + ' · lot ' + info.lotSize + ' · min ' + info.minOrderSize + (info.takerFee != null ? ' · taker fee ' + info.takerFee : '');
                 tradeRenderBook(book);
                     if (T.type === 'LIMIT') tradePriceHint();
@@ -3649,6 +3966,24 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 $('tBids').innerHTML = '';
                 $('tFresh').textContent = 'Source: DeepBook V3 SDK · last attempt ' + new Date().toLocaleTimeString();
             }
+        }
+        /* 24h change comes from Aftermath price-info (sourced, per-asset).
+           24h volume stays unavailable: no verified per-market source exists. */
+        async function tradeLoad24h(sym) {
+            const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+            set('t24hChange', '…');
+            if (!sym || !SYM_TYPE[sym]) { set('t24hChange', 'Unavailable'); return; }
+            try {
+                const pi = await apiGet('/api/prices-info?coins=' + encodeURIComponent(sym), 20000);
+                const d = pi && !pi.error && pi.value ? pi.value[SYM_TYPE[sym]] : null;
+                if (d && d.priceChange24HoursPercentage != null) {
+                    const v = Number(d.priceChange24HoursPercentage);
+                    const el = $('t24hChange');
+                    el.textContent = (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+                    el.style.color = v >= 0 ? '#00ff88' : '#ff4444';
+                    $('tFresh').textContent += ' · 24h Δ via Aftermath Prices';
+                } else set('t24hChange', 'Unavailable');
+            } catch (e) { set('t24hChange', 'Unavailable'); }
         }
         function tradeRenderBook(book) {
             const fmtRow = (p, q, color, quote) => '<tr><td style="color:' + color + ';">' + p + '</td><td style="text-align:right;">' + q + '</td><td style="text-align:right; color:var(--text-dim);">' + (Number(p) * Number(q)).toFixed(quote === 'USDC' ? 2 : 4) + '</td></tr>';
@@ -3894,6 +4229,37 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             }
         }
 
+        /* ---- Trade → Margin preflight + account setup (isolated per pool) ---- */
+        async function marginPreflightLoad() {
+            const box = $('marginPreflightBox');
+            const pool = ($('mPool') && $('mPool').value) || 'SUI_USDC';
+            box.innerHTML = '<div class="fresh">Reading on-chain margin state for ' + pool + '…</div>';
+            try {
+                const r = await apiGet('/api/lending/margin/preflight?pool=' + encodeURIComponent(pool), 25000);
+                if (!r || r.error) throw new Error((r && r.error) || 'PROVIDER_UNAVAILABLE');
+                box.innerHTML = r.marginEnabled
+                    ? '<div class="kv"><span>Margin enabled</span><b style="color:#00ff88;">YES</b></div>'
+                      + '<div class="kv"><span>Base margin pool</span><b style="font-size:11px;">' + escapeHtml(String(r.baseMarginPoolId || '—')).slice(0, 20) + '…</b></div>'
+                      + '<div class="kv"><span>Quote margin pool</span><b style="font-size:11px;">' + escapeHtml(String(r.quoteMarginPoolId || '—')).slice(0, 20) + '…</b></div>'
+                      + '<div class="fresh" style="margin-top:8px;">Source: DeepBook Margin SDK (gRPC) · borrow/trade gated on risk ratio + Pyth freshness</div>'
+                    : '<div class="fresh">' + pool + ' is not margin-enabled on-chain. Pick another pool.</div>';
+            } catch (e) { box.innerHTML = '<div class="fresh">Preflight unavailable — margin registry unreachable. <button class="btn-ghost" style="margin-left:8px;" onclick="marginPreflightLoad()">Retry</button></div>'; }
+        }
+        async function marginSetupReview() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const pool = ($('mPool') && $('mPool').value) || 'SUI_USDC';
+            await execGeneric({
+                action: 'setup_trading_account', provider: 'deepbook',
+                title: 'REVIEW MARGIN ACCOUNT — ' + pool,
+                sub: 'Create + share a MarginManager bound to ' + pool + ' (one-time, gas only)',
+                inputAsset: '', inputAmount: '',
+                buildUrl: '/api/lending/build',
+                buildBody: { provider: 'margin', action: 'setup', wallet, pool },
+                custody: 'The MarginManager is owned by your wallet and wraps a BalanceManager. Leveraged borrow/trade are separate signed steps, always risk-gated.',
+                trackLabel: 'margin setup ' + pool,
+            });
+        }
         /* ---- Trade → Predict — DeepBook Predict live integration ---- */
         const P = {
             markets: [], underlyings: [], underlying: null, expiryMs: null,
@@ -4442,9 +4808,25 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             }
 
             try {
+                const execSel = ($('swapExec') && $('swapExec').value) || 'best';
+                const winner = String(s.best.provider || '').toLowerCase();
+                // Turbos is quote-only: when it wins the compare, execution falls
+                // back to the best executable router and says so — never a Turbos
+                // quote executed through another router silently.
+                let execProvider = execSel === 'aftermath' ? 'aftermath' : (execSel === 'cetus' ? undefined : (winner.includes('aftermath') ? 'aftermath' : undefined));
+                if (execSel === 'best' && winner.includes('turbos')) {
+                    const exe = (s.rows || []).find((r) => /cetus|aftermath/i.test(r.provider || ''));
+                    if (exe) {
+                        s.best = { provider: exe.provider, human: Number(exe.amountOut) / Math.pow(10, decimalsOf(s.to)) };
+                        execProvider = /aftermath/i.test(exe.provider) ? 'aftermath' : undefined;
+                        const sub = $('reviewSub');
+                        if (sub) sub.textContent += ' · Turbos won the quote (quote-only) — executing via ' + exe.provider;
+                    }
+                }
                 const b = await apiPost('/api/swap/build', {
                     from: s.from, to: s.to, amountMist: s.amountMist,
                     sender: wallet, slippage: (s.slip || 0.5) / 100,
+                    provider: execProvider,
                 }, 45000);
                 if (!b || b.error || !b.txBytes) {
                     const errReason = (b && (b.error + (b.detail ? ': ' + b.detail : ''))) || 'BUILD_FAILED';
@@ -5682,7 +6064,8 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             $('discoverPools').style.display = src === 'pools' ? '' : 'none';
             const eco = $('discoverEcosystem'); if (eco) eco.style.display = src === 'ecosystem' ? '' : 'none';
             if (src === 'suipump') loadSuipump();
-            if (src === 'perpsplexity') loadPerpsplexity();
+            if (src === 'perpsplexity') { loadPerpsplexity(); try { loadBluefin(); } catch (e) {} }
+            if (src === 'pools') { try { loadTurbosPools(); } catch (e) {} }
             if (src === 'ecosystem') renderEcosystem();
         }
         /* ---- Ecosystem terminal (spec §22-23): filters + cards from the registry.
@@ -5800,6 +6183,45 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             setReviewStatus('Status: <span class="status-pill live">DISCOVERY</span> — research only.');
             setConfirm('Open in SuiPump ↗', () => window.open('https://suipump.fun', '_blank'));
         }
+        async function loadBluefin() {
+            const grid = $('bluefinGrid'); if (!grid) return;
+            try {
+                const [mk, tk] = await Promise.all([
+                    apiGet('/api/discover/bluefin/markets', 20000).catch(() => ({ error: 1 })),
+                    apiGet('/api/discover/bluefin/tickers', 20000).catch(() => ({ error: 1 })),
+                ]);
+                if ((!mk || mk.error) && (!tk || tk.error)) throw new Error('PROVIDER_UNAVAILABLE');
+                const px = {};
+                for (const t of ((tk && !tk.error && tk.tickers) || [])) px[t.symbol] = t;
+                const rows = ((mk && !mk.error && mk.markets) || []).slice(0, 12);
+                grid.innerHTML = rows.length ? rows.map((m) => {
+                    const t = px[m.symbol] || {};
+                    return '<div class="opportunity-card" data-live="1"><div class="opportunity-asset">' + escapeHtml(m.symbol || '?') + '</div>'
+                        + '<div class="opportunity-protocol">Bluefin perps · ' + escapeHtml(m.status || 'live') + '</div>'
+                        + '<div class="opportunity-metrics">Last ' + (t.last != null ? t.last : '—') + ' · Bid ' + (t.bid != null ? t.bid : '—') + ' · Ask ' + (t.ask != null ? t.ask : '—') + '</div>'
+                        + '<div class="fresh">Source: Bluefin Pro API · Updated ' + new Date().toLocaleTimeString() + '</div>'
+                        + '<div class="opportunity-action" onclick="window.open(\'https://bluefin.io\',\'_blank\')">Trade on Bluefin ↗</div></div>';
+                }).join('') : '<div class="fresh">No markets right now.</div>';
+            } catch (e) { grid.innerHTML = '<div class="fresh">Bluefin unreachable — nothing estimated. <button class="btn-ghost" onclick="loadBluefin()">Retry</button></div>'; }
+        }
+        async function loadTurbosPools() {
+            const grid = $('turbosGrid'); if (!grid) return;
+            try {
+                const r = await apiGet('/api/discover/turbos/pools?limit=12', 25000);
+                if (!r || r.error || !r.pools) throw new Error('PROVIDER_UNAVAILABLE');
+                grid.innerHTML = r.pools.slice(0, 12).map((p) => {
+                    const a = p.symbolA || (p.coinA || '').split('::').pop(), b = p.symbolB || (p.coinB || '').split('::').pop();
+                    const tvl = p.tvlUsd != null ? '$' + Number(p.tvlUsd).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
+                    const vol = p.volume24hUsd != null ? '$' + Number(p.volume24hUsd).toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—';
+                    const apr = p.apr != null ? Number(p.apr).toFixed(2) + '%' : '—';
+                    return '<div class="opportunity-card" data-live="1"><div class="opportunity-asset">' + escapeHtml(a) + ' / ' + escapeHtml(b) + '</div>'
+                        + '<div class="opportunity-protocol">Turbos CLMM · fee ' + escapeHtml(String(p.fee ?? '')) + '</div>'
+                        + '<div class="opportunity-metrics">TVL ' + tvl + ' · Vol 24h ' + vol + ' · APR ' + apr + '</div>'
+                        + '<div class="fresh">Source: Turbos REST · Updated ' + new Date(r.updatedAt || Date.now()).toLocaleTimeString() + '</div>'
+                        + '<div class="opportunity-action" onclick="navigateTo(\'actions\');openSwapComposer()">Quote in Swap →</div></div>';
+                }).join('') || '<div class="fresh">No pools right now.</div>';
+            } catch (e) { grid.innerHTML = '<div class="fresh">Turbos unreachable — nothing estimated. <button class="btn-ghost" onclick="loadTurbosPools()">Retry</button></div>'; }
+        }
         async function loadPerpsplexity() {
             const panel = $('ppxPanel');
             panel.innerHTML = '<div class="fresh">Checking venue status…</div>';
@@ -5874,6 +6296,141 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     (p.url ? '<div class="opportunity-action" onclick="event.stopPropagation();window.open(\'' + p.url + '\',\'_blank\')">Open ' + p.name + ' ↗</div>' : '<div class="fresh">Deep-link pending verification</div>') + '</div>';
             }).join('');
         }
+        async function loadHaedalPanel() {
+            try {
+                const r = await apiGet('/api/lending/haedal/rate', 20000);
+                if (r && !r.error && r.rate) $('haedalRateLine').innerHTML = 'Live haSUI/SUI rate: <b>' + Number(r.rate).toFixed(6) + '</b> · 1 SUI minimum · <span class="status-pill live">CHAIN READ</span>';
+                else $('haedalRateLine').textContent = 'Rate unavailable — nothing estimated.';
+            } catch (e) { $('haedalRateLine').textContent = 'Rate unavailable — nothing estimated.'; }
+            if (!wallet) { $('haedalPosLine').textContent = 'Connect wallet for your haSUI position.'; return; }
+            try {
+                const p = await apiGet('/api/lending/haedal/position?wallet=' + encodeURIComponent(wallet), 25000);
+                if (p && !p.error) {
+                    const h = (p.hasui || []).map((x) => (Number(x.balance) / 1e9).toFixed(4) + ' haSUI').join(', ') || '0 haSUI';
+                    $('haedalPosLine').innerHTML = 'Your position: <b>' + h + '</b> · pending tickets: <b>' + (p.pendingTickets || []).length + '</b>';
+                }
+            } catch (e) { /* stays on connect prompt */ }
+        }
+        async function haedalReview() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const mode = ($('haedalMode') && $('haedalMode').value) || 'stake';
+            const amt = (($('haedalAmount') || {}).value || '').trim();
+            if (mode === 'stake') {
+                const mist = parseMist(amt, 9);
+                if (!mist) { toast('Enter a positive SUI amount (min 1).'); return; }
+                const validator = (($('haedalValidator') || {}).value || '').trim();
+                await execGeneric({
+                    action: 'stake', provider: 'haedal',
+                    title: 'REVIEW STAKE — HAEDAL haSUI',
+                    sub: (Number(mist) / 1e9) + ' SUI → haSUI · ' + (validator ? 'validator ' + validator.slice(0, 12) + '…' : 'Haedal auto-distribution'),
+                    inputAsset: 'SUI', inputAmount: mist,
+                    buildUrl: '/api/lending/build',
+                    buildBody: { provider: 'haedal', action: 'stake', wallet, amountMist: mist, validator: validator || undefined },
+                    custody: 'SUI is staked into Haedal contracts for haSUI at the live exchange rate. Hub never custodies. Variable yield, protocol risks apply.',
+                    trackLabel: 'stake SUI→haSUI',
+                });
+            } else {
+                const mist = parseMist(amt, 9);
+                if (!mist) { toast('Enter a positive haSUI amount.'); return; }
+                await execGeneric({
+                    action: 'unstake', provider: 'haedal',
+                    title: 'REVIEW UNSTAKE — HAEDAL',
+                    sub: (Number(mist) / 1e9) + ' haSUI · ' + (mode === 'instant' ? 'instant (9% fee, may fail on low liquidity)' : 'delayed ticket (1–2 epochs, then claim)'),
+                    inputAsset: 'haSUI', inputAmount: mist,
+                    buildUrl: '/api/lending/build',
+                    buildBody: { provider: 'haedal', action: 'unstake', wallet, amountMist: mist, mode },
+                    custody: mode === 'instant'
+                        ? 'Instant exit takes a 9% service fee and can fail when vault liquidity is low.'
+                        : 'Delayed exit burns haSUI for an UnstakeTicket; claim SUI after 1–2 epochs via Claim ticket.',
+                    trackLabel: 'unstake haSUI',
+                });
+            }
+        }
+        async function haedalClaimReview() {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const ticket = (($('haedalTicket') || {}).value || '').trim();
+            if (!/^0x[0-9a-fA-F]{64}$/.test(ticket)) { toast('Paste your UnstakeTicket object id first.'); return; }
+            await execGeneric({
+                action: 'claim', provider: 'haedal',
+                title: 'REVIEW CLAIM — HAEDAL TICKET',
+                sub: 'Ticket ' + ticket.slice(0, 12) + '… → SUI (only after unlock epoch)',
+                inputAsset: '', inputAmount: '',
+                buildUrl: '/api/lending/build',
+                buildBody: { provider: 'haedal', action: 'claim', wallet, ticketId: ticket },
+                custody: 'Claiming a matured unstake ticket releases SUI. Early claims abort on-chain — simulation gates signing.',
+                trackLabel: 'claim haedal ticket',
+            });
+        }
+        let MSTABLE_VAULTS = [];
+        async function loadMstablePanel() {
+            try {
+                const r = await apiGet('/api/discover/metastable/vaults', 25000);
+                if (!r || r.error || !r.vaults) throw new Error('unavailable');
+                MSTABLE_VAULTS = r.vaults.filter((v) => !v.error);
+                $('mstableVault').innerHTML = MSTABLE_VAULTS.map((v, i) => '<option value="' + i + '">' + escapeHtml((v.mCoin || '').split('::').pop()) + ' · ' + v.assets.length + ' assets</option>').join('');
+                mstableAssets();
+                const musd = MSTABLE_VAULTS.find((v) => /musd/i.test(v.mCoin || ''));
+                $('mstableVaultLine').innerHTML = MSTABLE_VAULTS.length + ' live vaults · mUSD supply <b>' + (musd ? (Number(musd.supply) / 1e9).toFixed(1) + 'M' : '—') + '</b> · <span class="status-pill live">CHAIN READ</span>';
+            } catch (e) { $('mstableVaultLine').textContent = 'Vaults unavailable — nothing estimated.'; }
+        }
+        function mstableAssets() {
+            const v = MSTABLE_VAULTS[Number(($('mstableVault') || {}).value) || 0];
+            const sel = $('mstableAsset'); if (!sel) return;
+            sel.innerHTML = v ? v.assets.map((a) => '<option value="' + escapeHtml(a.coinType) + '">' + escapeHtml(a.coinType.split('::').pop()) + '</option>').join('') : '';
+        }
+        async function mstableReview(mode) {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const v = MSTABLE_VAULTS[Number(($('mstableVault') || {}).value) || 0];
+            const coin = ($('mstableAsset') || {}).value;
+            const amt = (($('mstableAmount') || {}).value || '').trim();
+            if (!v || !coin || !(Number(amt) > 0)) { toast('Pick vault + asset + positive amount.'); return; }
+            await execGeneric({
+                action: mode === 'mint' ? 'supply' : 'withdraw', provider: 'metastable',
+                title: 'REVIEW ' + mode.toUpperCase() + ' — METASTABLE',
+                sub: amt + ' ' + coin.split('::').pop() + ' ' + (mode === 'mint' ? '→ meta coin' : '← meta coin'),
+                inputAsset: coin, inputAmount: amt,
+                buildUrl: '/api/lending/build',
+                buildBody: { provider: 'metastable', action: mode, wallet, mCoin: v.mCoin, coinType: coin, amountHuman: amt },
+                custody: mode === 'mint' ? 'Assets enter the Meta Vault; meta coins are minted at the on-chain price feed.' : 'Meta coins burn for vault assets minus the dynamic 0.01–1% fee.',
+                trackLabel: mode + ' metastable',
+            });
+        }
+        async function loadSpringPanel() {
+            try {
+                const r = await apiGet('/api/discover/springsui/rate', 25000);
+                if (r && !r.error) $('springRateLine').innerHTML = 'Live rate: <b>1 sSUI = ' + Number(r.rate).toFixed(6) + ' SUI</b> · TVL <b>' + (r.totalSui / 1e6).toFixed(1) + 'M SUI</b> · <span class="status-pill live">CHAIN READ</span>';
+                else $('springRateLine').textContent = 'Rate unavailable — nothing estimated.';
+            } catch (e) { $('springRateLine').textContent = 'Rate unavailable — nothing estimated.'; }
+        }
+        async function springReview(mode) {
+            if (!wallet) { toast('Connect wallet first.'); return; }
+            if (!window.HubWallet || !window.HubWallet.address) { toast('Signing requires an installed wallet.'); return; }
+            const amt = (($('springAmount') || {}).value || '').trim();
+            const mist = mode === 'mint' ? parseMist(amt, 9) : amt;
+            if (mode === 'mint' && !mist) { toast('Enter a positive SUI amount.'); return; }
+            await execGeneric({
+                action: mode === 'mint' ? 'stake' : 'unstake', provider: 'springsui',
+                title: 'REVIEW ' + mode.toUpperCase() + ' — SPRINGSUI',
+                sub: mode === 'mint' ? (Number(mist) / 1e9 + ' SUI → sSUI') : 'Redeem sSUI → SUI (instant, SIP-33)',
+                inputAsset: mode === 'mint' ? 'SUI' : 'sSUI', inputAmount: mist || '',
+                buildUrl: '/api/lending/build',
+                buildBody: mode === 'mint'
+                    ? { provider: 'springsui', action: 'mint', wallet, amountMist: mist }
+                    : { provider: 'springsui', action: 'redeem', wallet, ssuiObjectId: (($('springRedeemObj') || {}).value || '').trim() || undefined },
+                custody: 'SUI enters the SpringSui LST contracts. Instant redemption, no unbonding. Protocol risks apply.',
+                trackLabel: mode + ' springsui',
+            });
+        }
+        async function loadVoloPanel() {
+            try {
+                const r = await apiGet('/api/discover/volo/stats', 25000);
+                if (r && !r.error) $('voloStatsLine').innerHTML = 'Staked: <b>' + (Number(r.totalStaked) / 1e6).toFixed(1) + 'M SUI</b> · APY: <b>' + (Number(r.apy) * 100).toFixed(2) + '%</b> · validators <b>' + (r.validators || []).length + '</b> · <span class="status-pill live">LIVE STATS</span>';
+                else $('voloStatsLine').textContent = 'Stats unavailable.';
+            } catch (e) { $('voloStatsLine').textContent = 'Stats unavailable.'; }
+        }
         function selectEarnProvider(provider) {
             const note = $('earnProviderNote');
             const grid = $('earnStaking');
@@ -5935,6 +6492,10 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                 if (fr) fr.textContent = 'Live · Aftermath · ' + new Date().toLocaleTimeString();
             } catch (e) { if (fr) fr.textContent = 'Earn data Unavailable.'; }
             try { renderEarnDir(); } catch (e) {}
+            try { loadHaedalPanel(); } catch (e) {}
+            try { loadMstablePanel(); } catch (e) {}
+            try { loadSpringPanel(); } catch (e) {}
+            try { loadVoloPanel(); } catch (e) {}
             const ec = $('earnCapital');
             if (ec) ec.textContent = wallet ? ($('vAvailable') ? $('vAvailable').textContent : 'see Portfolio') : 'connect wallet → live';
         }

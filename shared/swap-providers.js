@@ -6,9 +6,9 @@
 // with shared/registry.js by test.
 export const SWAP_PROVIDERS = [
   { id: 'cetus', name: 'Cetus', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
-  { id: 'aftermath', name: 'Aftermath Router', category: 'dex', quote: true, build: false, status: 'PARTIAL', reason: 'QUOTE_ONLY' },
+  { id: 'aftermath', name: 'Aftermath Router', category: 'dex', quote: true, build: false, status: 'PARTIAL', reason: 'BUILD_VIA_EXEC_ROUTE' },
   { id: 'deepbook', name: 'DeepBook', category: 'trading', quote: false, build: false, status: 'LIVE', reason: 'USE_TRADE_ORDERBOOK' },
-  { id: 'turbos', name: 'Turbos', category: 'dex', quote: false, build: false, status: 'DISCOVER', reason: 'NO_ADAPTER' },
+  { id: 'turbos', name: 'Turbos', category: 'dex', quote: true, build: false, status: 'PARTIAL', reason: 'QUOTE_ONLY' },
   { id: 'bluefin-spot', name: 'Bluefin Spot', category: 'dex', quote: false, build: false, status: 'DISCOVER', reason: 'NO_ADAPTER' },
   { id: 'flowx', name: 'FlowX', category: 'dex', quote: false, build: false, status: 'DISCOVER', reason: 'ROUTED_VIA_CETUS_AGGREGATOR' },
 ];

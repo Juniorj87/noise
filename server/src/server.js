@@ -7,6 +7,18 @@ import { cetusAdapter, aftermathAdapter, deepbookAdapter, deepbookOpenOrders, su
 import { suipumpAdapter } from '../../api/_lib/suipump.js';
 import { perpsplexityAdapter } from '../../api/_lib/perpsplexity.js';
 import {
+  normalizeLendingError, devInspectB64, transferBuild,
+  suilendMarkets, suilendPosition, suilendSupply, suilendWithdraw, suilendBorrow, suilendRepay, suilendClaim,
+  naviMarkets, naviPosition, naviRewards, naviSupply, naviWithdraw, naviBorrow, naviRepay, naviClaim,
+  haedalRate, haedalPosition, haedalStakeBuild, haedalUnstakeInstantBuild, haedalUnstakeRequestBuild, haedalClaimBuild,
+  aftermathSwapBuild, marginPreflight, marginSetupBuild,
+  mstableVaults, mstableMint, mstableBurn,
+  springsuiRate, springsuiMint, springsuiRedeem,
+  turbosPools, bluefinMarkets, bluefinDepth, bluefinTickers,
+  scallopMarkets, scallopPositions, scallopSupply, scallopWithdraw, scallopBorrow, scallopRepay,
+  bucketMarkets, bucketPositions, bucketPsmSwap, voloStats, turbosQuote,
+} from '../../api/_lib/lending.js';
+import {
   getReferralStats, getReferralActivity, getLeaderboard, getRevenueSeries,
   getNetworkStats, getRevenueSummary, getReconciliationExpected,
 } from './referral-analytics.js';
@@ -187,6 +199,35 @@ const routes = {
     }
     if (!isWalletAddress(sender)) return { error: 'INVALID_WALLET', code: 400 };
     if (!(Number(slippage) >= 0 && Number(slippage) < 1)) return { error: 'INVALID_SLIPPAGE', code: 400 };
+    if (String(b.provider || '').toLowerCase() === 'aftermath') {
+      try {
+        const r = await withBreaker('aftermath', () => aftermathSwapBuild({
+          wallet: sender,
+          fromType: coinType(String(from).toUpperCase()),
+          toType: coinType(String(to).toUpperCase()),
+          amountMist: String(amountMist),
+          slippage: Number(slippage),
+          feeBps: Number(FEES.swapBps || 0),
+          feeRecipient: null,
+        }));
+        const sim = await simulate(r.txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));
+        let gasEst = null;
+        if (sim && sim.effects && sim.effects.gasUsed) {
+          const gu = sim.effects.gasUsed;
+          gasEst = String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0)));
+        }
+        markHealth('aftermath', 'LIVE');
+        return {
+          provider: 'Aftermath', amountOut: String(r.meta?.amountOut ?? 0),
+          txBytes: r.txBytes, simulation: sim, gasEst, feeCollected: r.meta?.feeCollected || null,
+          builtAt: new Date().toISOString(),
+        };
+      } catch (e) {
+        const n = normalizeLendingError(e);
+        markHealth('aftermath', 'UNAVAILABLE');
+        return { error: n.code || 'BUILD_FAILED', detail: String(n.message || e).slice(0, 200), code: 502 };
+      }
+    }
     try {
       const [{ AggregatorClient }, { Transaction }] = await Promise.all([
         import('@cetusprotocol/aggregator-sdk'),
@@ -542,17 +583,21 @@ const routes = {
     try { coinType(from); coinType(to); amountMist = Math.round(amount * 10 ** decimals); }
     catch (e) { return { error: e.code || 'UNSUPPORTED_ASSET', code: 400 }; }
     const t = Date.now();
-    const [cetus, aftermath] = await Promise.allSettled([
+    const [cetus, aftermath, turbos] = await Promise.allSettled([
       withBreaker('cetus', () => cached(`quote:cetus:${from}:${to}:${amountMist}`, 15_000,
         () => cetusAdapter.getQuote({ from, to, amountMist }))),
       withBreaker('aftermath', () => cached(`quote:af:${from}:${to}:${amountMist}`, 15_000,
         () => aftermathAdapter.getQuote({ from, to, amountMist }))),
+      withBreaker('turbos', () => cached(`quote:turbos:${from}:${to}:${amountMist}`, 30_000,
+        () => turbosQuote({ fromType: coinType(from), toType: coinType(to), amountMist: String(amountMist) })), 30000),
     ]);
     const ok = [], failed = [];
     if (cetus.status === 'fulfilled') { ok.push(cetus.value); markHealth('cetus', 'LIVE', Date.now() - t); }
     else { failed.push({ provider: 'Cetus', error: cetus.reason?.code || 'PROVIDER_UNAVAILABLE' }); markHealth('cetus', 'UNAVAILABLE'); }
     if (aftermath.status === 'fulfilled') { ok.push(aftermath.value); markHealth('aftermath', 'LIVE', Date.now() - t); }
     else { failed.push({ provider: 'Aftermath Router', error: aftermath.reason?.code || 'PROVIDER_UNAVAILABLE' }); markHealth('aftermath', 'UNAVAILABLE'); }
+    if (turbos.status === 'fulfilled') { ok.push(turbos.value); markHealth('turbos', 'LIVE', Date.now() - t); }
+    else { failed.push({ provider: 'Turbos', error: turbos.reason?.code || 'PROVIDER_UNAVAILABLE' }); markHealth('turbos', 'UNAVAILABLE'); }
     if (!ok.length) return { error: 'ALL_PROVIDERS_UNAVAILABLE', failed, fallback: deepLink('cetus', { from, to }), code: 502 };
     const compared = compareRoutes(ok, { platformFee: FeeEngine.calculatePlatformFee(amount, 'swap'), gasEst: 0 });
     const match = (q, id) => String(q.provider || '').toLowerCase().includes(id === 'aftermath' ? 'aftermath' : id);
@@ -619,6 +664,198 @@ const routes = {
       return await withBreaker('aftermath', () =>
         cached('af:lp:' + wallet, 60_000, () => aftermathAdapter.getOwnedLp(wallet)));
     } catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+
+  /* Lending + staking execution layer (NAVI / Suilend / Haedal).
+     Builds are devInspect-simulated before bytes are returned; never signed here. */
+  'GET /api/lending/navi/markets': async () => {
+    try { return await withBreaker('navi', () => cached('lending:navi:markets', 120_000, () => naviMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/navi/position': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('navi', () => cached('lending:navi:pos:' + wallet, 30_000, () => naviPosition(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/navi/rewards': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('navi', () => cached('lending:navi:rew:' + wallet, 30_000, () => naviRewards(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/suilend/markets': async () => {
+    try { return await withBreaker('suilend', () => cached('lending:suilend:markets', 120_000, () => suilendMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/suilend/position': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('suilend', () => cached('lending:suilend:pos:' + wallet, 30_000, () => suilendPosition(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/haedal/rate': async () => {
+    try { return await withBreaker('haedal', () => cached('lending:haedal:rate', 60_000, () => haedalRate())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/haedal/position': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('haedal', () => cached('lending:haedal:pos:' + wallet, 30_000, () => haedalPosition(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/margin/preflight': async (_, url) => {
+    const pool = url.searchParams.get('pool') || 'SUI_USDC';
+    try { return await withBreaker('margin', () => cached('lending:margin:pre:' + pool, 120_000, () => marginPreflight(pool))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/scallop/position': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('scallop', () => cached('lending:scallop:pos:' + wallet, 30_000, () => scallopPositions(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/bucket/position': async (_, url) => {
+    const wallet = url.searchParams.get('wallet');
+    if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try { return await withBreaker('bucket', () => cached('lending:bucket:pos:' + wallet, 30_000, () => bucketPositions(wallet))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/turbos/pools': async (_, url) => {
+    const limit = Math.min(Number(url.searchParams.get('limit') || 24), 100);
+    try { return { pools: await withBreaker('turbos', () => cached('discover:turbos:pools:' + limit, 120_000, () => turbosPools(limit)), 60000), updatedAt: new Date().toISOString() }; }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/bluefin/markets': async () => {
+    try { return await withBreaker('bluefin', () => cached('discover:bluefin:markets', 60_000, () => bluefinMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/bluefin/tickers': async () => {
+    try { return await withBreaker('bluefin', () => cached('discover:bluefin:tickers', 30_000, () => bluefinTickers())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/bluefin/depth': async (_, url) => {
+    const symbol = url.searchParams.get('symbol');
+    if (!symbol) return { error: 'MISSING_SYMBOL', code: 400 };
+    try { return await withBreaker('bluefin', () => cached('discover:bluefin:depth:' + symbol, 15_000, () => bluefinDepth(symbol))); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/scallop/markets': async () => {
+    try { return await withBreaker('scallop', () => cached('discover:scallop:markets', 120_000, () => scallopMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/bucket/markets': async () => {
+    try { return await withBreaker('bucket', () => cached('discover:bucket:markets', 120_000, () => bucketMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/springsui/rate': async () => {
+    try { return await withBreaker('springsui', () => cached('discover:springsui:rate', 60_000, () => springsuiRate())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/volo/stats': async () => {
+    try { return await withBreaker('volo', () => cached('discover:volo:stats', 300_000, () => voloStats())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/discover/metastable/vaults': async () => {
+    try { return await withBreaker('metastable', () => cached('discover:mstable:vaults', 120_000, () => mstableVaults())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'POST /api/lending/build': async (req) => {
+    const b = await readJson(req).catch(() => ({}));
+    const builders = {
+      'navi:supply': naviSupply, 'navi:withdraw': naviWithdraw, 'navi:borrow': naviBorrow, 'navi:repay': naviRepay, 'navi:claim': naviClaim,
+      'suilend:supply': suilendSupply, 'suilend:withdraw': suilendWithdraw, 'suilend:borrow': suilendBorrow, 'suilend:repay': suilendRepay, 'suilend:claim': suilendClaim,
+      'scallop:supply': scallopSupply, 'scallop:withdraw': scallopWithdraw, 'scallop:borrow': scallopBorrow, 'scallop:repay': scallopRepay,
+    };
+    if (b.provider === 'margin' && b.action === 'setup') {
+      try {
+        const r = await marginSetupBuild({ wallet: b.wallet, poolKey: b.pool || b.poolKey });
+        const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
+        if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
+        return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: 'margin', action: 'setup', ...r.meta } };
+      } catch (e) {
+        const n = normalizeLendingError(e);
+        return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
+      }
+    }
+    if (b.provider === 'metastable' || b.provider === 'springsui' || b.provider === 'bucket') {
+      try {
+        let r, meta;
+        if (b.provider === 'metastable') {
+          const fn = b.action === 'mint' ? mstableMint : b.action === 'burn' ? mstableBurn : null;
+          if (!fn) return { error: 'NOT_FOUND', code: 404 };
+          r = await fn({ wallet: b.wallet, mCoin: b.mCoin, coinType: b.coinType, amountHuman: b.amountHuman || b.amount, minOut: b.minOut });
+          meta = { provider: 'metastable', action: b.action, ...r.meta };
+        } else if (b.provider === 'springsui') {
+          r = b.action === 'mint'
+            ? await springsuiMint({ wallet: b.wallet, amountMist: b.amountMist })
+            : b.action === 'redeem'
+              ? await springsuiRedeem({ wallet: b.wallet, ssuiObjectId: b.ssuiObjectId, amountMist: b.amountMist })
+              : null;
+          if (!r) return { error: 'NOT_FOUND', code: 404 };
+          meta = { provider: 'springsui', action: b.action, ...r.meta };
+        } else {
+          if (b.action !== 'psm-swap') return { error: 'NOT_FOUND', code: 404 };
+          r = await bucketPsmSwap({ wallet: b.wallet, coinType: b.coinType, amountMist: b.amountMist, dir: b.dir });
+          meta = { provider: 'bucket', action: b.action, ...r.meta };
+        }
+        const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
+        if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
+        return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta };
+      } catch (e) {
+        const n = normalizeLendingError(e);
+        return { error: n.code, code: /INVALID|NO_|MISSING|PROVIDER_UNAVAILABLE/.test(n.code) ? 400 : 502 };
+      }
+    }
+    const key = String(b.provider || '') + ':' + String(b.action || '');
+    const fn = builders[key];
+    if (!fn) {
+      if (b.provider === 'haedal') {
+        try {
+          let r;
+          if (b.action === 'stake') r = await haedalStakeBuild({ wallet: b.wallet, amountMist: b.amountMist, validator: b.validator });
+          else if (b.action === 'unstake') r = b.mode === 'instant'
+            ? await haedalUnstakeInstantBuild({ wallet: b.wallet, hasuiMist: b.amountMist, hasuiType: b.coinType })
+            : await haedalUnstakeRequestBuild({ wallet: b.wallet, hasuiMist: b.amountMist, hasuiType: b.coinType });
+          else if (b.action === 'claim') r = await haedalClaimBuild({ wallet: b.wallet, ticketId: b.ticketId });
+          else return { error: 'NOT_FOUND', code: 404 };
+          const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
+          if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
+          return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: 'haedal', action: b.action, ...r.meta } };
+        } catch (e) {
+          const n = normalizeLendingError(e);
+          return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
+        }
+      }
+      return { error: 'NOT_FOUND', code: 404 };
+    }
+    try {
+      const r = await fn({ wallet: b.wallet, coinType: b.coinType, coinName: b.coinName || b.coin || b.symbol, amountMist: b.amountMist, pool: b.pool, obligationId: b.obligationId, obligationKey: b.obligationKey });
+      const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
+      if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
+      return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: b.provider, action: b.action, ...r.meta } };
+    } catch (e) {
+      const n = normalizeLendingError(e);
+      return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
+    }
+  },
+  'POST /api/transfer/build': async (req) => {
+    const b = await readJson(req).catch(() => ({}));
+    try {
+      // Assets restricted to coins Noise knows (symbol or matching struct tag).
+      let type = String(b.coinType || '');
+      try { type = coinType(type); } catch {
+        const known = ['SUI', 'USDC', 'DEEP', 'CETUS', 'NAVX'].map((s) => { try { return coinType(s); } catch { return null; } });
+        if (!known.includes(type)) return { error: 'UNSUPPORTED_ASSET', code: 400 };
+      }
+      const r = await transferBuild({ sender: b.sender || b.wallet, coinType: type, amountMist: b.amountMist || b.amount, recipient: b.recipient });
+      const insp = await devInspectB64(r.txBytes, b.sender || b.wallet).catch(() => null);
+      if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
+      return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: r.meta };
+    } catch (e) {
+      const n = normalizeLendingError(e);
+      return { error: n.code, code: /INVALID|UNSUPPORTED|NO_|MISSING/.test(n.code) ? 400 : 502 };
+    }
   },
 
   /* Ecosystem discovery (live reads, cached; honest 502 when a venue is down). */

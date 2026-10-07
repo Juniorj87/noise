@@ -27,12 +27,12 @@ export const ACTION_CAPABILITIES = {
 
   // Data / quote readable, but no verified build in Noise.
   liquidity: cap('LIVE', 'LIVE', 'READ_ONLY', 'UNAVAILABLE', 'READ_ONLY', { provider: 'Cetus / Aftermath pools', url: 'https://app.cetus.zone', note: 'Pool TVL/APR are live; pool add-liquidity build is not wired.' }),
-  claim: cap('LIVE', '—', 'READ_ONLY', 'UNAVAILABLE', 'READ_ONLY', { provider: 'Aftermath', url: 'https://aftermath.finance', note: 'Rewards are readable; protocol reward claim needs a provider adapter.' }),
-  supply: cap('UNAVAILABLE', '—', 'READ_ONLY', 'UNAVAILABLE', 'READ_ONLY', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Lending SDKs are blocked — no markets are shown rather than invented.' }),
-  borrow: cap('UNAVAILABLE', '—', 'UNAVAILABLE', 'UNAVAILABLE', 'UNAVAILABLE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Lending execution is unavailable in Noise.' }),
-  repay: cap('UNAVAILABLE', '—', 'UNAVAILABLE', 'UNAVAILABLE', 'UNAVAILABLE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Lending execution is unavailable in Noise.' }),
-  withdraw: cap('UNAVAILABLE', '—', 'UNAVAILABLE', 'UNAVAILABLE', 'UNAVAILABLE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Lending execution is unavailable in Noise.' }),
-  transfer: cap('LIVE', '—', 'READ_ONLY', 'UNAVAILABLE', 'READ_ONLY', { provider: 'Sui', url: 'https://sui.io', note: 'Transfers are not built in Noise.' }),
+  claim: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Reward claims build + simulate for NAVI and Suilend; wallet signs. Aftermath/Cetus claims remain provider-side.' }),
+  supply: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Supply builds + simulates via official SDKs (NAVI lending v2, Suilend SDK v12, gRPC); wallet signs. E2E proof needs a funded wallet run.' }),
+  borrow: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Borrow builds with collateral/health preflight; wallet signs. E2E proof needs a funded wallet run.' }),
+  repay: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Partial/full repay builds; wallet signs. E2E proof needs a funded wallet run.' }),
+  withdraw: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Withdraw builds with health-gated preflight; wallet signs. E2E proof needs a funded wallet run.' }),
+  transfer: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'Sui', url: 'https://sui.io', note: 'Plain coin transfer PTB built + simulated; wallet signs. Supported: SUI, USDC, DEEP, CETUS, NAVX.' }),
 };
 
 export function capabilityOf(action) { return ACTION_CAPABILITIES[action] || null; }

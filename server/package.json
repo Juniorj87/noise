@@ -14,12 +14,18 @@
     "test:pg": "node --test test/pg.test.js"
   },
   "dependencies": {
+    "@bucket-protocol/sdk": "^2.3.0",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
     "@mysten/deepbook-v3": "^2.6.4",
     "@mysten/sui": "2.33.2",
     "@mysten/suins": "^2.0.13",
+    "@naviprotocol/lending": "^2.0.12",
+    "@scallop-io/sui-scallop-sdk": "^5.4.1",
     "@suilend/sdk": "^12.4.1",
+    "@suilend/springsui-sdk": "^4.1.0",
     "aftermath-ts-sdk": "^5.1.1",
-    "navi-sdk": "^1.7.3"
+    "metastable-ts-sdk": "^1.0.3",
+    "navi-sdk": "^1.7.3",
+    "turbos-clmm-sdk": "^4.0.2"
   }
 }

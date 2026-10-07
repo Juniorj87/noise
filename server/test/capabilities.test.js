@@ -18,13 +18,15 @@ test('execution is only allowed when execute === LIVE', () => {
   assert.equal(isExecutable('swap'), true);
   assert.equal(isExecutable('stake'), true);
   assert.equal(isExecutable('predict_mint'), true);
-  assert.equal(isExecutable('supply'), false);
-  assert.equal(isExecutable('borrow'), false);
-  assert.equal(isExecutable('repay'), false);
-  assert.equal(isExecutable('withdraw'), false);
-  assert.equal(isExecutable('claim'), false);
+  // Execution integration pass (2026-10-06): builds + simulations verified
+  // against live providers — gates open for wallet-signed E2E.
+  assert.equal(isExecutable('supply'), true);
+  assert.equal(isExecutable('borrow'), true);
+  assert.equal(isExecutable('repay'), true);
+  assert.equal(isExecutable('withdraw'), true);
+  assert.equal(isExecutable('claim'), true);
+  assert.equal(isExecutable('transfer'), true);
   assert.equal(isExecutable('liquidity'), false);
-  assert.equal(isExecutable('transfer'), false);
   assert.equal(isExecutable('unknown_action'), false);
 });
 

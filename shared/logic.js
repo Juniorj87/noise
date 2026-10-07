@@ -6,7 +6,7 @@
 export const ACTIONS = ['swap', 'supply', 'withdraw', 'borrow', 'repay', 'stake', 'unstake', 'deposit', 'claim', 'notify', 'transfer',
   'spot_order', 'limit_order', 'market_order', 'cancel_order', 'setup_trading_account',
   'predict_mint', 'predict_redeem', 'predict_claim', 'predict_settlement'];
-export const PROVIDERS = ['cetus', 'aftermath', 'aftermath-router', 'aftermath-perps', 'deepbook', 'deepbook-predict', 'sui-native', 'navi', 'suilend', 'hub'];
+export const PROVIDERS = ['cetus', 'aftermath', 'aftermath-router', 'aftermath-perps', 'deepbook', 'deepbook-predict', 'sui-native', 'navi', 'suilend', 'haedal', 'hub'];
 export function isWalletAddress(a) { return typeof a === 'string' && /^0x[0-9a-fA-F]{64}$/.test(a); }
 export function isPositiveAmount(n) { return typeof n === 'number' && isFinite(n) && n > 0; }
 export function isValidBps(n) { return typeof n === 'number' && isFinite(n) && n >= 0 && n <= 100; }
