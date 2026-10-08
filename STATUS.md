@@ -1,4 +1,8 @@
-# STATUS.md — NOISE HUB production status (2026-10-01)
+# STATUS.md — NOISE HUB production status (2026-10-01 — SUPERSEDED, kept for history)
+> On 2026-10-07 the app was rebuilt around task-first journeys; see `AUDIT_REPORT_RU.md`
+> and `PUBLIC_COVERAGE.json` for the current integration state. Entries below describe
+> the 2026-10-01 build and may contradict current code (e.g. NAVI/Suilend/Scallop
+> lending, Turbos quotes and Predict routes have since been wired live).
 Full reasoning: `ACTION_HUB_INTEGRATION_AUDIT.md` (§M progress log).
 Scale: `LIVE` · `PARTIAL` · `READ ONLY` · `DEEP LINK` · `COMING SOON` · `BLOCKED`.
 

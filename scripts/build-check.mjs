@@ -16,15 +16,29 @@ function walk(dir, depth = 0) {
 const files = [];
 walk('api', 0);
 let bad = 0;
+import { pathToFileURL } from 'node:url';
 for (const f of files) {
-  try { await import(join(process.cwd(), f).replaceAll('\\', '/')); }
+  try { await import(pathToFileURL(join(process.cwd(), f)).href); }
   catch (e) {
-    // _lib modules have no default export side effects; only real syntax/parse errors throw TypeError-free
-    if (String(e.message || e).includes('SyntaxError') || e instanceof SyntaxError) { console.error('SYNTAX', f, e.message); bad++; }
+    console.error('IMPORT_FAILED', f, e.code || e.name, String(e.message).slice(0, 200)); bad++;
   }
 }
 if (bad) { console.error(bad + ' file(s) with syntax errors'); process.exit(1); }
 console.log('build check OK — static frontend, ' + files.length + ' serverless modules parse');
+
+// Check inline frontend JavaScript syntax without executing UI code.
+const { readFileSync } = await import('node:fs');
+const { spawnSync } = await import('node:child_process');
+for (const html of ['index.html', 'app.html', 'docs.html', 'admin.html']) {
+  const text = readFileSync(html, 'utf8');
+  for (const match of text.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
+    if (/src\s*=/.test(match[1]) || !match[2].trim()) continue;
+    if (/importmap|application\/(?:ld\+)?json/.test(match[1])) { JSON.parse(match[2]); continue; }
+    const checked = spawnSync(process.execPath, ['--check', '--input-type=module'], { input: match[2], encoding: 'utf8' });
+    if (checked.status !== 0) { console.error('FRONTEND_SYNTAX', html, checked.stderr); process.exit(1); }
+  }
+}
+console.log('Inline frontend scripts parse successfully');
 
 // Prepare public/ directory for static frontend deployment
 import { mkdirSync, cpSync, existsSync, writeFileSync } from 'node:fs';
@@ -46,3 +60,6 @@ const { serializeRegistry } = await import('../shared/registry.js');
 writeFileSync(join(publicDir, 'registry.json'), serializeRegistry());
 console.log('public/registry.json written');
 console.log('public directory prepared successfully');
+
+mkdirSync(join(publicDir,'shared'),{recursive:true});
+cpSync('shared/journey-model.js',join(publicDir,'shared/journey-model.js'));

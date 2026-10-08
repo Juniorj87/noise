@@ -25,7 +25,8 @@
         h3 { font-size:14px; font-weight:600; margin:24px 0 8px; }
         p, li { font-size:14px; color:rgba(255,255,255,.75); }
         ul { padding-left:20px; margin:8px 0 16px; }
-        code { font-family:'Space Grotesk',monospace; font-size:12.5px; background:var(--surface); border:1px solid var(--line); padding:2px 7px; }
+        code { overflow-wrap:anywhere; font-family:'Space Grotesk',monospace; font-size:12.5px; background:var(--surface); border:1px solid var(--line); padding:2px 7px; }
+        pre code { overflow-wrap:normal; }
         pre { background:var(--surface); border:1px solid var(--line); padding:20px; font-size:12.5px; line-height:1.8; overflow-x:auto; margin:12px 0 20px; }
         .pill { display:inline-block; font-size:10px; letter-spacing:1.5px; padding:3px 9px; border:1px solid var(--line); color:var(--dim); }
         .pill.live { color:#00ff88; border-color:rgba(0,255,136,.35); }
@@ -60,200 +61,46 @@
             <a href="#liquidity">Liquidity</a>
             <a href="#trading">Trading</a>
             <a href="#bridge">Bridge</a>
-            <a href="#nft">NFT</a>
-            <a href="#automation">Automation</a>
-            <a href="#ai">AI</a>
-            <a href="#memory">Memory</a>
-            <a href="#privacy">Privacy</a>
+            
+            
+            
+            
+            
             <a href="#security">Security</a>
             <a href="#fees">Fees</a>
-            <a href="#referral">Referral</a>
+            
             <a href="#protocols">Protocols</a>
             <a href="#activity">Activity</a>
             <a href="#api">API</a>
             <a href="#faq">FAQ</a>
         </aside>
         <main>
-            <h1 id="intro">noise docs</h1>
-            <p><b>noise</b> (NOISE HUB) is one non-custodial interface for the Sui ecosystem: capital overview, discovery, swap, earn, staking, lending, liquidity, trading, bridge, automation, AI — with every action tracked in Activity. Last updated: 2026-09-30.</p>
-            <div class="warn">Honesty rule: every feature is labelled <span class="pill live">LIVE</span>, <span class="pill ro">READ ONLY</span>, <span class="pill">DEEP LINK</span> or <span class="pill">COMING SOON</span>. Indicative values carry <code>*</code> and never look live.</div>
-
-            <h2 id="how">How it works</h2>
-            <pre>Connect → Discover → Choose → Review → Sign → Track → Automate
-Backend prepares. Wallet signs. Sui network settles.</pre>
-            <p>Open the app, connect a Sui wallet (read-only address or wallet-standard), see Capital aggregated without double counting, pick an action, review provider + route + fees + risks, simulate where supported, sign in your wallet, track the digest in Activity.</p>
-
-            <h2 id="capital">Capital</h2>
-            <p>Wallet coins (<code>suix_getAllBalances</code>), USD via CoinGecko, staking (<code>suix_getStakes</code>), non-coin object count (<code>suix_getOwnedObjects</code>). Rule: deposited tokens are positions, not wallet balance. Total = Available + DeFi + Staked + Rewards − Borrowed. Unpriced assets show <code>Price unavailable</code>.</p>
-
-            <h2 id="discover">Discover</h2>
-            <p>Tokens, pools, protocols, opportunities — each with Source + Updated. Tabs filter the live table and opportunity cards. Pool/whale feeds are <span class="pill ro">READ ONLY</span> until the indexer milestone (<code>STATUS.md</code>).</p>
-
-            <h2 id="swap">Swap</h2>
-            <p>Quotes via Cetus Aggregator V3 (<code>router_v3/find_routes</code>, SDK <code>@cetusprotocol/aggregator-sdk@1.7.3</code>). Review shows: you pay / receive, provider (<code>Best route via Cetus</code>), route, price impact, slippage, protocol / platform / network fees, minimum received, quote timestamp. No route → <code>PROVIDER_UNAVAILABLE</code> + deep-link, never a fabricated number.</p>
-
-            <h2 id="earn">Earn</h2>
-            <p>Opportunities show asset, protocol, APY + timestamp, TVL where available, deposit/withdraw, fees, lock and withdrawal conditions, risks. <code>*</code> = indicative preview until the indexer; verify on provider.</p>
-            <div class="warn"><b>Mandatory disclosure:</b> your funds are deposited into the selected protocol's smart contracts. noise does not custody these funds. APY is variable and may change. Third-party protocol and smart-contract risks apply.</div>
-            <h3>Earn math</h3>
-            <pre>annual  = principal × APY
-period  = principal × APY × days / 365
-compounding only where the protocol actually compounds</pre>
-
-            <h2 id="staking">Staking</h2>
-            <p>Native SUI staking reads are <span class="pill live">LIVE</span> (validators, principal). Shows validator/provider, APR/APY, commission, unbonding period, fees. Liquid staking (Aftermath / Haedal / Volo): stake SUI → receive provider LST. Transaction build = execution milestone.</p>
-
-            <h2 id="lending">Lending</h2>
-            <p>NAVI / Suilend / Scallop markets: supply APY, borrow APY, liquidity, utilization, collateral factor, liquidation threshold, health factor, rewards. Actions supply / withdraw / borrow / repay / claim follow the same Review → Sign flow. Never claim safe without current protocol data.</p>
-
-            <h2 id="liquidity">Liquidity</h2>
-            <p>Add / remove / collect fees / inspect position, range, pool, fee tier, APR/APY where available. Impermanent loss only as a labelled model/estimate.</p>
-
-            <h2 id="trading">Trading</h2>
-            <p>DeepBook: markets, bids/asks, spread, market/limit/cancel, open orders <span class="pill ro">READ ONLY</span> in this build; execution via DeepBook SDK milestone. Bluefin and others: <span class="pill">DEEP LINK</span> with attribution.</p>
-
-            <h2 id="bridge">Bridge</h2>
-            <p>Unified quote view (source, destination, asset, provider, fee, estimated receive, ETA) where provider APIs allow; otherwise <span class="pill">DEEP LINK</span>. No invented ETA/finality.</p>
-
-            <h2 id="nft">NFT</h2>
-            <p>Wallet non-coin count is live. Buy/sell/list need a marketplace SDK — <span class="pill">COMING SOON</span>; use the marketplace directly.</p>
-
-            <h2 id="automation">Automation</h2>
-            <p>Natural language → structured intent (schedule / price / reward / health triggers) → deterministic validation → permission engine → scheduler → adapter → simulation → execution → audit record. Default mode <code>MONITOR + NOTIFY</code>. Every execution automation carries allowed action/protocol/asset, max per execution, daily limit, expiration. Pause / resume / edit / revoke / delete anytime. Backend scheduler milestone moves runs off-device.</p>
-
-            <h2 id="ai">AI</h2>
-            <p>Tool-based assistant over live hub data: capital, balances, positions, earn, staking, lending, pools, token, activity, rewards, compare, build, simulate. Every dynamic answer shows Source + Updated; never invents values. AI cannot touch keys, bypass permissions, or build arbitrary transactions:</p>
-            <pre>User → AI → structured intent → validation → permission engine → tx builder → simulation → Review → wallet signs</pre>
-
-            <h2 id="memory">Memory</h2>
-            <p>Auto-save: UI preferences. Ask-before-save: strategies, notes, context. Never-save: seeds, keys, passwords, secrets. Plain application memory in the Noise database — per wallet, only with consent. Manage it in AI Assistant or Security.</p>
-
-            <h2 id="privacy">Privacy</h2>
-            <p>Non-custodial: your keys never leave your wallet. App memory holds preferences and context only — secrets are rejected at write and never stored. Sui = settlement &amp; execution.</p>
-
-            <h2 id="security">Security</h2>
-            <ul>
-                <li>Non-custodial: backend prepares, wallet signs. Keys never requested, never stored.</li>
-                <li>Production data over Sui gRPC (unified <code>SuiDataProvider</code>); legacy JSON-RPC only as a local-dev fallback via third-party endpoints — never Foundation JSON-RPC in production.</li>
-                <li>Simulation before signing on every execution path; <code>simulation_failed</code> blocks the wallet prompt.</li>
-                <li>Automation limits, expiry, revoke, pause-all; security events log.</li>
-                <li>Mainnet/testnet strictly separated. Rate limits + caching on all provider calls.</li>
-            </ul>
-            <p>We never claim 100% secure / unhackable / zero risk. Protocol, contract, liquidity and market risks always apply.</p>
-
-            <h2 id="fees">Fees</h2>
-            <table>
-                <tr><th>Fee</th><th>Meaning</th></tr>
-                <tr><td>Protocol fee</td><td>Fee charged by the underlying protocol (e.g. DeepBook pool taker/maker, read per-market — never hardcoded)</td></tr>
-                <tr><td>Provider fee</td><td>Fee charged by the routing/execution provider (e.g. Aftermath router integrator share)</td></tr>
-                <tr><td>Noise Hub fee</td><td>Transparent Noise Hub service fee — collected only as a real transaction leg; $0.00 when collection is not possible</td></tr>
-                <tr><td>Network fee</td><td>Sui transaction gas (estimated pre-sign, actual after confirmation)</td></tr>
-                <tr><td>Builder fee</td><td>Where the protocol supports it (DeepBook Predict official builder-code split — a share of protocol proceeds, never a trader debit)</td></tr>
-                <tr><td>Penalty / Impact</td><td>Instrument-specific Predict components, exact per market from the simulated chain quote</td></tr>
-            </table>
-            <p>Referral rewards are funded from eligible Noise Hub platform revenue — never an extra charge. The fee recipient is server-side configuration (<code>ACTION_HUB_FEE_RECIPIENT</code>); without it the platform fee is disabled and displayed as $0.00. Revenue is recorded only after on-chain confirmation.</p>
-
-            <h2 id="referral">Referral</h2>
-            <pre>referralReward = eligiblePlatformFee × policyRate(protocol, action)
-e.g. Aftermath perps: $1.00 × 10% = $0.10 · Cetus: 0% (no partner revenue)</pre>
-            <p>No universal rate. Each protocol has a verified ReferralPolicy (default 0 until partner terms are confirmed). Links look like <code>https://noisehub.xyz/?ref=bulka</code> (custom code or generated). 30-day attribution window (configurable). Self-referral, circular, duplicates and fake volume blocked. The reward is a share of platform revenue — never an extra user fee — and is recorded only after a real revenue event.</p>
-
-            <h2 id="protocols">Protocols</h2>
-            <table>
-                <tr><th>Protocol</th><th>Category</th><th>Status</th><th>Notes</th></tr>
-                <tr><td>Cetus (+Aggregator V3)</td><td>Swap</td><td><span class="pill live">LIVE</span></td><td>Quotes, tx build, devInspect simulation; wallet signs. SDK 1.7.3</td></tr>
-                <tr><td>Aftermath Router</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Quotes via official REST/SDK; <b>build wired</b> (router tx appended after the Noise fee leg, simulated pre-sign). Selectable in Swap → Execution route. E2E proof needs a funded wallet run</td></tr>
-                <tr><td>Aftermath Prices/Pools/Rewards</td><td>Data</td><td><span class="pill live">LIVE</span></td><td>Prices, pool TVL/APR, claimable rewards via REST; staking APY via SDK</td></tr>
-                <tr><td>Sui Native Staking</td><td>Staking</td><td><span class="pill live">LIVE</span></td><td>Balances, stakes, validators via RPC</td></tr>
-                <tr><td>DeepBook Spot</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Live market discovery, L2 orderbook, market/limit builds, open orders, cancel — via SDK 2.6.x; orders need your BalanceManager</td></tr>
-                <tr><td>DeepBook Predict</td><td>Trading</td><td><span class="pill live">LIVE</span></td><td>Official <code>@mysten/deepbook-v3/predict</code> SDK: live market discovery (underlyings from chain config), UP/DOWN mint, exact simulated fee quotes, redeem, claim-settled, positions</td></tr>
-                <tr><td>DeepBook Margin</td><td>Trading</td><td><span class="pill">COMING SOON</span></td><td>Live Sui primitive; no SDK/execution path wired into Noise yet</td></tr>
-                <tr><td>SuiPump</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>674+ launchpad tokens: price, volume, trades, bonding progress, graduation — factual metrics only, never recommendations</td></tr>
-                <tr><td>Perpsplexity</td><td>Discovery</td><td><span class="pill">DISCOVER</span></td><td>Perps venue: live status read; execution on the venue (no public token-discovery API — not scraped)</td></tr>
-                <tr><td>Haedal</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live rate (1.0825), positions, tickets. Stake (min 1 SUI) / delayed + instant unstake / ticket claim PTBs build via the upgraded staking package; wallet signs. E2E proof needs a funded wallet run</td></tr>
-                <tr><td>NAVI</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>New <code>@naviprotocol/lending</code> v2 (gRPC): 35 pools, positions, health, rewards live. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run</td></tr>
-                <tr><td>Suilend</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td><code>@suilend/sdk</code> v12 (gRPC): 45 reserves, obligation positions live. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run</td></tr>
-                <tr><td>Sui Transfer</td><td>Transfer</td><td><span class="pill live">WIRED</span></td><td>Plain coin PTB (SUI/USDC/DEEP/CETUS/NAVX) builds + simulates; wallet signs. E2E proof needs a funded wallet run</td></tr>
-                <tr><td>DeepBook Margin</td><td>Trading</td><td><span class="pill">COMING SOON</span></td><td>On-chain preflight (SUI_USDC, DEEP_USDC enabled + pool ids) + margin-account creation wired. Leveraged borrow/trade needs a user MarginManager + fresh Pyth feeds</td></tr>
-                <tr><td>Scallop · Bucket · AlphaLend</td><td>Lending</td><td><span class="pill">DISCOVER</span></td><td>Discovery + deep link; execution per milestone</td></tr>
-                <tr><td>Turbos</td><td>Swap</td><td><span class="pill">PARTIAL</span></td><td>Live CLMM pools (TVL/volume/APR) + quotes compared in every Swap. Execution falls back to a buildable router and says so</td></tr>
-                <tr><td>Bluefin Spot · Bluefin Perps</td><td>Trading</td><td><span class="pill">PARTIAL</span></td><td>Kept separate. Perps: live markets, orderbook depth and 24h tickers in Discover; trading needs a venue account. Spot: deep-link only (no spot book in the public API)</td></tr>
-                <tr><td>Scallop</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>Live markets, obligations and portfolio. Supply/withdraw/borrow/repay PTBs build unsigned via the official SDK; wallet signs</td></tr>
-                <tr><td>Bucket</td><td>Lending</td><td><span class="pill">PARTIAL</span></td><td>Live PSM pools, collaterals and USDB supply. PSM swaps build + simulate; sUSDB savings deposit blocked (SDK cannot enumerate lpType — upstream bug)</td></tr>
-                <tr><td>SpringSui</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live sSUI/SUI rate + 60M SUI TVL. Mint/redeem PTBs build + simulate; instant unstaking via SIP-33</td></tr>
-                <tr><td>Volo</td><td>Liquid staking</td><td><span class="pill">PARTIAL</span></td><td>Live totals + validator APYs via NAVI open API. Stake builds need unpublished StakePool/Metadata object IDs — blocked with exact reason</td></tr>
-                <tr><td>Metastable</td><td>Stablecoin vaults</td><td><span class="pill">PARTIAL</span></td><td>4 live vaults (mUSD/mSUI/mBTC/mETH). mSUI mint/burn builds; mUSD+ need a Pyth key the SDK cannot pass — honest blocker</td></tr>
-                <tr><td>FlowX</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Usable inside Swap via Cetus Aggregator routing when selected; deep-link for direct use</td></tr>
-                <tr><td>Momentum</td><td>DEX</td><td><span class="pill">DISCOVER</span></td><td>Domain dead at audit 2026-10-06 — deep-link disabled, no data shown rather than a dead link</td></tr>
-                <tr><td>Obric — REMOVED</td><td>—</td><td><span class="pill">REMOVED</span></td><td>Aptos/Solana protocol, not Sui. Removed from the registry 2026-10-06</td></tr>
-                <tr><td>AlphaFi · AlphaLend — SUNSET</td><td>Yield</td><td><span class="pill">SUNSET</span></td><td>Operator winding down. Withdraw via the provider; no new positions through Noise</td></tr>
-                <tr><td>SuiPump · Perpsplexity</td><td>Discovery</td><td><span class="pill live">LIVE</span></td><td>Wired API: <code>/api/discover/suipump/tokens</code> (684+ tokens) · <code>/api/discover/perpsplexity/markets</code> (live venue read)</td></tr>
-                <tr><td>Kriya</td><td>DEX</td><td><span class="pill">SUNSET</span></td><td>Protocol winding down — excluded from routing/quotes; withdraw via provider, no new positions through Noise</td></tr>
-                <tr><td>Typus · Sudo</td><td>Derivatives</td><td><span class="pill">DISCOVER</span></td><td>Sui-native perps/options venues — execution needs venue accounts. Deep-link only, docs verified</td></tr>
-            </table>
-            <p>Verified 2026-10-06. One source of truth: <code>shared/registry.js</code> (32 protocols). Full matrix: app → Security → Protocol registry, and app → Discover → Ecosystem.</p>
-
-            <h2 id="predict">DeepBook Predict</h2>
-            <p>A binary instrument: pick an asset, a strike and an expiry, take UP (settles above strike) or DOWN (settles below). Settlement is automatic and on-chain. Quotes show the exact fee components from a simulated chain quote — premium, trading fee, subsidy, builder fee, penalty, inventory impact — plus gas. There is no separate Noise Hub debit on Predict: builder/referral revenue is a split of protocol proceeds, not a trader charge. Minimum premium 1.00 USDC, quantity lots of 0.01.</p>
-
-            <h2 id="activity">Activity</h2>
-            <p>Every operation → timestamp, action, provider, asset, amount, fees, digest, status (preparing / awaiting signature / submitted / confirmed / failed / cancelled), origin (manual / automation / AI). Persisted server-side; digests link to the explorer.</p>
-
-            <h2 id="api">API</h2>
-            <p>Backend (<code>server/</code>, Node 22 + SQLite + verified SDKs) exposes:</p>
-            <pre>GET  /api/health /api/protocols
-GET  /api/capital?wallet=0x…      GET /api/quotes?from=&amp;to=&amp;amount=  (compared)
-GET  /api/prices?coins=…          GET /api/prices-info?coins=…
-GET  /api/aftermath/pools?limit=  GET /api/aftermath/staking-apy
-GET  /api/aftermath/rewards?wallet=  GET /api/aftermath/lp?wallet=
-GET  /api/trade/markets           GET /api/trade/orderbook?pool=&amp;ticks=
-GET  /api/trade/deepbook/markets    GET /api/trade/deepbook/orderbook?market=  POST /api/trade/deepbook/build
-GET  /api/trade/predict/markets     GET /api/trade/predict/market?underlying=&amp;expiryMs=
-POST /api/trade/predict/quote-mint  POST /api/trade/predict/build-mint
-POST /api/trade/predict/quote-redeem POST /api/trade/predict/build-redeem  POST /api/trade/predict/claim
-GET  /api/discover/suipump/tokens   GET /api/discover/perpsplexity/markets
-POST /api/fees (platform fee / breakdown)
-POST /api/swap/build              POST /api/sui (simulate)   GET /api/tx/status?digest=
-GET  /api/activity?wallet=0x…     POST /api/activity
-GET  /api/automation  POST /api/automation  POST /api/automation-status
-GET  /api/referral?code=  POST /api/referral/attribute  POST /api/referral/reward
-POST /api/ai  GET /api/ai-tools  GET /api/ai-providers  POST /api/ai/test
-GET  /api/memory  POST /api/memory  POST /api/memory-delete
-GET  /api/notifications  POST /api/notifications
-GET  /api/admin/summary  POST /api/admin/protocol  POST /api/admin/fees  (ADMIN_KEY)</pre>
-
-            <h2 id="faq">FAQ</h2>
-            <h3>What is Noise Hub?</h3>
-            <p>An execution + aggregation layer over existing Sui protocols: connect your wallet and act — swap, trade spot, take Predict positions, stake, track everything — with real quotes, real simulation and wallet signing.</p>
-            <h3>Does Noise Hub custody my funds?</h3>
-            <p>No. Your assets remain in your wallet and protocol positions. Transactions are signed by your wallet; the backend never holds keys and never signs.</p>
-            <h3>How does Noise Hub make money?</h3>
-            <p>On supported actions the hub may charge a transparent service fee, always shown before signing as Protocol / Provider / Noise Hub / Network lines. It is collected only as a real transaction leg — otherwise it reads $0.00.</p>
-            <h3>Does referral increase my fee?</h3>
-            <p>No. Referral rewards are paid from eligible Noise Hub platform revenue, never added to what you pay.</p>
-            <h3>Who receives the Noise Hub fee?</h3>
-            <p>The configured Noise Hub fee recipient (server-side configuration). It is never user input, never AI-supplied, never hardcoded in the frontend.</p>
-            <h3>What happens if a transaction fails?</h3>
-            <p>Simulation runs before signing — a failed simulation blocks the wallet prompt and nothing is sent. A wallet rejection submits nothing on-chain. On-chain failures are tracked to confirmed/failed with the reason shown in Activity.</p>
-            <h3>Is Noise Hub a wallet?</h3>
-            <p>No. It prepares and simulates; your wallet signs.</p>
-            <h3>Can Noise Hub access my private key?</h3>
-            <p>No. Keys never leave your wallet; the backend has no key handling at all.</p>
-            <h3>What is DeepBook Spot?</h3>
-            <p>The central-limit order book on Sui: live bids/asks per market, market and limit orders through your BalanceManager.</p>
-            <h3>What is DeepBook Predict?</h3>
-            <p>A binary instrument — asset, strike, expiry, UP/DOWN — with automatic on-chain settlement. Fees (trading, builder, penalty, impact) are quoted exactly per market from a simulated chain quote.</p>
-            <h3>Why is a Predict fee different from a normal swap?</h3>
-            <p>Predict mints a position against a market with its own fee policy (trading, builder, penalty, impact/subsidy components read from market state), while a swap pays router/pool fees plus gas. Both are shown line-by-line before you sign.</p>
-            <h3>Is noise a wallet? Does it hold my funds?</h3>
-            <p>No. It is a non-custodial execution layer. Funds sit in your wallet or in the protocol contracts you explicitly deposit into.</p>
-            <h3>Where does APY come from?</h3>
-            <p>Staking APY is live from the Aftermath Staking SDK; pool APR/TVL from the Aftermath Pools API — each with source + timestamp. Anything without a verified source shows Unavailable instead of a number. APY is always variable — verify on the provider before acting.</p>
-            <h3>What happens if a provider is down?</h3>
-            <p>Health monitoring isolates it (<code>PROVIDER_UNAVAILABLE</code> + deep-link). The rest of the app keeps working.</p>
-            <h3>Which wallet do I need?</h3>
-            <p>Any wallet-standard Sui wallet. Connection is read-only until you sign a reviewed transaction.</p>
-        </main>
+<h1 id="intro">noise docs</h1><p>Connected, non-custodial Sui operations. Updated 2026-10-07. Unconnected projects and trading modes are not offered in the public app.</p>
+<div class="warn">Unsigned builders and simulations are tested. This is not an independent security audit; no funded wallet signatures or live cross-chain transfers were performed during the audit.</div>
+<h2 id="how">How it works</h2><pre>Choose → Review → Build → Simulate → Wallet signs → Track</pre><p>Your wallet is the signing authority. Ordinary hub Sui transactions require a fresh successful simulation and matching account/network before the wallet prompt. The official Wormhole widget handles its own cross-chain routing, signing and recovery.</p>
+<h2 id="capital">Portfolio</h2><p>Live coin balances, protocol positions and native staking. Missing price or position valuations show unavailable; they are not invented or inferred from a coin count. Deposited tokens must not also be counted as spendable wallet coins.</p>
+<h2 id="discover">Discover</h2><p>Public catalogue contains only connected operations, not the entire ecosystem. Market data includes source and update time. A failed API shows unavailable, not a fabricated APR/APY.</p>
+<h2 id="swap">Swap</h2><p>Cetus Aggregator, Aftermath, Turbos, FlowX, Momentum and Bluefin Spot. Selected DEX routes are restricted and checked against the requested venue. The hub fee is carved from the input amount, not charged on top. Both the quote and build use the net route input. Builds refresh quotes.</p>
+<h2 id="earn">Earn and Kai</h2><p>Kai SUI/USDC single-asset vault deposits and y-token redemptions use the official SDK and current vault state. No leveraged Kai position UI is offered. SDK APR/APY ratios are multiplied by 100 for percentage display. Yield is variable; performance fees and available withdrawal liquidity apply.</p>
+<h2 id="staking">Staking</h2><p>Native SUI stake/unstake, Aftermath afSUI, Haedal, Volo and SpringSui supported operations. Minimum deposits, redemption delays and provider fees depend on the live protocol. No fixed returns are promised.</p>
+<h2 id="lending">Lending</h2><p>NAVI, Suilend and Scallop supply/withdraw/borrow/repay; NAVI/Suilend reward claims. Health and liquidity constraints are checked when relevant; on-chain simulation is mandatory. Bucket PSM stable swaps are separate from a savings-vault deposit.</p>
+<h2 id="liquidity">Liquidity</h2><p>Aftermath and STEAMM pool deposit/withdraw. Live pool IDs and coin metadata, exact base units and quoted slippage minima are used. Cetus concentrated-liquidity deposits are not offered. Impermanent loss, protocol fees and withdrawal liquidity risk apply.</p>
+<h2 id="trading">Trading</h2><p>DeepBook spot market/limit orders, order cancellation and BalanceManager setup. DeepBook Predict is available only for active protocol markets. Leveraged margin and other perps/options platforms are removed from the public trading interface.</p>
+<h2 id="bridge">Bridge</h2><p>Official self-hosted Wormhole Connect 6.0.0 inside Noise. Available networks are Sui, Ethereum, Arbitrum, Base and Solana; routes and assets are determined by the official widget, not assumed to exist between every pair. Read route fees, estimated destination output and token identity before signing. Use widget history/recovery to finish an incomplete transfer. Source/destination wallets can differ. No Noise bridge commission. Native Sui Bridge is not presented as connected.</p>
+<h2 id="security">Security</h2><ul><li>Never paste a seed phrase or private key into Noise.</li><li>Wallet account and network checks; failed/unavailable Sui simulation blocks signing.</li><li>No automatic spending or claimed $100/$500 security limits.</li><li>Simulation cannot guarantee safety against protocol exploits or later market changes.</li><li>Bridge security and recovery follow Wormhole's official implementation.</li></ul>
+<h2 id="fees">Fees</h2><p>Default Noise router fee: 2 bps (0.02%) in the input asset, deducted from the amount routed. Pool fees are already reflected in output; network gas is separately denominated in SUI. Do not add unlike assets into a misleading total. Lending, staking, LP, Kai, Bucket PSM and bridge add no Noise fee by default.</p><p>Default recipient: <code>0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1</code>. Server environment or validated database configuration may override it. No client-provided recipient is accepted for a hub fee. The built transaction and Review expose the effective recipient.</p><p>A zero address balance is not proof of lifetime revenue; arbitrary deposits are not proof of Noise commission. Historical commission receipts require confirmed transaction evidence. Referral tracks signed invitations and confirmed Workflows only; payouts and automated spending are not implemented.</p>
+<h2 id="protocols">Connected catalogue</h2><div id="docsCatalogue">Loading connected integrations…</div>
+<h2 id="activity">Activity</h2><p>Submitted transaction digests can be checked on-chain. Production history requires PostgreSQL; the local Node server uses a development SQLite database. Wormhole transfers have a separate official widget history.</p>
+<h2 id="api">API</h2><pre>GET  /api/quotes
+POST /api/swap/build
+POST /api/lending/build
+GET  /api/liquidity/pools
+POST /api/liquidity/build
+GET  /api/kai/vaults
+POST /api/kai/build
+POST /api/sui</pre>
+<h2 id="faq">FAQ</h2><p><b>Does Noise include every Sui protocol?</b> No. Only listed connected operations are offered. The full internal audit catalogue is not a product promise.</p><p><b>Can I earn a guaranteed APY?</b> No. Rates and losses depend on third-party protocols and market conditions.</p>
+</main>
     </div>
     <footer>
         <div>noise — docs · 2026-09-30</div>
@@ -313,5 +160,5 @@ GET  /api/admin/summary  POST /api/admin/protocol  POST /api/admin/fees  (ADMIN_
             }
         })();
     </script>
-</body>
+<script>fetch('registry.json').then(r=>r.json()).then(r=>{document.getElementById('docsCatalogue').textContent=r.protocols.map(p=>p.name+' — '+p.actions.join(', ')).join(' · ')}).catch(()=>{document.getElementById('docsCatalogue').textContent='Catalogue unavailable; see the app.'})</script><section style="max-width:900px;margin:40px auto;padding:24px"><h2>Workflows</h2><p>Atomic swap + deposit for Suilend, NAVI and Kai. Receipt verification and position refresh follow signing. Withdrawal is separately reviewed and signed. No universal atomic exit or automatic spending is promised.</p><h2>Invitations and AI</h2><p>Referral requires personal-message ownership proof and counts confirmed workflows after attribution, not earnings. Leaderboard counts receipts for Noise-prepared workflow digests, not all Sui activity. No payout is implied.</p><p>AI live tools are read-only. Language-model answers require a server-side key and model; otherwise tools-only responses are clearly labelled. SuiPump is indexer discovery and optional DEX-route checking, not native bonding-curve trading.</p></section></body>
 </html>

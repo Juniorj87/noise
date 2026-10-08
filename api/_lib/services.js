@@ -14,7 +14,7 @@ export const ACTIONS = ['swap', 'supply', 'withdraw', 'borrow', 'repay', 'stake'
 export const PROVIDERS = ['cetus', 'aftermath', 'aftermath-router', 'aftermath-perps', 'deepbook', 'deepbook-predict', 'sui-native', 'navi', 'suilend', 'haedal', 'hub'];
 export function isWalletAddress(a) { return typeof a === 'string' && /^0x[0-9a-fA-F]{64}$/.test(a); }
 export function isPositiveAmount(n) { return typeof n === 'number' && isFinite(n) && n > 0; }
-export function isValidBps(n) { return typeof n === 'number' && isFinite(n) && n >= 0 && n <= 100; }
+export function isValidBps(n) { return typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 100; }
 export function isValidDigest(d) { return typeof d === 'string' && /^[A-Za-z0-9]{20,100}$/.test(d); }
 
 /* ---------- fees (identical math; platform bps overridable via DB config) ---------- */

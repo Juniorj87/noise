@@ -1,110 +1,62 @@
-# Noise
+# Noise Hub
 
-> One place to interact with the Sui ecosystem.
+Non-custodial Sui interface: supported swaps, lending, staking, LP/vault operations and embedded official Wormhole bridge. Original black/blue visual language retained; mobile overflow and font inconsistencies repaired.
 
-![Built on Sui](https://img.shields.io/badge/Built_on-Sui-0066ff)
-![Non-custodial](https://img.shields.io/badge/Custody-Non--custodial-0a0a0a)
-![Open source](https://img.shields.io/badge/Open-Development-00c853)
+**Current release:** read `AUDIT_REPORT_RU.md`, `RUN_AND_DEPLOY_RU.md`, `PUBLIC_COVERAGE.json` and `PRODUCT_REVIEW_RU.md`. Public catalogue has 20 scoped entries (launchpad/perps removed), not full execution coverage for every original protocol. Unsupported public products were removed. Internal legacy records/code are not launch promises.
 
-<p>
-  <img src="assets/logo.svg" alt="noise" width="180" />
-</p>
+## Run
 
-Noise is a non-custodial interface for interacting with the Sui ecosystem.
+Node 24 recommended (>=22).
 
-It brings supported trading, earning, capital management, discovery and on-chain actions into one place, while keeping transaction signing under the user's wallet.
+```bash
+npm ci
+npm run build
+npm test
+npm run dev
+```
 
----
+In another terminal:
 
-## Why Noise
+```bash
+python3 -m http.server 3000 --bind 127.0.0.1 --directory public
+```
 
-Sui has a growing ecosystem of protocols, applications and opportunities.
+Open http://127.0.0.1:3000/app.html. Local API port 3001. Production: Vercel configuration plus your own PostgreSQL and server-side environment. No deployment to the original domain was performed.
 
-Users often have to move between multiple interfaces to perform relatively simple actions.
+## Validation
 
-Noise is being built to make that experience more unified.
+271 automated tests and 19 live integration tests passed. New evidence: 6 unsigned deposit/atomic-entry simulations, 3 primitive exit roundtrips, 18 chain metadata checks and 16 additional-token route quotes. Earlier 19 unsigned scenarios are separate historical evidence. This does not certify every advertised operation with a funded wallet or every bridge route. No transactions were signed/submitted. PostgreSQL production configuration was not tested.
 
----
+Evidence in `audit/`: execution reports, current fee recipient balance, build/test logs, UI checks and screenshots. Release file hashes in `RELEASE_SHA256.json` exclude that manifest itself.
 
-## What we are building
+## Fees and custody
 
-- **Capital** — your assets and positions in one view.
-- **Discover** — what is happening across the ecosystem.
-- **Earn** — ways to put capital to work.
-- **Trade** — spot and prediction markets.
-- **Actions** — complex on-chain actions made simple.
-- **Automation** — rules that watch the market for you.
-- **Activity** — a clear record of what happened.
-- **AI assistance** — answers grounded in live data.
+Default fee-bearing router swaps: 2 bps (0.02%) from input asset. Actual recipient and transfer leg are returned by builders; simulation confirmed 20,000 MIST to the project recipient for a 0.1 SUI Cetus swap. No historical revenue receipt was established. Earn/bridge/LP/DeepBook fees are not represented as collected Noise router fees. Only user wallets sign; never supply private keys to this server.
 
----
+Wormhole Connect 6.0.0 is self-hosted under assets/wormhole with its license. The widget handles cross-chain wallet review/signing/history; no signed cross-chain E2E was performed.
 
-## Sui ecosystem
+## Public registry
 
-The full, honest ecosystem registry lives in [`shared/registry.js`](shared/registry.js)
-(35 protocols, one source of truth) and drives the app's Discover → Ecosystem view.
-Every protocol carries one status:
+`shared/registry.js` separates original internal records from `PUBLIC_PROTOCOL_IDS`/`publicProtocols`. Regenerate UI mirror after changes:
 
-- **LIVE** — Noise can perform every action it advertises.
-- **PARTIAL** — part of the surface works (e.g. live data, no execution yet).
-- **DISCOVER** — ecosystem discovery / deep link; no execution in Noise.
-- **COMING SOON** — surface planned; execution intentionally disabled.
+```bash
+node scripts/gen-ui-registry.mjs
+npm run build
+npm test
+```
 
-Live execution today: Sui native staking, Cetus swap, DeepBook spot + Predict,
-SuiPump discovery. Everything else is labelled honestly — no fake integrations.
+Do not advertise unimplemented capabilities. Supported scope and excluded entries are listed in PUBLIC_COVERAGE.json.
 
-Regenerate the in-app mirror after editing the registry: `node scripts/gen-ui-registry.mjs`
-(the build and `server/test/registry.test.js` fail if the mirror drifts).
+## Task-first release
 
-Two companion registries keep behaviour honest:
+`app.html#journey`: atomic swap → deposit into Suilend/NAVI/Kai, on-chain receipt recovery, real positions/risk, separately reviewed withdrawal. Never auto-signs. WAL/NS plus 16 other curated mainnet assets; not a market-cap ranking.
 
-- **SwapProvider registry** (`shared/swap-providers.js`) — which providers can quote/build.
-  A provider without an adapter is listed with a reason, never a fabricated rate (`/api/providers`).
-- **Skill registry** (`shared/skills.js`) — capabilities with a strict permission model:
-  read-data · build-transaction · request-signature. Never a private key, never auto-sign (`/api/skills`).
+AI Assistant, Referral and Leaderboard remain available in secondary/contextual tools. Launchpad/perps discovery is removed. AI actual model responses require server-side key + AI_MODEL (Gemini: AI_PROVIDER=gemini, GOOGLE_AI_API_KEY). Without configuration, live-tools responses are explicitly labelled, not simulated LLM chat. No real paid/model-key E2E was tested.
 
----
+Referral ownership and assignment require wallet personal-message proof. Stats reflect real invitation attribution and verified post-attribution Workflows, not earnings. Ranking uses successful receipts for prepared Noise digests. No payouts or rewards are promised. PostgreSQL required for production persistence; only local SQLite tested.
 
-## Non-custodial
-
-Noise does not hold user funds or private keys.
-
-Users remain in control of their wallets and approve supported transactions through their wallet.
-
----
-
-## Open development
-
-Noise is being built openly.
-
-This repository contains the actual project code used to develop Noise.
-
-We believe infrastructure and applications should be easier to inspect, understand and verify.
-
-The repository is public so developers, ecosystem participants and users can see what we are building and how the project evolves.
-
----
-
-## Status
-
-Noise is actively being developed.
-
-Current focus:
-
-- Sui ecosystem aggregation
-- Trading
-- Capital
-- On-chain actions
-- Yield
-- Automation
-- AI-assisted interaction
-
----
-
-## Links
-
-Website:
-https://noisehub.xyz
-
-GitHub:
-https://github.com/Juniorj87/noise
+## Current task-first interface
+Start → Swap a token / Place funds / Positions & exit. More contains advanced services; Community contains invitations and confirmed activity. SuiPump and Perpsplexity are not public products.
+Core placement now supports Suilend, NAVI, Kai, Scallop liquid lending shares and Haedal liquid staking. Comparison separates reported APR/APY, base rates, known incentives, unknown rewards, fees and exit conditions. Review shows input, minimum swap output, receipt coin, estimated gas, Noise fee and provider-specific exit rules. Technical details are collapsible. Inline assistant is explicitly rules-based when no server model is configured.
+New evidence: `audit/tasks-execution.json`, `tasks-exits.json`, `tasks-ui.json`, `tasks-edge-ui.json`. Scallop direct/atomic entries and share redemption; Haedal stake, instant exit and delayed-ticket request were simulated without signing. An existing matured-ticket claim was NOT tested. No independent security audit or funded-wallet end-to-end run occurred.
+`app.html` is the real application source, not a standalone offline artifact: use the assets and API in the ZIP and the local launch instructions.

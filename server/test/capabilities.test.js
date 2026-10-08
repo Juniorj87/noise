@@ -26,7 +26,7 @@ test('execution is only allowed when execute === LIVE', () => {
   assert.equal(isExecutable('withdraw'), true);
   assert.equal(isExecutable('claim'), true);
   assert.equal(isExecutable('transfer'), true);
-  assert.equal(isExecutable('liquidity'), false);
+  assert.equal(isExecutable('liquidity'), true);
   assert.equal(isExecutable('unknown_action'), false);
 });
 
@@ -37,11 +37,11 @@ test('READ_ONLY / UNAVAILABLE actions are correctly blocked', () => {
   }
 });
 
-test('Aftermath capability split: quote live, build/execute not wired', () => {
+test('Aftermath capability: real quote and build paths wired', () => {
   assert.equal(aftermathAdapter.capabilities.quote, true);
-  assert.equal(aftermathAdapter.capabilities.build, false);
-  assert.equal(aftermathAdapter.capabilities.simulate, false);
-  assert.equal(aftermathAdapter.capabilities.execute, false);
+  assert.equal(aftermathAdapter.capabilities.build, true);
+  assert.equal(aftermathAdapter.capabilities.simulate, true);
+  assert.equal(aftermathAdapter.capabilities.execute, true);
 });
 
 test('ui sync: app.html ACTION_CAPABILITIES equals uiCapabilities()', () => {

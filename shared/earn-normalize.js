@@ -9,7 +9,7 @@
 
 /** Strict numeric coercion: '', null, undefined, NaN, Infinity → null. */
 export function numOrNull(v) {
-  if (v === null || v === undefined || v === '') return null;
+  if (v === null || v === undefined || typeof v === 'boolean' || typeof v === 'object' || (typeof v === 'string' && v.trim() === '')) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -73,8 +73,8 @@ export function aprToApy(aprPct, periodsPerYear) {
  * Suffix carries the kind so APY can never be mistaken for APR.
  */
 export function formatApyPct(pct) {
-  if (pct === null || pct === undefined || !Number.isFinite(Number(pct))) return '—';
-  const n = Number(pct);
+  const n = numOrNull(pct);
+  if (n === null) return '—';
   if (n === 0) return '0.00%';
   if (Math.abs(n) < 0.01) return '< 0.01%';
   return n.toFixed(2) + '%';
@@ -133,8 +133,8 @@ export function normalizePool(raw = {}, opts = {}) {
  *   otherwise    → 'N.NN%'
  */
 export function formatAprPct(pct) {
-  if (pct === null || pct === undefined || !Number.isFinite(Number(pct))) return '—';
-  const n = Number(pct);
+  const n = numOrNull(pct);
+  if (n === null) return '—';
   if (n === 0) return '0.00%';
   if (Math.abs(n) < 0.01) return '< 0.01%';
   return n.toFixed(2) + '%';

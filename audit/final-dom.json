@@ -1,0 +1,49 @@
+[
+  {
+    "file": "app.html",
+    "errors": [],
+    "duplicateIds": [],
+    "bodyWidth": 390,
+    "trade": "1.12669",
+    "marketOptions": [
+      "DEEP_SUI",
+      "SUI_USDC",
+      "DEEP_USDC",
+      "WUSDT_USDC",
+      "WUSDC_USDC",
+      "BETH_USDC",
+      "NS_USDC",
+      "NS_SUI",
+      "TYPUS_SUI",
+      "SUI_AUSD",
+      "AUSD_USDC",
+      "DRF_SUI",
+      "SEND_USDC",
+      "WAL_USDC",
+      "WAL_SUI",
+      "XBTC_USDC",
+      "IKA_USDC",
+      "ALKIMI_SUI",
+      "LZWBTC_USDC",
+      "USDT_USDC",
+      "SUIUSDE_USDC",
+      "SUI_SUIUSDE",
+      "SUI_USDSUI",
+      "USDSUI_USDC"
+    ]
+  },
+  {
+    "file": "index.html",
+    "errors": [],
+    "duplicateIds": [],
+    "bodyWidth": 390,
+    "marketOptions": []
+  },
+  {
+    "file": "docs.html",
+    "errors": [],
+    "duplicateIds": [],
+    "bodyWidth": 390,
+    "marketOptions": []
+  }
+]

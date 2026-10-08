@@ -2,6 +2,7 @@
 // GET /api/protocols — live protocol registry from Postgres.
 import { handler, readJson, requireQuery } from '../http.js';
 import { logActivity, isWalletAddress } from '../services.js';
+import { sanitizeActivityInput } from '../../../shared/logic.js';
 import { NETWORK, listProtocols } from '../adapters.js';
 import { getPool, ensureSchema, dbConfigured } from '../pg.js';
 
@@ -16,8 +17,13 @@ export default handler(async (req, res, url) => {
   }
   if (req.method === 'POST') {
     const b = await readJson(req);
-    if (!b.wallet || !b.action) return { error: 'INVALID_ACTIVITY', message: 'wallet and action are required.', status: 400 };
-    return { id: await logActivity(b) };
+    let clean;
+    try {
+      clean = sanitizeActivityInput(b);
+    } catch (e) {
+      return { error: 'INVALID_ACTIVITY', message: 'wallet, action and markup-free fields are required.', status: 400 };
+    }
+    return { id: await logActivity(clean) };
   }
   const wallet = requireQuery(url, 'wallet');
   if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });

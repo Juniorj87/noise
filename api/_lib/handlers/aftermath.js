@@ -42,7 +42,11 @@ async function buildLiquid({ txBytes, wallet, action, amountMist, extra = {} }) 
     const gu = sim.effects.gasUsed;
     gasEst = String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0)));
   }
-  const simOk = sim && sim.effects && sim.effects.status && sim.effects.status.status === 'success';
+  const simOk = sim && !sim.error && sim.effects && sim.effects.status && sim.effects.status.status === 'success';
+  // Fail-closed gate: no signable bytes unless the dry run passed.
+  if (!simOk) {
+    return err('SIMULATION_FAILED', 'On-chain dry run failed: ' + String(sim?.detail || sim?.effects?.status?.error || 'failed').slice(0, 200) + ' — nothing was sent to your wallet.', 400);
+  }
   const cfg = await feeConfig();
   return {
     ok: true,
@@ -52,12 +56,12 @@ async function buildLiquid({ txBytes, wallet, action, amountMist, extra = {} }) 
     amountMist: amountMist.toString(),
     txBytes,
     simulation: sim,
-    simulationStatus: simOk ? 'success' : (sim.error ? 'unavailable' : 'failed'),
-    simulationDetail: !simOk && sim.error ? String(sim.detail || '').slice(0, 200) : null,
+    simulationStatus: 'success',
+    simulationDetail: null,
     gasEst,
     fees: earnFeePreview({
       amountSui: Number(amountMist) / 1e9,
-      earnBps: cfg.earnBps,
+      earnBps: 0, networkFeeSui: gasEst == null ? null : Number(gasEst) / 1e9,
       ...extra.fees,
     }),
     referralPolicy: referralPolicyFor('aftermath', action === 'liquid-stake' ? 'stake' : 'unstake'),

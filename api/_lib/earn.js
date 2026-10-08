@@ -7,7 +7,7 @@ import { Aftermath } from 'aftermath-ts-sdk';
 import { sui, NETWORK } from './adapters.js';
 
 export const SUI_TYPE = '0x2::sui::SUI';
-export const SUI_SYSTEM_STATE = '0x0000000000000000000000000000000000000000000000000000000000000006';
+export const SUI_SYSTEM_STATE = '0x0000000000000000000000000000000000000000000000000000000000000005';
 export const MIN_STAKE_MIST = 1_000_000_000n;   // 1 SUI — on-chain minimum
 export const MIN_UNSTAKE_MIST = 1_000_000_000n; // 1 SUI / 1 afSUI
 const U64_MAX = 18446744073709551615n;
@@ -34,15 +34,16 @@ export function parseMistAmount(v) {
 
 /** Hub fee preview for the review screen. Earn platform fee defaults to 0 bps
  *  (feeConfig earnBps); protocol fees are surfaced with their source. */
-export function earnFeePreview({ amountSui, earnBps = 0, protocolFeeRatio = 0, protocolFeeBasis = null }) {
+export function earnFeePreview({ amountSui, earnBps = 0, protocolFeeRatio = 0, protocolFeeBasis = null, networkFeeSui = null }) {
   const a = Number(amountSui || 0);
   const platform = Math.round((a * Number(earnBps) / 10000) * 1e6) / 1e6;
   const protocol = protocolFeeRatio > 0 ? Math.round(a * Number(protocolFeeRatio) * 1e6) / 1e6 : 0;
   const out = {
     platformFee: platform,
     protocolFee: protocol,
-    networkFee: 0.01,
-    total: Math.round((platform + protocol + 0.01) * 1e6) / 1e6,
+    networkFee: networkFeeSui == null ? null : Number(networkFeeSui),
+    networkFeeBasis: networkFeeSui == null ? 'unavailable' : 'on-chain simulation estimate (SUI)',
+    total: networkFeeSui == null ? null : Math.round((platform + protocol + Number(networkFeeSui)) * 1e6) / 1e6,
   };
   if (protocolFeeBasis) out.protocolFeeBasis = protocolFeeBasis;
   return out;
@@ -126,7 +127,7 @@ export async function nativeStakeTx(wallet, validator, mist) {
   txb.setSender(wallet);
   const suiCoin = txb.coin({ type: SUI_TYPE, balance: mist });
   txb.moveCall({
-    target: '0x2::sui_system::request_add_stake',
+    target: '0x3::sui_system::request_add_stake',
     arguments: [txb.object(SUI_SYSTEM_STATE), suiCoin, txb.pure.address(validator)],
   });
   const bytes = await txb.build({ client: buildClient() });
@@ -141,7 +142,7 @@ export async function nativeUnstakeTx(wallet, stakedSuiId) {
   const txb = new Transaction();
   txb.setSender(wallet);
   txb.moveCall({
-    target: '0x2::sui_system::request_withdraw_stake',
+    target: '0x3::sui_system::request_withdraw_stake',
     arguments: [txb.object(SUI_SYSTEM_STATE), txb.object(stakedSuiId)],
   });
   const bytes = await txb.build({ client: buildClient() });

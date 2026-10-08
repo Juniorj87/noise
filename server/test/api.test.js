@@ -52,10 +52,10 @@ test('http: rate limit returns 429 after burst', async () => {
   assert.equal(res3.statusCode, 429);
 });
 
-test('cors: production origins allowed, strangers get null', () => {
+test('cors: production origins allowed, strangers get no ACAO header', () => {
   assert.equal(corsOrigin(fakeReq({ headers: { origin: 'https://app.noisehub.xyz' } })), 'https://app.noisehub.xyz');
   assert.equal(corsOrigin(fakeReq({ headers: { origin: 'https://noisehub.xyz' } })), 'https://noisehub.xyz');
-  assert.equal(corsOrigin(fakeReq({ headers: { origin: 'https://evil.example' } })), 'null');
+  assert.equal(corsOrigin(fakeReq({ headers: { origin: 'https://evil.example' } })), null);
 });
 
 test('cors: wildcard is never returned', () => {

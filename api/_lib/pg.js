@@ -31,28 +31,45 @@ export function getPool() {
 export function ensureSchema() {
   if (!schemaReady) {
     const ddl = readFileSync(join(__dirname, '..', '..', 'database', 'schema.sql'), 'utf8');
-    schemaReady = getPool().query(ddl).then(() => {
-      seedProtocols();
-      return true;
-    }).catch((e) => { schemaReady = null; throw e; });
+    // The seed MUST be awaited: a fire-and-forget seed can silently fail or be
+    // cut off when the instance is reused, leaving /api/protocols stale (it
+    // served an 11-row legacy registry while the canonical registry has 32).
+    schemaReady = getPool().query(ddl)
+      .then(() => seedProtocols())
+      .then(() => true)
+      .catch((e) => { schemaReady = null; throw e; });
   }
   return schemaReady;
 }
 
 // Seed derives from the single canonical registry (shared/registry.js).
 // Unified status vocabulary: LIVE / PARTIAL / DISCOVER / COMING_SOON.
+// Upsert repairs EVERY canonical field (not just name/status), and legacy rows
+// that are no longer in the registry are disabled so they never surface as
+// live protocols.
 async function seedProtocols() {
   const rows = PROTOCOLS.map((x) => [
     x.id, x.name, x.category, x.url, x.docs, x.status,
     JSON.stringify(x.actions), x.fee, x.ref, x.last,
   ]);
+  const pool = getPool();
   for (const r of rows) {
-    await getPool().query(
-      `INSERT INTO protocols (id,name,category,website,docs,status,capabilities,fee_model,referral_support,last_verified)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now()::text)
-       ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, status=EXCLUDED.status, last_verified=now()::text`,
+    await pool.query(
+      `INSERT INTO protocols (id,name,category,website,docs,status,capabilities,fee_model,referral_support,last_verified,enabled)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1)
+       ON CONFLICT (id) DO UPDATE SET
+         name=EXCLUDED.name, category=EXCLUDED.category, website=EXCLUDED.website,
+         docs=EXCLUDED.docs, status=EXCLUDED.status, capabilities=EXCLUDED.capabilities,
+         fee_model=EXCLUDED.fee_model, referral_support=EXCLUDED.referral_support,
+         last_verified=$10, enabled=1`,
       r);
   }
+  // Retire (do not delete) rows that are no longer part of the canonical
+  // registry: keeps history, removes them from listProtocols() (enabled = 1).
+  const ids = PROTOCOLS.map((x) => x.id);
+  await pool.query(
+    'UPDATE protocols SET enabled = 0 WHERE NOT (id = ANY($1::text[]))',
+    [ids]);
 }
 
 /** DB-backed admin config (runtime fee overrides survive cold starts). */

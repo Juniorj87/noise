@@ -1,3 +1,5 @@
+import referralsLiveHandler from './handlers/referrals-live.js';
+import journeyHandler from './handlers/journey.js';
 // Unified API router for Vercel deployment (spec Hobby plan <= 12 functions).
 import activityHandler from './handlers/activity.js';
 import capitalHandler from './handlers/capital.js';
@@ -13,6 +15,8 @@ import automationHandler from './handlers/automation.js';
 import cronHandler from './handlers/cron.js';
 import discoverHandler from './handlers/discover.js';
 import earnHandler from './handlers/earn.js';
+import kaiHandler from './handlers/kai.js';
+import liquidityHandler from './handlers/liquidity.js';
 import lendingHandler from './handlers/lending.js';
 import transferHandler from './handlers/transfer.js';
 import feesHandler from './handlers/fees.js';
@@ -51,12 +55,16 @@ export async function handleRequest(req, res) {
   if (pathname.startsWith('/api/earn')) return earnHandler(req, res);
   if (pathname.startsWith('/api/aftermath')) return aftermathHandler(req, res);
   if (pathname.startsWith('/api/fees')) return feesHandler(req, res);
+  if (pathname.startsWith('/api/referrals/')) return referralsLiveHandler(req,res);
   if (pathname.startsWith('/api/referral')) return referralHandler(req, res);
   if (pathname.startsWith('/api/revenue')) return revenueHandler(req, res);
   if (pathname.startsWith('/api/scheduler-tick') || pathname.startsWith('/api/cron-tick')) return cronHandler(req, res);
   if (pathname.startsWith('/api/automation')) return automationHandler(req, res);
   if (pathname.startsWith('/api/cron')) return cronHandler(req, res);
   if (pathname.startsWith('/api/discover')) return discoverHandler(req, res);
+  if (pathname.startsWith('/api/journey')) return journeyHandler(req,res);
+  if (pathname.startsWith('/api/kai')) return kaiHandler(req,res);
+  if (pathname.startsWith('/api/liquidity')) return liquidityHandler(req,res);
   if (pathname.startsWith('/api/lending')) return lendingHandler(req, res);
   if (pathname.startsWith('/api/transfer')) return transferHandler(req, res);
   if (pathname.startsWith('/api/memory')) return memoryHandler(req, res);

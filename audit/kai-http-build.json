@@ -1,0 +1,70 @@
+{
+  "at": "2026-10-07T10:53:12.473Z",
+  "txBytes": "[unsigned transaction: 864 base64 characters]",
+  "simulation": {
+    "effects": {
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "gasUsed": {
+        "computationCost": "100000",
+        "storageCost": "5852000",
+        "storageRebate": "4484304"
+      }
+    },
+    "events": [
+      {
+        "packageId": "0xcf5d0f55b02304f03b99a89372567a4072c944ceb718764c502b34c7b8dfd6ae",
+        "module": "vault",
+        "sender": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+        "eventType": "0x7a0269c65d5d156963ed0250c81baf16c4d1d56cb6c1738743770409298dc010::vault::DepositEvent<0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI>",
+        "bcs": {
+          "0": 0,
+          "1": 225,
+          "2": 245,
+          "3": 5,
+          "4": 0,
+          "5": 0,
+          "6": 0,
+          "7": 0,
+          "8": 247,
+          "9": 184,
+          "10": 190,
+          "11": 4,
+          "12": 0,
+          "13": 0,
+          "14": 0,
+          "15": 0
+        },
+        "json": {
+          "amount": "100000000",
+          "lp_minted": "79608055"
+        }
+      }
+    ],
+    "balanceChanges": [
+      {
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "address": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+        "amount": "-101467696"
+      },
+      {
+        "coinType": "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI",
+        "address": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+        "amount": "79608055"
+      }
+    ],
+    "commandResults": [],
+    "_transport": "grpc"
+  },
+  "simulationStatus": "success",
+  "meta": {
+    "provider": "kai",
+    "vault": "SUI",
+    "action": "deposit",
+    "amountMist": "100000000",
+    "inputType": "0x2::sui::SUI",
+    "feeCollected": null
+  }
+}

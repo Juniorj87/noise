@@ -24,6 +24,7 @@ export default handler(async (req, res, url) => {
         docs: p.docs,
       })),
       active: process.env.AI_PROVIDER || 'openrouter',
+      modelConfigured:Boolean(process.env.AI_MODEL),
       fallback: process.env.AI_FALLBACK_PROVIDER || null,
     };
   }
@@ -38,4 +39,4 @@ export default handler(async (req, res, url) => {
     }
   }
   return { error: 'NOT_FOUND', message: 'Unknown ai action.', status: 404 };
-});
+},{limit:20});

@@ -33,12 +33,12 @@ test('earnFeePreview: zero platform bps → zero platform fee', () => {
   const f = earnFeePreview({ amountSui: 10, earnBps: 0 });
   assert.equal(f.platformFee, 0);
   assert.equal(f.protocolFee, 0);
-  assert.equal(f.networkFee, 0.01);
-  assert.equal(f.total, 0.01);
+  assert.equal(f.networkFee, null);
+  assert.equal(f.total, null);
 });
 
 test('earnFeePreview: integer math for platform + protocol fees', () => {
-  const f = earnFeePreview({ amountSui: 100, earnBps: 20, protocolFeeRatio: 0.05 });
+  const f = earnFeePreview({ amountSui: 100, earnBps: 20, protocolFeeRatio: 0.05, networkFeeSui: 0.01 });
   assert.equal(f.platformFee, 0.2);   // 100 * 20/10000
   assert.equal(f.protocolFee, 5);     // 100 * 0.05
   assert.equal(f.total, 5.21);
@@ -46,7 +46,7 @@ test('earnFeePreview: integer math for platform + protocol fees', () => {
 });
 
 test('earnFeePreview: rounding is stable at 6 decimals', () => {
-  const f = earnFeePreview({ amountSui: 1, earnBps: 33, protocolFeeRatio: 0.0123 });
+  const f = earnFeePreview({ amountSui: 1, earnBps: 33, protocolFeeRatio: 0.0123, networkFeeSui: 0.01 });
   assert.equal(f.platformFee, 0.0033);
   assert.equal(f.protocolFee, 0.0123);
   assert.equal(f.total, 0.0256);
@@ -99,5 +99,5 @@ test('constants: on-chain minimums and addresses', () => {
   assert.equal(MIN_STAKE_MIST, 1_000_000_000n); // 1 SUI
   assert.equal(MIN_UNSTAKE_MIST, 1_000_000_000n);
   assert.equal(SUI_TYPE, '0x2::sui::SUI');
-  assert.equal(SUI_SYSTEM_STATE, '0x0000000000000000000000000000000000000000000000000000000000000006');
+  assert.equal(SUI_SYSTEM_STATE, '0x0000000000000000000000000000000000000000000000000000000000000005');
 });

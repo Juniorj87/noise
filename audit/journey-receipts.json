@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-07T11:40:30.264Z",
+  "mode": "Public existing transaction read, no signature or submission. This is not a Noise E2E transaction.",
+  "receipt": {
+    "status": "confirmed",
+    "digest": "7J24jzk7XH4Ws87m4p3NAqSrdDZTWCvQHy6owYm6WFvj",
+    "error": null,
+    "balanceChanges": [],
+    "checkpoint": "331298702",
+    "timestampMs": "1791373229526",
+    "activityRecorded": false,
+    "source": "Sui transaction receipt; sender + digest + effects verified",
+    "updatedAt": "2026-10-07T11:40:30.243Z"
+  },
+  "wrongWalletRejected": true
+}

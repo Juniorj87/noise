@@ -16,6 +16,7 @@
 //   { $kind:'Transaction', Transaction:{ status:{success}, ... } }
 // - Stakes: no suix_getStakes on gRPC; derived from StakedSui owned objects.
 
+import { fromBase58, toHex } from '@mysten/sui/utils';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from '@mysten/sui/jsonRpc';
 
@@ -232,44 +233,11 @@ export const SuiDataProvider = {
 
   /** Stakes normalized to suix_getStakes shape. gRPC derives from StakedSui objects. */
   async getStakes(owner) {
-    if (USE_GRPC) {
-      const { client } = getRawClient();
-      const res = await withRetry(() =>
-        client.listOwnedObjects({
-          owner,
-          type: '0x3::staking_pool::StakedSui',
-          limit: 50,
-          include: { content: true, json: true },
-        }),
-      );
-      const stakes = [];
-      for (const o of res?.objects || []) {
-        const principal = stakedPrincipal(o);
-        if (principal == null) continue;
-        stakes.push({
-          stakedSuiId: o.objectId,
-          principal,
-          status: 'Active',
-          poolId: stakedPoolId(o),
-        });
-      }
-      // Group to suix_getStakes shape: [{ stakingPool, validatorAddress, stakes: [...] }]
-      const byPool = new Map();
-      for (const s of stakes) {
-        const k = s.poolId || 'unknown';
-        if (!byPool.has(k)) byPool.set(k, []);
-        byPool.get(k).push({ stakedSuiId: s.stakedSuiId, principal: s.principal, status: s.status });
-      }
-      const out = [...byPool.entries()].map(([poolId, arr]) => ({
-        validatorAddress: null, // pool->validator mapping needs an indexer; null = unknown, never faked
-        stakingPool: poolId === 'unknown' ? null : poolId,
-        stakes: arr,
-      }));
-      return envelope(out, tag(), stakes.length ? 'high' : 'high');
-    }
-    const { client } = getRawClient();
-    const res = await withRetry(() => client.getStakes({ owner }));
-    return envelope(res, tag());
+    // Owned StakedSui objects alone do not prove Active status or reward amount.
+    // This legacy method is still available on the configured third-party RPC.
+    if (!jsonRpcClient) jsonRpcClient = new SuiJsonRpcClient({ url: RPC_URL });
+    const res = await withRetry(() => jsonRpcClient.getStakes({ owner }));
+    return envelope(res, 'Sui JSON-RPC staking state (configured RPC)');
   },
 
   async getTransaction(digest, options = {}) {
@@ -364,6 +332,7 @@ export const SuiDataProvider = {
    *   events, balanceChanges } so all callers keep working on both transports.
    */
   async simulateTransaction(txInput, sender) {
+    await assertNetworkConsistency();
     const { client, type } = getRawClient();
     if (type === 'grpc') {
       const { Transaction } = await import('@mysten/sui/transactions');
@@ -378,21 +347,15 @@ export const SuiDataProvider = {
       );
       return envelope(normGrpcSim(res), tag());
     }
-    // legacy JSON-RPC devInspect needs raw TransactionKind bytes
+    // Full TransactionData dry-run validates gas and exact signable bytes.
+    // devInspect is for TransactionKind and may bypass normal gas checks.
     const { Transaction } = await import('@mysten/sui/transactions');
-    let kindBytes = txInput;
-    if (typeof txInput === 'string') kindBytes = Buffer.from(txInput, 'base64');
-    if (!(kindBytes instanceof Uint8Array)) {
-      if (sender) kindBytes.setSenderIfNotSet(sender);
-      kindBytes = await kindBytes.build({ client, onlyTransactionKind: true });
-    } else {
-      try {
-        const tx = Transaction.from(kindBytes);
-        if (sender) tx.setSenderIfNotSet(sender);
-        kindBytes = await tx.build({ client, onlyTransactionKind: true });
-      } catch { /* use raw bytes */ }
-    }
-    const res = await withRetry(() => client.devInspectTransactionBlock({ transactionBlock: kindBytes, sender }));
+    const tx = typeof txInput === 'string' || txInput instanceof Uint8Array
+      ? Transaction.from(typeof txInput === 'string' ? Buffer.from(txInput, 'base64') : txInput) : txInput;
+    if (sender && tx.getData().sender && tx.getData().sender !== sender.toLowerCase()) throw Object.assign(new Error('Transaction sender mismatch'), { code: 'INVALID_WALLET' });
+    if (sender) tx.setSenderIfNotSet(sender);
+    const fullBytes = await tx.build({ client });
+    const res = await withRetry(() => client.dryRunTransactionBlock({ transactionBlock: fullBytes }));
     return envelope(res, tag());
   },
 
@@ -420,7 +383,7 @@ export const SuiDataProvider = {
   async getChainIdentifier() {
     const { client } = getRawClient();
     const res = await withRetry(() => client.getChainIdentifier());
-    return envelope(typeof res === 'string' ? res : (res?.chainIdentifier ?? String(res ?? '')), tag());
+    return envelope(normalizeChainIdentifier(typeof res === 'string' ? res : res?.chainIdentifier), tag());
   },
 };
 
@@ -476,15 +439,24 @@ function normGrpcSim(res) {
   };
 }
 
-export async function assertNetworkConsistency(providerNetworks) {
-  const chainId = await SuiDataProvider.getChainIdentifier();
+export function normalizeChainIdentifier(value) {
+  const s = String(value || '');
+  if (/^[0-9a-f]{8}$/i.test(s)) return s.toLowerCase();
+  try { const bytes = fromBase58(s); return bytes.length === 32 ? toHex(bytes).slice(0, 8) : null; }
+  catch { return null; }
+}
+let canonicalChainPromise = null, canonicalChainAt = 0;
+export async function assertNetworkConsistency(providerNetworks = {}) {
+  if (!canonicalChainPromise || Date.now() - canonicalChainAt > 300_000) {
+    canonicalChainAt = Date.now();
+    const canonical = new SuiGrpcClient({ network: NETWORK, baseUrl: `https://fullnode.${NETWORK}.sui.io` });
+    canonicalChainPromise = canonical.getChainIdentifier().then(r => normalizeChainIdentifier(r.chainIdentifier));
+    canonicalChainPromise.catch(() => { canonicalChainPromise = null; });
+  }
+  const [actual, expected] = await Promise.all([SuiDataProvider.getChainIdentifier(), canonicalChainPromise]);
   const expectedChain = NETWORK;
-  const got = String(chainId.value || '').toLowerCase();
-  if (got && !got.includes(expectedChain) && !/^[0-9a-f]{8,}$/.test(got)) {
-    throw Object.assign(new Error('NETWORK_MISMATCH'), {
-      code: 'NETWORK_MISMATCH',
-      message: `Sui chain identifier does not match expected network ${expectedChain}`,
-    });
+  if (!expected || !actual.value || actual.value !== expected) {
+    throw Object.assign(new Error('Configured RPC belongs to a different network; signing blocked.'), { code: 'NETWORK_MISMATCH' });
   }
   for (const [provider, network] of Object.entries(providerNetworks || {})) {
     if (network && String(network).toLowerCase() !== expectedChain) {
@@ -494,5 +466,5 @@ export async function assertNetworkConsistency(providerNetworks) {
       });
     }
   }
-  return { ok: true, network: expectedChain, chainId: chainId.value };
+  return { ok: true, network: expectedChain, chainId: actual.value };
 }

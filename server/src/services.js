@@ -3,6 +3,8 @@
 // cache / rate-limit / circuit-breaker (§36-37), notifications (§41).
 // NOTE: production runs the Vercel API (api/) on PostgreSQL; this module is the
 // local/dev adapter (SQLite). Pure logic is shared via shared/logic.js.
+import { createHash, randomBytes } from 'node:crypto';
+import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { db, uid } from './db.js';
 import { suiAdapter, aftermathAdapter } from './adapters.js';
 import {
@@ -10,6 +12,9 @@ import {
   TX, FINAL_TX, TX_FLOW, TX_MUTABLE, checkTransition,
   REFERRAL_POLICIES, referralPolicyFor, referralReward as sharedReferralReward,
   parseAutomationNL, validateAutomation, checkAutomationPermission,
+  sanitizeActivityInput,
+  buildMemoryChallenge, parseMemoryChallenge,
+  MEMORY_CHALLENGE_TTL_MS, MEMORY_SESSION_TTL_MS,
 } from '../../shared/logic.js';
 
 export { ACTIONS, PROVIDERS, isWalletAddress, isPositiveAmount, isValidBps, isValidDigest,
@@ -292,7 +297,10 @@ export function settleReferralForTx(tx) {
   return { reward, retained: rev.net, revenueId: rev.id, policy };
 }
 
-/* ---------- Activity / revenue ledger ---------- */
+/* ---------- Activity / revenue ledger ----------
+ * Internal callers (automation, settlement) pass trusted, structured values.
+ * UNTRUSTED input is sanitized at the HTTP boundary (server.js POST /api/activity
+ * and api/_lib/handlers/activity.js) — never trust a raw request body here. */
 export function logActivity({ wallet, action, provider = null, asset = null, amount = null, fees = null, digest = null, status = 'submitted', origin = 'manual' }) {
   const id = uid('act');
   db.prepare(`INSERT INTO activities (id,wallet,action,provider,asset,amount,fees_json,digest,status,origin)
@@ -465,15 +473,21 @@ export async function testAiConnection({ provider, model, apiKey }) {
 }
 
 /** LLM layer with primary → fallback chain. Keys stay server-side. Local router fallback. */
-export async function aiChat({ wallet, message, history = [], provider, model }) {
+export async function aiChat({ wallet, message, history = [], provider, model, memToken }) {
   const toolHint = 'Live tools: getCapital, getBalances, getEarn, getProtocols, getActivity, compareOpportunities.';
-  db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
-    .run(uid('ai'), wallet || null, 'user', String(message).slice(0, 4000));
+  let memOk = false;
+  if (wallet && memToken) {
+    try { memRequireSession(wallet, memToken); memOk = true; } catch { memOk = false; }
+  }
+  if (memOk) {
+    db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
+      .run(uid('ai'), wallet || null, 'user', String(message).slice(0, 4000));
+  }
 
-  // Memory → AI: owner-scoped recall (best-effort, never blocks).
+  // Memory → AI: owner-scoped recall, only with a valid ownership session.
   let memoriesUsed = [];
   let memoryOn = false;
-  if (wallet && /^0x[0-9a-fA-F]{64}$/.test(String(wallet))) {
+  if (memOk && wallet && /^0x[0-9a-fA-F]{64}$/.test(String(wallet))) {
     try {
       const rows = db.prepare('SELECT id,category,content_cipher AS content FROM memory_records WHERE wallet = ? ORDER BY created_at DESC LIMIT 200').all(wallet);
       memoryOn = rows.length > 0;
@@ -567,8 +581,10 @@ Source: Action Hub Core Protocols · Updated: ${nowIso}`;
   for (const name of chain) {
     try {
       const answer = await callProvider(aiConfig(name), { model, messages: [{ role: 'system', content: sys }, ...history.slice(-10), { role: 'user', content: String(message).slice(0, 4000) }] });
-      db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
-        .run(uid('ai'), wallet || null, 'assistant', String(answer).slice(0, 8000));
+  if (memOk) {
+    db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
+      .run(uid('ai'), wallet || null, 'assistant', String(answer).slice(0, 8000));
+  }
       return { answer, source: 'llm:' + name + ':' + (model || aiConfig(name).model), updated: new Date().toISOString(), memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
     } catch (e) { lastErr = e; }
   }
@@ -577,13 +593,72 @@ Source: Action Hub Core Protocols · Updated: ${nowIso}`;
     return { error: 'AI_UNAVAILABLE', detail: 'primary+fallback failed', code: 502 };
   }
 
-  db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
-    .run(uid('ai'), wallet || null, 'assistant', fallbackAnswer);
+  if (memOk) {
+    db.prepare('INSERT INTO ai_conversations (id,wallet,role,content) VALUES (?,?,?,?)')
+      .run(uid('ai'), wallet || null, 'assistant', fallbackAnswer);
+  }
   return { answer: fallbackAnswer, source: fallbackSource, updated: nowIso, memory: { on: memoryOn, used: memoriesUsed.length, items: memoriesUsed } };
 }
 
+/* ---------- Memory ownership proof (dev/SQLite mirror of api/_lib/memory-auth.js) --
+ * Same protocol: challenge -> personal-message signature -> 24h session token.
+ * Tokens stored sha256-hashed; nonces single-use. */
+const memSha = (s) => createHash('sha256').update(String(s)).digest('hex');
+
+export function memIssueChallenge(wallet) {
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  const nonce = randomBytes(16).toString('hex');
+  const expiresAt = new Date(Date.now() + MEMORY_CHALLENGE_TTL_MS).toISOString();
+  const message = buildMemoryChallenge(wallet, nonce, expiresAt);
+  db.prepare('INSERT OR REPLACE INTO memory_challenges (nonce_hash, wallet, expires_at) VALUES (?,?,?)')
+    .run(memSha(message), wallet, expiresAt);
+  return { message, expiresAt };
+}
+
+export async function memOpenSession(wallet, message, signature) {
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  const parsed = parseMemoryChallenge(message);
+  if (!parsed || parsed.wallet.toLowerCase() !== String(wallet).toLowerCase()) {
+    throw Object.assign(new Error('INVALID_CHALLENGE'), { code: 'INVALID_CHALLENGE' });
+  }
+  if (Date.now() > new Date(parsed.expiresAt).getTime()) {
+    throw Object.assign(new Error('CHALLENGE_EXPIRED'), { code: 'CHALLENGE_EXPIRED' });
+  }
+  const row = db.prepare('SELECT wallet, expires_at AS expiresAt FROM memory_challenges WHERE nonce_hash = ?').get(memSha(message));
+  if (!row || String(row.wallet).toLowerCase() !== String(wallet).toLowerCase() || Date.now() > new Date(row.expiresAt).getTime()) {
+    throw Object.assign(new Error('INVALID_CHALLENGE'), { code: 'INVALID_CHALLENGE' });
+  }
+  try {
+    await verifyPersonalMessageSignature(new TextEncoder().encode(message), signature, { address: wallet });
+  } catch {
+    throw Object.assign(new Error('BAD_SIGNATURE'), { code: 'BAD_SIGNATURE' });
+  }
+  db.prepare('DELETE FROM memory_challenges WHERE nonce_hash = ?').run(memSha(message));
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + MEMORY_SESSION_TTL_MS).toISOString();
+  db.prepare('INSERT INTO memory_sessions (token_hash, wallet, expires_at) VALUES (?,?,?)')
+    .run(memSha(token), wallet, expiresAt);
+  return { token, expiresAt };
+}
+
+export function memRequireSession(wallet, token) {
+  if (!token || !isWalletAddress(wallet)) {
+    throw Object.assign(new Error('MEMORY_AUTH_REQUIRED'), { code: 'MEMORY_AUTH_REQUIRED', status: 401 });
+  }
+  const row = db.prepare('SELECT wallet, expires_at AS expiresAt FROM memory_sessions WHERE token_hash = ?').get(memSha(String(token)));
+  if (!row || String(row.wallet).toLowerCase() !== String(wallet).toLowerCase() || Date.now() > new Date(row.expiresAt).getTime()) {
+    throw Object.assign(new Error('MEMORY_AUTH_REQUIRED'), { code: 'MEMORY_AUTH_REQUIRED', status: 401 });
+  }
+  return String(row.wallet);
+}
+
+export function memCloseSessions(wallet) {
+  db.prepare('DELETE FROM memory_sessions WHERE wallet = ?').run(wallet);
+  return { ok: true };
+}
+
 /* ---------- Memory records (consent-gated app-level prefs; Noise database) ----------
- * Secrets are rejected at write. */
+ * Secrets are rejected at write. Reads/writes/deletes require a session token. */
 export function saveMemory({ wallet, category, content, namespace = 'personal' }) {
   const allowed = ['preference', 'protocol-preference', 'notification-preference', 'workflow-preference',
     'project-context', 'user-instruction', 'ai-fact'];

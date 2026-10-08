@@ -15,14 +15,14 @@ export const suipumpAdapter = {
    */
   async getTokens() {
     try {
-      const response = await fetch(`${BASE_URL}/tokens`);
+      const response = await fetch(`${BASE_URL}/tokens`, {signal:AbortSignal.timeout(20000)});
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const tokens = await response.json();
       return {
-        tokens: Array.isArray(tokens) ? tokens : [],
-        source: 'SuiPump Public API (on-chain read)',
+        tokens: (()=>{if(!Array.isArray(tokens))throw new Error("Invalid token-list response");return tokens;})(),
+        source: 'SuiPump live indexer API (not independently verified metrics)',
         sourceUrl: 'https://suipump.org/integrations',
         updatedAt: new Date().toISOString(),
       };
@@ -44,7 +44,7 @@ export const suipumpAdapter = {
       const stats = await response.json();
       return {
         stats,
-        source: 'SuiPump Public API (on-chain read)',
+        source: 'SuiPump live indexer API (not independently verified metrics)',
         sourceUrl: 'https://suipump.org/integrations',
         updatedAt: new Date().toISOString(),
       };

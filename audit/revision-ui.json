@@ -1,0 +1,259 @@
+[
+  {
+    "width": 1440,
+    "route": "capital",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim",
+        "onclick": "navigateTo('actions')"
+      },
+      {
+        "text": "Claim",
+        "onclick": "openReview('claim')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "discover",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "earn",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim ticket",
+        "onclick": "haedalClaimReview()"
+      },
+      {
+        "text": "KaiyieldLIVEConnected in Noise — select an operationOpen in Noise",
+        "onclick": "openConnectedProtocol('kai')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "actions",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Transfer\n                        Plain coin transfer — built, sim",
+        "onclick": "showAction('transfer')"
+      },
+      {
+        "text": "Kai vaultsSUI / USDC deposit and redeem · live vault state",
+        "onclick": "kaiComposer()"
+      },
+      {
+        "text": "Claim rewards\n                        Collect available rewards",
+        "onclick": "openReview('claim')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "trade",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "activity",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim",
+        "onclick": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "security",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Kai",
+        "onclick": "openProto('kai')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "settings",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [],
+    "errors": []
+  },
+  {
+    "width": 1440,
+    "route": "supply",
+    "bodyWidth": 1440,
+    "markets": 24
+  },
+  {
+    "width": 1440,
+    "route": "bridge",
+    "bodyWidth": 1440,
+    "text": "From\n\nNot connected\n\nSelect\n\nTo\n\nNot connected\n\nSelect\n\nConnect source wallet\n\nPowered by\n\nTerms of Service",
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "capital",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim",
+        "onclick": "navigateTo('actions')"
+      },
+      {
+        "text": "Claim",
+        "onclick": "openReview('claim')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "discover",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "KaiyieldLIVEdata · earn · execution",
+        "onclick": "openProto('kai')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "earn",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim ticket",
+        "onclick": "haedalClaimReview()"
+      },
+      {
+        "text": "KaiyieldLIVEConnected in Noise — select an operationOpen in Noise",
+        "onclick": "openConnectedProtocol('kai')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "actions",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Transfer\n                        Plain coin transfer — built, sim",
+        "onclick": "showAction('transfer')"
+      },
+      {
+        "text": "Kai vaultsSUI / USDC deposit and redeem · live vault state",
+        "onclick": "kaiComposer()"
+      },
+      {
+        "text": "Claim rewards\n                        Collect available rewards",
+        "onclick": "openReview('claim')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "trade",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "activity",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Claim",
+        "onclick": null
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "security",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [
+      {
+        "text": "Kai",
+        "onclick": "openProto('kai')"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "settings",
+    "fonts": [
+      "Inter, sans-serif"
+    ],
+    "controls": [],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "route": "supply",
+    "bodyWidth": 390,
+    "markets": 24
+  },
+  {
+    "width": 390,
+    "route": "bridge",
+    "bodyWidth": 390,
+    "text": "From\n\nNot connected\n\nSelect\n\nTo\n\nNot connected\n\nSelect\n\nConnect source wallet\n\nPowered by\n\nTerms of Service",
+    "errors": []
+  }
+]

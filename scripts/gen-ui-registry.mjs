@@ -6,14 +6,14 @@
 //
 // server/test/registry.test.js fails if the mirror drifts from the registry.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { uiRegistry, capabilityMatrix } from '../shared/registry.js';
+import { uiRegistry, publicCapabilityMatrix } from '../shared/registry.js';
 import { uiCapabilities } from '../shared/capabilities.js';
 
 const path = process.argv[2] || 'app.html';
 let s = readFileSync(path, 'utf8');
 
 const json = JSON.stringify(uiRegistry());
-const capJson = JSON.stringify(Object.fromEntries(capabilityMatrix().map((r) => [r.id, r])));
+const capJson = JSON.stringify(Object.fromEntries(publicCapabilityMatrix().map((r) => [r.id, r])));
 
 const startRe = /(\/\* REGISTRY_JSON_START \*\/\r?\n)[^\n]*(\r?\n\s*\/\* REGISTRY_JSON_END \*\/)/;
 if (!startRe.test(s)) throw new Error(`${path}: REGISTRY_JSON markers not found — run the initial injection first.`);

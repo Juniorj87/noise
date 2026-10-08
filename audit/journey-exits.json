@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-07T11:44:42.406Z",
+  "mode": "Unsigned primitive roundtrips. Suilend first-obligation test skips refresh only because its zero-debt obligation is created in this same PTB. Production withdrawals refresh existing obligations.",
+  "results": [
+    {
+      "provider": "suilend",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "mode": "Atomic deposit + partial withdrawal (Kai full share redemption), no signatures"
+    },
+    {
+      "provider": "navi",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "mode": "Atomic deposit + partial withdrawal (Kai full share redemption), no signatures"
+    },
+    {
+      "provider": "kai",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "mode": "Atomic deposit + partial withdrawal (Kai full share redemption), no signatures"
+    }
+  ]
+}

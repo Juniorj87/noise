@@ -2,7 +2,7 @@
   "name": "sui-action-hub",
   "version": "1.0.0",
   "private": true,
-  "description": "NOISE HUB — non-custodial Sui Action Hub. Static frontend + Vercel serverless API + PostgreSQL.",
+  "description": "NOISE HUB \u2014 non-custodial Sui Action Hub. Static frontend + Vercel serverless API + PostgreSQL.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -15,11 +15,20 @@
     "test:integration": "cd server && npm run test:integration",
     "test:data": "cd server && npm run test:data",
     "test:api": "node --test --test-concurrency=1 server/test/api.test.js",
-    "test:pg": "node --test server/test/pg.test.js"
+    "test:pg": "node --test server/test/pg.test.js",
+    "audit:reads": "node scripts/audit-live.mjs",
+    "audit:builds": "node scripts/audit-builds.mjs",
+    "audit:new": "node scripts/audit-new-integrations.mjs",
+    "audit:liquidity": "node scripts/audit-liquidity.mjs",
+    "audit:revision": "node scripts/audit-revision.mjs",
+    "audit:journey": "node scripts/audit-journey.mjs",
+    "audit:tasks": "node scripts/audit-tasks.mjs",
+    "audit:task-exits": "node scripts/audit-task-exits.mjs"
   },
   "dependencies": {
     "@bucket-protocol/sdk": "^2.3.0",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
+    "@kunalabs-io/kai": "0.30.0",
     "@mysten/deepbook-v3": "^2.6.4",
     "@mysten/sui": "2.33.2",
     "@mysten/suins": "^2.0.13",
@@ -27,10 +36,15 @@
     "@scallop-io/sui-scallop-sdk": "^5.4.1",
     "@suilend/sdk": "^12.4.1",
     "@suilend/springsui-sdk": "^4.1.0",
+    "@suilend/steamm-sdk": "7.1.0",
     "aftermath-ts-sdk": "^5.1.1",
     "metastable-ts-sdk": "^1.0.3",
-    "navi-sdk": "^1.7.3",
     "pg": "^8.13.1",
     "turbos-clmm-sdk": "^4.0.2"
+  },
+  "overrides": {
+    "axios": "^1.20.0",
+    "braces": "^3.0.3",
+    "vite": "^5.4.21"
   }
 }

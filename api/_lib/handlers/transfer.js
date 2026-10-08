@@ -39,8 +39,8 @@ export default handler(async (req, res, url) => {
       }
       const gu = sim?.effects?.gasUsed;
       if (gu) gasEst = String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0)));
-    } catch {
-      return { txBytes: r.txBytes, simulationStatus: 'unavailable', gasEst: null, meta: r.meta };
+    } catch (e) {
+      return { error: 'SIMULATION_FAILED', message: 'Simulation unavailable (' + String(e.message || e).slice(0, 120) + ') — signing blocked for safety. Retry shortly.', status: 400 };
     }
     return { txBytes: r.txBytes, simulation: sim, simulationStatus: 'success', gasEst, meta: r.meta };
   } catch (e) {

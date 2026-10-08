@@ -1,0 +1,61 @@
+{
+  "at": "2026-10-07T12:51:07.420Z",
+  "mode": "Single-transaction unsigned roundtrip simulations, not funded deposit/withdraw across transactions. Mature-ticket claim not exercised.",
+  "results": [
+    {
+      "scenario": "scallop-share-roundtrip",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "balanceChanges": [
+        {
+          "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+          "address": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+          "amount": "-4828505"
+        }
+      ]
+    },
+    {
+      "scenario": "haedal-instant",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "balanceChanges": [
+        {
+          "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+          "address": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+          "amount": "-1451184"
+        }
+      ]
+    },
+    {
+      "scenario": "haedal-delayed",
+      "ok": true,
+      "status": {
+        "status": "success",
+        "error": null
+      },
+      "balanceChanges": [
+        {
+          "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+          "address": "0xcb7efe4253a0fe58df608d8a2d3c0eea94b4b40a8738c8daae4eb77830c16cd7",
+          "amount": "-1101892384"
+        }
+      ]
+    },
+    {
+      "scenario": "reject-unowned-ticket",
+      "ok": true,
+      "error": "Select a Haedal ticket owned by this wallet"
+    },
+    {
+      "scenario": "haSUI-metadata",
+      "ok": true,
+      "decimals": 9
+    }
+  ]
+}

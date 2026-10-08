@@ -1,0 +1,48 @@
+[
+  {
+    "chain": "Ethereum",
+    "rpc": "https://ethereum-rpc.publicnode.com",
+    "status": 200,
+    "result": "0x1",
+    "ok": true,
+    "error": null
+  },
+  {
+    "chain": "Ethereum",
+    "rpc": "https://eth.llamarpc.com",
+    "ok": false,
+    "error": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+  },
+  {
+    "chain": "Arbitrum",
+    "rpc": "https://arb1.arbitrum.io/rpc",
+    "status": 200,
+    "result": "0xa4b1",
+    "ok": true,
+    "error": null
+  },
+  {
+    "chain": "Base",
+    "rpc": "https://mainnet.base.org",
+    "status": 200,
+    "result": "0x2105",
+    "ok": true,
+    "error": null
+  },
+  {
+    "chain": "Solana",
+    "rpc": "https://api.mainnet-beta.solana.com",
+    "status": 200,
+    "result": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
+    "ok": true,
+    "error": null
+  },
+  {
+    "chain": "Sui",
+    "rpc": "https://sui-rpc.publicnode.com",
+    "status": 200,
+    "result": "35834a8a",
+    "ok": true,
+    "error": null
+  }
+]

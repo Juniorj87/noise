@@ -1,4 +1,10 @@
+import referralsLiveHandler from '../../api/_lib/handlers/referrals-live.js';
+import aiHandlerCanonical from '../../api/_lib/handlers/ai.js';
+import journeyHandler from '../../api/_lib/handlers/journey.js';
+import quoteHandler from '../../api/_lib/handlers/quote.js';
+import kaiHandler from '../../api/_lib/handlers/kai.js';
 // NOISE HUB API — plain Node http router, zero framework deps.
+import { COIN_DECIMALS, decimalToRaw, positiveU64 } from '../../shared/execution-math.js';
 import { createServer } from 'node:http';
 import { db, uid } from './db.js';
 import { sui, simulate } from './sui.js';
@@ -22,7 +28,10 @@ import {
   getReferralStats, getReferralActivity, getLeaderboard, getRevenueSeries,
   getNetworkStats, getRevenueSummary, getReconciliationExpected,
 } from './referral-analytics.js';
-import { NOISE_HUB_REVENUE_WALLET, reconcileRevenue } from '../../shared/logic.js';
+import { NOISE_HUB_REVENUE_WALLET, reconcileRevenue, sanitizeActivityInput } from '../../shared/logic.js';
+import { voloBuild, voloState, turbosSwapBuild } from '../../api/_lib/protocol-execution.js';
+import { venueConfig } from '../../shared/routed-venues.js';
+import {liquidityPools,liquidityPool,liquidityBuild} from '../../api/_lib/liquidity.js';
 import { swapProviders } from '../../shared/swap-providers.js';
 import { statusCounts, REGISTRY_VERIFIED_AT } from '../../shared/registry.js';
 import { allSkills, skillCounts, skillIsSafe, SKILL_PERMISSIONS } from '../../shared/skills.js';
@@ -41,6 +50,7 @@ startScheduler();
 startTracker();
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  'https://noisesui.vercel.app',
   'https://app.noisehub.xyz',
   'https://noisehub.xyz',
   'http://localhost:3000',
@@ -57,13 +67,14 @@ const PORT = Number(process.env.PORT || 3001);
 const ADMIN_KEY = process.env.ADMIN_KEY || '';
 
 function getCorsOrigin(req) {
+  // Unknown origins get no ACAO header (never the literal string "null").
   try {
     const asked = req && req.headers && req.headers.origin;
-    if (!asked) return ALLOWED_ORIGINS[0];
+    if (!asked) return ALLOWED_ORIGINS[0] || null;
     if (ALLOWED_ORIGINS.includes(asked)) return asked;
-    return 'null';
+    return null;
   } catch {
-    return 'null';
+    return null;
   }
 }
 
@@ -75,14 +86,15 @@ export function explorerUrl(digest) {
 
 function send(res, code, body, req) {
   const origin = getCorsOrigin(req);
-  const data = JSON.stringify(body);
-  res.writeHead(code, {
+  const data = JSON.stringify(body, (_, value) => typeof value === 'bigint' ? value.toString() : value);
+  const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': origin,
     'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
-  });
+  };
+  if (origin) headers['Access-Control-Allow-Origin'] = origin;
+  res.writeHead(code, headers);
   res.end(data);
 }
 
@@ -99,7 +111,7 @@ const routes = {
     return { ok: true, network: sui.network, time: new Date().toISOString(), providers };
   },
 
-  'GET /api/protocols': async () => ({ protocols: listProtocols() }),
+  'GET /api/protocols': async () => ({ protocols: await listProtocols() }),
 
   'GET /api/capital': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
@@ -115,18 +127,23 @@ const routes = {
   'GET /api/quote': async (_, url) => {
     const from = (url.searchParams.get('from') || '').toUpperCase();
     const to = (url.searchParams.get('to') || '').toUpperCase();
-    const amount = Number(url.searchParams.get('amount') || 0);
-    const decimals = Number(url.searchParams.get('decimals') || 9);
+    const amountText = url.searchParams.get('amount') || '';
+    const amount = Number(amountText);
+    const decimals = COIN_DECIMALS[from];
     if (!from || !to || !(amount > 0)) return { error: 'INVALID_QUOTE_REQUEST', code: 400 };
-    const amountMist = Math.round(amount * 10 ** decimals);
+    let amountMist;
+    try { coinType(from); coinType(to);
+      if (url.searchParams.has('decimals') && Number(url.searchParams.get('decimals')) !== decimals) return { error: 'INVALID_QUOTE_REQUEST', code: 400 };
+      amountMist = decimalToRaw(amountText, decimals);
+    } catch (e) { return { error: e.code || 'INVALID_QUOTE_REQUEST', code: 400 }; }
     try {
       const t = Date.now();
       const q = await withBreaker('cetus', () =>
         cached(`quote:${from}:${to}:${amountMist}`, 15_000,
           () => cetusAdapter.getQuote({ from, to, amountMist })));
       markHealth('cetus', 'LIVE', Date.now() - t);
-      const minReceived = Number(q.amountOut) * 0.995;
-      return { ...q, minReceived: String(Math.floor(minReceived)), fees: feeBreakdown(amount, 'swap') };
+      const minReceived = BigInt(q.amountOut) * 995n / 1000n;
+      return { ...q, minReceived: String(minReceived), fees: feeBreakdown(amount, 'swap') };
     } catch (e) {
       markHealth('cetus', 'UNAVAILABLE');
       return { error: e.code || 'PROVIDER_UNAVAILABLE', fallback: deepLink('cetus', { from, to }), code: 502 };
@@ -136,7 +153,19 @@ const routes = {
   'POST /api/activity': async (req) => {
     const b = await readJson(req);
     if (!b.wallet || !b.action) return { error: 'INVALID_ACTIVITY', code: 400 };
-    return { id: logActivity(b) };
+    // Untrusted boundary: reject markup / over-long free text before it can
+    // ever reach the ledger (rendered in the wallet session).
+    let clean;
+    try {
+      clean = sanitizeActivityInput(b);
+    } catch (e) {
+      return { error: 'INVALID_ACTIVITY', code: 400 };
+    }
+    try {
+      return { id: logActivity(clean) };
+    } catch (e) {
+      return { error: e.code || 'INVALID_ACTIVITY', code: 400 };
+    }
   },
   'GET /api/activity': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
@@ -193,15 +222,18 @@ const routes = {
   /* Swap build: backend builds PTB, wallet signs — never custody (§4). */
   'POST /api/swap/build': async (req) => {
     const b = await readJson(req);
-    const { from, to, amountMist, sender, slippage = 0.01 } = b;
+    const { from, to, sender, slippage = 0.01 } = b;
+    let amountMist;
+    try { amountMist = String(positiveU64(b.amountMist)); } catch (e) { return { error: 'INVALID_AMOUNT', code: 400 }; }
     if (!from || !to || !(Number(amountMist) > 0) || !Number.isFinite(Number(amountMist))) {
       return { error: 'INVALID_BUILD_REQUEST', code: 400 };
     }
     if (!isWalletAddress(sender)) return { error: 'INVALID_WALLET', code: 400 };
     if (!(Number(slippage) >= 0 && Number(slippage) < 1)) return { error: 'INVALID_SLIPPAGE', code: 400 };
-    if (String(b.provider || '').toLowerCase() === 'aftermath') {
+    if (['aftermath','turbos'].includes(String(b.provider || '').toLowerCase())) {
+    const selectedProvider = String(b.provider).toLowerCase();
       try {
-        const r = await withBreaker('aftermath', () => aftermathSwapBuild({
+        const r = await withBreaker(selectedProvider, () => (selectedProvider === 'turbos' ? turbosSwapBuild : aftermathSwapBuild)({
           wallet: sender,
           fromType: coinType(String(from).toUpperCase()),
           toType: coinType(String(to).toUpperCase()),
@@ -211,6 +243,7 @@ const routes = {
           feeRecipient: null,
         }));
         const sim = await simulate(r.txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));
+        if (sim?.effects?.status?.status !== 'success' || sim.error) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
         let gasEst = null;
         if (sim && sim.effects && sim.effects.gasUsed) {
           const gu = sim.effects.gasUsed;
@@ -218,8 +251,8 @@ const routes = {
         }
         markHealth('aftermath', 'LIVE');
         return {
-          provider: 'Aftermath', amountOut: String(r.meta?.amountOut ?? 0),
-          txBytes: r.txBytes, simulation: sim, gasEst, feeCollected: r.meta?.feeCollected || null,
+          provider: selectedProvider === 'turbos' ? 'Turbos' : 'Aftermath', amountOut: String(r.meta?.amountOut ?? 0),
+          txBytes: r.txBytes, simulation: sim, simulationStatus: 'success', gasEst, feeCollected: r.meta?.feeCollected || null,
           builtAt: new Date().toISOString(),
         };
       } catch (e) {
@@ -229,25 +262,10 @@ const routes = {
       }
     }
     try {
-      const [{ AggregatorClient }, { Transaction }] = await Promise.all([
-        import('@cetusprotocol/aggregator-sdk'),
-        import('@mysten/sui/transactions'),
-      ]);
-      const client = new AggregatorClient({ env: NETWORK === 'testnet' ? 1 : 0 });
-      const router = await withBreaker('cetus', () =>
-        client.findRouters({
-          from: coinType(String(from).toUpperCase()),
-          target: coinType(String(to).toUpperCase()),
-          amount: BigInt(amountMist),
-          byAmountIn: true,
-        }));
-      if (!router || router.insufficientLiquidity) return { error: 'INSUFFICIENT_LIQUIDITY', code: 400 };
-      const txb = new Transaction();
-      txb.setSender(sender);
-      await client.fastRouterSwap({ router, txb, slippage: Number(slippage) });
-      const bytes = await txb.build({ client: sui.client });
-      const txBytes = Buffer.from(bytes).toString('base64');
+      venueConfig(b.provider);
+      const {router,txBytes,feeCollected,provider}=await cetusAdapter.buildSwap({from:String(from).toUpperCase(),to:String(to).toUpperCase(),amountMist,sender,slippage,venue:b.provider});
       const sim = await simulate(txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));
+        if (sim?.effects?.status?.status !== 'success' || sim.error) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
       let gasEst = null;
       if (sim && sim.effects && sim.effects.gasUsed) {
         const gu = sim.effects.gasUsed;
@@ -255,9 +273,9 @@ const routes = {
       }
       markHealth('cetus', 'LIVE');
       return {
-        provider: 'Cetus', quoteId: router.quoteID ?? null,
+        provider, feeCollected, quoteId: router.quoteID ?? null,
         amountOut: String(router.amountOut ?? 0),
-        txBytes, simulation: sim, gasEst, builtAt: new Date().toISOString(),
+        txBytes, simulation: sim, simulationStatus: 'success', gasEst, builtAt: new Date().toISOString(),
       };
     } catch (e) {
       markHealth('cetus', 'UNAVAILABLE');
@@ -461,25 +479,75 @@ const routes = {
     try { return await testAiConnection(b); }
     catch (e) { return { error: e.code || 'AI_UNAVAILABLE', detail: String(e.message || e).slice(0, 200), code: 502 }; }
   },
+  'POST /api/memory/challenge': async (req) => {
+    const b = await readJson(req);
+    try {
+      const { memIssueChallenge: issue } = await import('./services.js');
+      return { ...(await issue(b.wallet)), source: 'Noise memory auth' };
+    } catch (e) {
+      return { error: e.code || 'INVALID_WALLET', message: 'Provide a valid 0x… wallet.', code: 400 };
+    }
+  },
+  'POST /api/memory/session': async (req) => {
+    const b = await readJson(req);
+    try {
+      const { memOpenSession: open } = await import('./services.js');
+      return { ...(await open(b.wallet, b.message, b.signature)), source: 'Noise memory auth' };
+    } catch (e) {
+      return { error: e.code || 'BAD_SIGNATURE', message: 'Signature check failed — sign the exact challenge message in your wallet.', code: 400 };
+    }
+  },
+  'POST /api/memory/logout': async (req) => {
+    const b = await readJson(req);
+    try {
+      const { memCloseSessions: close } = await import('./services.js');
+      if (b.wallet && isWalletAddress(b.wallet)) close(b.wallet);
+    } catch {}
+    return { ok: true };
+  },
   'GET /api/memory': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(wallet, url.searchParams.get('memToken'));
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     return { items: db.prepare("SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active') ORDER BY created_at DESC").all(wallet) };
   },
   'GET /api/memory/search': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(wallet, url.searchParams.get('memToken'));
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     const { searchMemory: searchMem } = await import('./services.js');
     return { items: searchMem({ wallet, query: url.searchParams.get('q') || url.searchParams.get('query') || '', limit: url.searchParams.get('limit') || 8 }), updatedAt: new Date().toISOString(), source: 'Noise memory index' };
   },
   'GET /api/memory/export': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(wallet, url.searchParams.get('memToken'));
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     return { wallet, items: db.prepare("SELECT id,category,content_cipher AS content,created_at FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active') ORDER BY created_at DESC").all(wallet), exportedAt: new Date().toISOString(), source: 'Noise memory index' };
   },
   'GET /api/memory/status': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!isWalletAddress(wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(wallet, url.searchParams.get('memToken'));
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     const total = db.prepare("SELECT COUNT(*) AS n, MAX(created_at) AS last FROM memory_records WHERE wallet = ? AND (status IS NULL OR status = 'active')").get(wallet);
     return {
       wallet, hasRecords: Number(total?.n) > 0, total: Number(total?.n) || 0,
@@ -507,11 +575,23 @@ const routes = {
   'POST /api/memory': async (req) => {
     const b = await readJson(req);
     if (!isWalletAddress(b.wallet) || !b.category || !b.content) return { error: 'INVALID_MEMORY', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(b.wallet, b.memToken);
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     try { return saveMemory(b); }
     catch (e) { return { error: e.code || 'INVALID_MEMORY', code: 400 }; }
   },
   'POST /api/memory-delete': async (req) => {
     const b = await readJson(req);
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(b.wallet, b.memToken);
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     if (b.all) { db.prepare('DELETE FROM memory_records WHERE wallet = ?').run(b.wallet); return { ok: true, cleared: true }; }
     if (!b.id) return { error: 'MISSING_ID', code: 400 };
     db.prepare('DELETE FROM memory_records WHERE id = ? AND wallet = ?').run(b.id, b.wallet);
@@ -520,6 +600,12 @@ const routes = {
   'DELETE /api/memory': async (req) => {
     const b = await readJson(req);
     if (!isWalletAddress(b.wallet)) return { error: 'INVALID_WALLET', code: 400 };
+    try {
+      const { memRequireSession: gate } = await import('./services.js');
+      gate(b.wallet, b.memToken);
+    } catch (e) {
+      return { error: 'MEMORY_AUTH_REQUIRED', message: 'Sign the memory challenge in your wallet first.', code: 401 };
+    }
     if (b.all) { db.prepare('DELETE FROM memory_records WHERE wallet = ?').run(b.wallet); return { ok: true, cleared: true }; }
     if (!b.id) return { error: 'MISSING_ID', code: 400 };
     db.prepare('DELETE FROM memory_records WHERE id = ? AND wallet = ?').run(b.id, b.wallet);
@@ -576,12 +662,20 @@ const routes = {
   'GET /api/quotes': async (_, url) => {
     const from = (url.searchParams.get('from') || '').toUpperCase();
     const to = (url.searchParams.get('to') || '').toUpperCase();
-    const amount = Number(url.searchParams.get('amount') || 0);
-    const decimals = Number(url.searchParams.get('decimals') || 9);
+    const amountText = url.searchParams.get('amount') || '';
+    const amount = Number(amountText);
+    const decimals = COIN_DECIMALS[from];
     if (!from || !to || !(amount > 0)) return { error: 'INVALID_QUOTE_REQUEST', code: 400 };
     let amountMist;
-    try { coinType(from); coinType(to); amountMist = Math.round(amount * 10 ** decimals); }
+    try { coinType(from); coinType(to);
+      if (url.searchParams.has('decimals') && Number(url.searchParams.get('decimals')) !== decimals) return { error: 'INVALID_QUOTE_REQUEST', code: 400 };
+      amountMist = decimalToRaw(amountText, decimals); }
     catch (e) { return { error: e.code || 'UNSUPPORTED_ASSET', code: 400 }; }
+    const venue=url.searchParams.get('provider');
+    if(venue && !['best','aftermath','turbos','cetus'].includes(venue)){
+      try{venueConfig(venue);const q=await cetusAdapter.getQuote({from,to,amountMist,venue});return {...compareRoutes([q]),failed:[],fees:null,providers:[{id:venue,name:q.provider,available:true,build:true}]};}
+      catch(e){return {error:e.code||'PROVIDER_UNAVAILABLE',message:e.message,code:502};}
+    }
     const t = Date.now();
     const [cetus, aftermath, turbos] = await Promise.allSettled([
       withBreaker('cetus', () => cached(`quote:cetus:${from}:${to}:${amountMist}`, 15_000,
@@ -709,6 +803,14 @@ const routes = {
     try { return await withBreaker('margin', () => cached('lending:margin:pre:' + pool, 120_000, () => marginPreflight(pool))); }
     catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
   },
+  'GET /api/lending/scallop/markets': async () => {
+    try { return await withBreaker('scallop', () => cached('lending:scallop:markets', 120_000, () => scallopMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
+  'GET /api/lending/bucket/markets': async () => {
+    try { return await withBreaker('bucket', () => cached('lending:bucket:markets', 120_000, () => bucketMarkets())); }
+    catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
+  },
   'GET /api/lending/scallop/position': async (_, url) => {
     const wallet = url.searchParams.get('wallet');
     if (!wallet) return { error: 'MISSING_WALLET', code: 400 };
@@ -752,6 +854,7 @@ const routes = {
     try { return await withBreaker('springsui', () => cached('discover:springsui:rate', 60_000, () => springsuiRate())); }
     catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
   },
+  'GET /api/lending/volo/state': async()=>{try{return await voloState();}catch(e){return {error:e.code||'PROVIDER_UNAVAILABLE',code:502};}},
   'GET /api/discover/volo/stats': async () => {
     try { return await withBreaker('volo', () => cached('discover:volo:stats', 300_000, () => voloStats())); }
     catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
@@ -760,8 +863,19 @@ const routes = {
     try { return await withBreaker('metastable', () => cached('discover:mstable:vaults', 120_000, () => mstableVaults())); }
     catch (e) { return { error: 'PROVIDER_UNAVAILABLE', code: 502 }; }
   },
+  'GET /api/liquidity/pools': async(_,url)=>{try{return await liquidityPools(url.searchParams.get('provider')||'aftermath')}catch(e){return {error:e.code||'PROVIDER_UNAVAILABLE',message:e.message,code:502}}},
+  'GET /api/liquidity/pool': async(_,url)=>{try{return await liquidityPool(url.searchParams.get('provider')||'aftermath',url.searchParams.get('poolId'))}catch(e){return {error:e.code||'PROVIDER_UNAVAILABLE',message:e.message,code:502}}},
+  'POST /api/liquidity/build': async req=>{try{return await liquidityBuild(await readJson(req))}catch(e){return {error:e.code||'PROVIDER_UNAVAILABLE',message:e.message,code:/INVALID|SIMULATION|INSUFFICIENT/.test(e.code||'')?400:502}}},
   'POST /api/lending/build': async (req) => {
     const b = await readJson(req).catch(() => ({}));
+    if (b.provider === 'volo') {
+      try {
+        const r=await voloBuild({wallet:b.wallet,amountMist:b.amountMist,action:b.action});
+        const insp=await devInspectB64(r.txBytes,b.wallet);
+        if(!insp.ok)return {error:'SIMULATION_FAILED',code:400};
+        return {txBytes:r.txBytes,simulation:insp.simulation,simulationStatus:'success',meta:r.meta};
+      }catch(e){const n=normalizeLendingError(e);return {error:n.code,message:n.message,code:/INVALID|INSUFFICIENT/.test(n.code)?400:502};}
+    }
     const builders = {
       'navi:supply': naviSupply, 'navi:withdraw': naviWithdraw, 'navi:borrow': naviBorrow, 'navi:repay': naviRepay, 'navi:claim': naviClaim,
       'suilend:supply': suilendSupply, 'suilend:withdraw': suilendWithdraw, 'suilend:borrow': suilendBorrow, 'suilend:repay': suilendRepay, 'suilend:claim': suilendClaim,
@@ -771,8 +885,8 @@ const routes = {
       try {
         const r = await marginSetupBuild({ wallet: b.wallet, poolKey: b.pool || b.poolKey });
         const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
-        if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
-        return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: 'margin', action: 'setup', ...r.meta } };
+        if (!insp?.ok) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
+        return { txBytes: r.txBytes, simulation: insp.simulation, simulationStatus: 'success', meta: { provider: 'margin', action: 'setup', ...r.meta } };
       } catch (e) {
         const n = normalizeLendingError(e);
         return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
@@ -800,8 +914,8 @@ const routes = {
           meta = { provider: 'bucket', action: b.action, ...r.meta };
         }
         const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
-        if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
-        return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta };
+        if (!insp?.ok) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
+        return { txBytes: r.txBytes, simulation: insp.simulation, simulationStatus: 'success', meta };
       } catch (e) {
         const n = normalizeLendingError(e);
         return { error: n.code, code: /INVALID|NO_|MISSING|PROVIDER_UNAVAILABLE/.test(n.code) ? 400 : 502 };
@@ -820,8 +934,8 @@ const routes = {
           else if (b.action === 'claim') r = await haedalClaimBuild({ wallet: b.wallet, ticketId: b.ticketId });
           else return { error: 'NOT_FOUND', code: 404 };
           const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
-          if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
-          return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: 'haedal', action: b.action, ...r.meta } };
+          if (!insp?.ok) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
+          return { txBytes: r.txBytes, simulation: insp.simulation, simulationStatus: 'success', meta: { provider: 'haedal', action: b.action, ...r.meta } };
         } catch (e) {
           const n = normalizeLendingError(e);
           return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
@@ -832,8 +946,8 @@ const routes = {
     try {
       const r = await fn({ wallet: b.wallet, coinType: b.coinType, coinName: b.coinName || b.coin || b.symbol, amountMist: b.amountMist, pool: b.pool, obligationId: b.obligationId, obligationKey: b.obligationKey });
       const insp = await devInspectB64(r.txBytes, b.wallet).catch(() => null);
-      if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
-      return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: { provider: b.provider, action: b.action, ...r.meta } };
+      if (!insp?.ok) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
+      return { txBytes: r.txBytes, simulation: insp.simulation, simulationStatus: 'success', meta: { provider: b.provider, action: b.action, ...r.meta } };
     } catch (e) {
       const n = normalizeLendingError(e);
       return { error: n.code, code: /INVALID|NO_|MISSING/.test(n.code) ? 400 : 502 };
@@ -850,8 +964,8 @@ const routes = {
       }
       const r = await transferBuild({ sender: b.sender || b.wallet, coinType: type, amountMist: b.amountMist || b.amount, recipient: b.recipient });
       const insp = await devInspectB64(r.txBytes, b.sender || b.wallet).catch(() => null);
-      if (insp && !insp.ok) return { error: 'SIMULATION_FAILED', code: 400 };
-      return { txBytes: r.txBytes, simulationStatus: insp ? 'success' : 'unavailable', meta: r.meta };
+      if (!insp?.ok) return { error: 'SIMULATION_FAILED', message: 'Simulation failed or unavailable; signing blocked.', code: 400 };
+      return { txBytes: r.txBytes, simulation: insp.simulation, simulationStatus: 'success', meta: r.meta };
     } catch (e) {
       const n = normalizeLendingError(e);
       return { error: n.code, code: /INVALID|UNSUPPORTED|NO_|MISSING/.test(n.code) ? 400 : 502 };
@@ -1024,7 +1138,7 @@ const routes = {
     return {
       revenueNet: revenue.total,
       failedActivity: failed,
-      protocols: listProtocols(),
+      protocols: await listProtocols(),
       fees: { swapBps: FEES.swapBps, earnBps: FEES.earnBps, refRate: FEES.refRate, note: 'env defaults; runtime overrides via POST /api/admin/fees' },
       referralPolicies: REFERRAL_POLICIES,
       health: db.prepare('SELECT * FROM provider_health').all(),
@@ -1032,18 +1146,17 @@ const routes = {
   },
   'POST /api/admin/fees': async (req, _url, headers) => {
     if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
-    const b = await readJson(req);
-    if (b.swapBps != null) {
-      const v = Number(b.swapBps);
-      if (!(v >= 0 && v <= 100)) return { error: 'INVALID_BPS', code: 400 };
-      FEES.swapBps = v;
-    }
-    if (b.earnBps != null) {
-      const v = Number(b.earnBps);
-      if (!(v >= 0 && v <= 100)) return { error: 'INVALID_BPS', code: 400 };
-      FEES.earnBps = v;
-    }
-    return { ok: true, fees: { swapBps: FEES.swapBps, earnBps: FEES.earnBps } };
+    const b=await readJson(req);
+    if(b.providerOverride)return{error:'PRODUCTION_CONFIG_REQUIRED',message:'Provider overrides require the production PostgreSQL admin API.',code:400};
+    const swapBps=b.swapBps==null?FEES.swapBps:Number(b.swapBps);
+    if(!Number.isInteger(swapBps)||swapBps<0||swapBps>100)return{error:'INVALID_BPS',code:400};
+    if(b.earnBps!=null&&Number(b.earnBps)!==0)return{error:'UNSUPPORTED_FEE_POLICY',message:'Hub fees on earn operations are not implemented.',code:400};
+    const recipient=b.feeRecipient===undefined?null:String(b.feeRecipient).trim();
+    if(recipient&&!isWalletAddress(recipient))return{error:'INVALID_RECIPIENT',code:400};
+    FEES.swapBps=recipient===''?0:swapBps;FEES.earnBps=0;
+    process.env.ACTION_HUB_DEFAULT_FEE_BPS=String(FEES.swapBps);process.env.PLATFORM_SWAP_FEE_BPS=String(FEES.swapBps);
+    if(recipient!==null)process.env.ACTION_HUB_FEE_RECIPIENT=recipient;
+    return {ok:true,fees:{swapBps:FEES.swapBps,earnBps:0},note:'Local runtime only; persist defaults in server environment for restart.'};
   },
   'POST /api/admin/protocol': async (req, _url, headers) => {
     if (!ADMIN_KEY || headers['x-admin-key'] !== ADMIN_KEY) return { error: 'UNAUTHORIZED', code: 401 };
@@ -1171,6 +1284,12 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') return send(res, 204, {}, req);
     const url = new URL(req.url, 'http://localhost');
+    if(url.pathname==='/api/ai'||url.pathname.startsWith('/api/ai/'))return aiHandlerCanonical(req,res);
+    if(url.pathname.startsWith('/api/referrals/'))return referralsLiveHandler(req,res);
+    if(url.pathname.startsWith('/api/journey/'))return journeyHandler(req,res);
+    if(url.pathname.startsWith('/api/kai/'))return kaiHandler(req,res);
+    if(['/api/quote','/api/quotes'].includes(url.pathname))return quoteHandler(req,res);
+    if(url.pathname==='/api/trade/markets'){const{default:trade}=await import('../../api/_lib/handlers/trade.js');return trade(req,res);}
     const key = req.method + ' ' + url.pathname;
     let handler = routes[key];
     // Dev adapters for the CANONICAL production handlers (single implementation,
@@ -1179,6 +1298,14 @@ const server = createServer(async (req, res) => {
     if (!handler && url.pathname.startsWith('/api/trade/deepbook/')) {
       const { default: dbRoute } = await import('../../api/_lib/handlers/trade.js');
       handler = deepbookDevShim(dbRoute);
+    }
+    if (!handler && url.pathname.startsWith('/api/trade/predict/')) {
+      const { default: predictRoute } = await import('../../api/_lib/handlers/trade.js');
+      handler = vercelShim(predictRoute);
+    }
+    if (!handler && url.pathname.startsWith('/api/trade/')) {
+      const { default: tradeRoute } = await import('../../api/_lib/handlers/trade.js');
+      handler = vercelShim(tradeRoute);
     }
     if (!handler && url.pathname.startsWith('/api/earn/')) {
       const { default: earnRoute } = await import('../../api/_lib/handlers/earn.js');

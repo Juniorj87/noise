@@ -1,3 +1,7 @@
+import { ASSET_BY_SYMBOL } from '../../shared/assets.js';
+import { venueConfig, assertVenueRouter } from '../../shared/routed-venues.js';
+import { swapFeeInput } from './fee-engine.js';
+import { rankRoutes } from '../../shared/route-ranking.js';
 // Protocol adapters for API mode — same SDK usage as server/src/adapters.js,
 // module-level singletons (safe: stateless clients, network from env only).
 import { AggregatorClient } from '@cetusprotocol/aggregator-sdk';
@@ -30,9 +34,9 @@ const COIN_TYPES = {
   mainnet: {
     SUI: '0x2::sui::SUI',
     CETUS: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
-    DEEP: '0xdeeb7a4662eec9c6963f0cfaa815e05d736414b9d381233c00c0de098c74e::deep::DEEP',
+    DEEP: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
     USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
-    NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc9bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+    NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
   },
   testnet: {
     SUI: '0x2::sui::SUI',
@@ -44,7 +48,7 @@ const AF_BASE = process.env.AFTERMATH_API_URL || 'https://aftermath.finance';
 
 export function coinType(sym, network = NETWORK) {
   const upper = (sym || '').toUpperCase();
-  const t = (COIN_TYPES[network] || COIN_TYPES.mainnet)[upper];
+  const t = network==='mainnet' ? ASSET_BY_SYMBOL[upper]?.coinType : (COIN_TYPES[network] || {})[upper];
   if (!t) throw Object.assign(new Error('UNSUPPORTED_ASSET'), { code: 'UNSUPPORTED_ASSET' });
   return t;
 }
@@ -75,59 +79,55 @@ export function envelope(value, source, sourceUrl, confidence = 'high') {
 
 export const cetusAdapter = {
   id: 'cetus',
-  async getQuote({ from, to, amountMist }) {
+  async getQuote({ from, to, amountMist, venue }) {
+    const venueCfg = venueConfig(venue);
+    const { net, fee } = await swapFeeInput(amountMist, venue || 'cetus', from, `${from}_${to}`);
     const router = await cetusClient.findRouters({
-      from: coinType(from), target: coinType(to), amount: BigInt(amountMist), byAmountIn: true,
+      from: coinType(from), target: coinType(to), amount: net, byAmountIn: true,
+      ...(venueCfg ? { providers: venueCfg.providers } : {}),
     });
+    assertVenueRouter(router, venueCfg);
     if (!router || router.insufficientLiquidity) {
       throw Object.assign(new Error('INSUFFICIENT_LIQUIDITY'), { code: 'INSUFFICIENT_LIQUIDITY' });
     }
     return {
-      provider: 'Cetus', quoteId: router.quoteID ?? null,
-      amountIn: String(router.amountIn ?? amountMist), amountOut: String(router.amountOut ?? 0),
+      provider: venueCfg?.name || 'Cetus', venue: venue || 'cetus', quoteId: router.quoteID ?? null,
+      amountIn: String(amountMist), routeAmountIn: String(net), feeCollected: fee, amountOut: String(router.amountOut ?? 0),
       paths: (router.paths ?? []).length, protocolFee: 0, insufficientLiquidity: false,
       fetchedAt: new Date().toISOString(),
     };
   },
-  async buildSwap({ from, to, amountMist, sender, slippage }) {
+  async buildSwap({ from, to, amountMist, sender, slippage, venue }) {
+    const venueCfg = venueConfig(venue);
+    const { net, fee } = await swapFeeInput(amountMist, venue || 'cetus', from, `${from}_${to}`);
     const router = await cetusClient.findRouters({
-      from: coinType(from), target: coinType(to), amount: BigInt(amountMist), byAmountIn: true,
+      from: coinType(from), target: coinType(to), amount: net, byAmountIn: true,
+      ...(venueCfg ? { providers: venueCfg.providers } : {}),
     });
+    assertVenueRouter(router, venueCfg);
     if (!router || router.insufficientLiquidity) {
       throw Object.assign(new Error('INSUFFICIENT_LIQUIDITY'), { code: 'INSUFFICIENT_LIQUIDITY' });
     }
     const { Transaction } = await import('@mysten/sui/transactions');
     const txb = new Transaction();
     txb.setSender(sender);
-    await cetusClient.fastRouterSwap({ router, txb, slippage: Number(slippage) });
-    // Action Hub platform fee — collected ONLY as a real PTB leg, and only
-    // when it is safe: SUI-funded input lets us split from the gas coin.
-    // Otherwise the fee stays disabled and is reported as $0.00 (honest:
-    // displayed fee === actual transaction).
-    let feeCollected = null;
-    try {
-      const { getPlatformFee, validateFeeRecipient } = await import('./fee-engine.js');
-      const fee = await getPlatformFee({ action: 'swap', provider: 'cetus', instrument: `${from}_${to}`, amount: amountMist, asset: from });
-      if (fee?.enabled && fee.recipient && validateFeeRecipient(fee.recipient).valid && String(from).toUpperCase() === 'SUI') {
-        const feeMist = (BigInt(amountMist) * BigInt(fee.bps)) / 10000n;
-        if (feeMist > 0n) {
-          const [feeCoin] = txb.splitCoins(txb.gas, [feeMist]);
-          txb.transferObjects([feeCoin], fee.recipient);
-          const { toHumanUnits, feeDisplay } = await import('./fee-engine.js');
-          const human = toHumanUnits(String(feeMist), String(from).toUpperCase());
-          feeCollected = { amountMist: String(feeMist), amountSui: human, display: feeDisplay(human, String(from).toUpperCase()), recipient: fee.recipient, bps: fee.bps };
-        }
-      }
-    } catch (e) {
-      console.error('[cetus] platform fee leg skipped:', String(e?.message || e).slice(0, 200));
+    // Obtain the gross input ONCE. Fee is carved from it, not debited on top.
+    const { naviCoinInput, toBytes64 } = await import('./lending.js');
+    const inputCoin = await naviCoinInput(txb, sender, coinType(from), amountMist);
+    if (fee) {
+      const [feeCoin] = txb.splitCoins(inputCoin, [txb.pure.u64(BigInt(fee.amountMist))]);
+      txb.transferObjects([feeCoin], txb.pure.address(fee.recipient));
     }
+    const outputCoin = await cetusClient.routerSwap({ router, inputCoin, txb, slippage: Number(slippage) });
+    txb.transferObjects([outputCoin], txb.pure.address(sender));
+    const feeCollected = fee;
     // Preset gas price so txb.build skips a system-state round-trip.
     try {
       const gp = await sui.getReferenceGasPrice();
       if (gp?.value) txb.setGasPrice(BigInt(gp.value));
     } catch { /* build resolves it */ }
-    const bytes = await txb.build({ client: sui.provider.rawClient() });
-    return { router, txBytes: Buffer.from(bytes).toString('base64'), feeCollected };
+    const bytes = Buffer.from(await toBytes64(txb, sender, String(from).toUpperCase() === 'SUI' ? amountMist : 0n), 'base64');
+    return { router, provider: venueCfg?.name || 'Cetus', venue: venue || 'cetus', txBytes: Buffer.from(bytes).toString('base64'), feeCollected };
   },
 };
 
@@ -135,15 +135,20 @@ export const cetusAdapter = {
  *  there is no build/simulate/execute path wired in Noise. */
 export const aftermathAdapter = {
   id: 'aftermath',
-  capabilities: { read: true, quote: true, build: false, simulate: false, execute: false, rewards: true },
+  capabilities: { read: true, quote: true, build: true, simulate: true, execute: true, rewards: true },
+  async buildSwap({from,to,amountMist,sender,slippage}) {
+    const {aftermathSwapBuild} = await import('./lending.js');
+    return aftermathSwapBuild({wallet:sender,fromType:coinType(from),toType:coinType(to),amountMist,slippage});
+  },
   async getQuote({ from, to, amountMist }) {
+    const { net, fee } = await swapFeeInput(amountMist, 'aftermath', from, `${from}_${to}`);
     const q = await afPost('/api/router/trade-route', {
-      coinInType: coinType(from), coinOutType: coinType(to), coinInAmount: String(amountMist),
+      coinInType: coinType(from), coinOutType: coinType(to), coinInAmount: String(net),
     });
     const out = BigInt(q.coinOut?.amount?.replace?.('n', '') ?? q.coinOut?.amount ?? 0);
     return {
       provider: 'Aftermath Router', quoteId: null,
-      amountIn: String(amountMist), amountOut: String(out),
+      amountIn: String(amountMist), routeAmountIn: String(net), feeCollected: fee, amountOut: String(out),
       spotPrice: q.spotPrice, netTradeFeePercentage: q.netTradeFeePercentage,
       routes: (q.routes ?? []).map((r) => ({
         protocols: (r.paths ?? []).map((p) => p.protocolName), portion: r.portion,
@@ -248,23 +253,11 @@ export async function simulate(txBytes, sender) {
   return result.value;
 }
 
-export function compareRoutes(quotes, { platformFee = 0, gasEst = 0 } = {}) {
-  const live = (quotes ?? []).filter((q) => q && !q.error && BigInt(q.amountOut ?? 0) > 0n);
-  const ranked = live.map((q) => {
-    const out = Number(q.amountOut);
-    const effective = out - Number(q.protocolFee ?? 0) - Number(q.providerFee ?? 0) - platformFee - gasEst;
-    return { ...q, effectiveOutput: effective };
-  }).sort((a, b) => b.effectiveOutput - a.effectiveOutput);
-  return { compared: live.length, best: ranked[0]?.provider ?? null, routes: ranked, at: new Date().toISOString() };
-}
+export function compareRoutes(quotes, options = {}) { return rankRoutes(quotes, options); }
 
-export function listProtocols() {
-  return (async () => {
-    const { getPool, ensureSchema } = await import('./pg.js');
-    await ensureSchema();
-    const r = await getPool().query('SELECT * FROM protocols WHERE enabled = 1 ORDER BY name');
-    return r.rows.map((p) => ({ ...p, capabilities: JSON.parse(p.capabilities || '[]') }));
-  })();
+export async function listProtocols() {
+  const {publicProtocols}=await import('../../shared/registry.js');
+  return publicProtocols().map(p=>({...p,capabilities:p.actions,enabled:1}));
 }
 
 export function deepLink(providerId, ctx = {}) {
@@ -275,4 +268,15 @@ export function deepLink(providerId, ctx = {}) {
     if (!p) return null;
     return { provider: p.name, url: p.website, leavesHub: true, context: ctx, note: 'Execution leaves NOISE HUB — provider integration is ' + p.status };
   })();
+}
+
+/** Swap inside a larger PTB. No output transfer: the caller consumes the Coin. */
+export async function cetusSwapCoin({txb,inputCoin,fromType,toType,amountMist,fromSymbol,toSymbol,slippageBps}){
+  if(!Number.isInteger(slippageBps)||slippageBps<1||slippageBps>300)throw Object.assign(new Error('INVALID_SLIPPAGE'),{code:'INVALID_SLIPPAGE'});
+  const{net,fee}=await swapFeeInput(amountMist,'cetus',fromSymbol,`${fromSymbol}_${toSymbol}`);
+  const router=await cetusClient.findRouters({from:fromType,target:toType,amount:net,byAmountIn:true});
+  if(!router||router.insufficientLiquidity||!router.paths?.length||BigInt(router.amountOut||0)<=0n)throw Object.assign(new Error('No executable DEX route for this asset and amount'),{code:'NO_ROUTE'});
+  if(fee){const[f]=txb.splitCoins(inputCoin,[txb.pure.u64(BigInt(fee.amountMist))]);txb.transferObjects([f],txb.pure.address(fee.recipient));}
+  const outputCoin=await cetusClient.routerSwap({router,inputCoin,txb,slippage:slippageBps/10000});
+  return{outputCoin,quote:{provider:'Cetus Aggregator',quoteId:router.quoteID||null,amountIn:String(amountMist),routeAmountIn:String(net),expectedOutput:String(router.amountOut),minOutput:String(BigInt(router.amountOut)*BigInt(10000-slippageBps)/10000n),feeCollected:fee,routeProviders:[...new Set(router.paths.flatMap(p=>(p.path||p.paths||[p]).map(x=>x.provider)).filter(Boolean))]}};
 }

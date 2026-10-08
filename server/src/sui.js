@@ -46,15 +46,7 @@ export async function getOwnedObjects(wallet, limit = 50) {
  */
 export async function simulate(txBytes, sender) {
   const { Transaction } = await import('@mysten/sui/transactions');
-  const raw = Buffer.from(String(txBytes), 'base64');
-  let kindBytes = raw;
-  try {
-    const tx = Transaction.from(raw);
-    if (sender) tx.setSenderIfNotSet(sender);
-    kindBytes = await tx.build({ client: sui.client, onlyTransactionKind: true });
-  } catch { /* fall through with raw bytes */ }
-  return sui.client.devInspectTransactionBlock({
-    transactionBlock: kindBytes,
-    sender,
-  });
+  const tx = Transaction.from(Buffer.from(String(txBytes), 'base64'));
+  if (tx.getData().sender !== sender.toLowerCase()) throw Object.assign(new Error('Transaction sender mismatch'), { code: 'INVALID_WALLET' });
+  return sui.client.dryRunTransactionBlock({ transactionBlock: Buffer.from(String(txBytes), 'base64') });
 }

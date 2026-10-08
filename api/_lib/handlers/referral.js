@@ -9,6 +9,7 @@ import {
   getTransactionByDigest, isValidDigest, isWalletAddress,
 } from '../services.js';
 import { getConfig, getPool, ensureSchema } from '../pg.js';
+import { REFERRAL_POLICIES } from '../../../shared/logic.js';
 import {
   getReferralStats, getReferralActivity, getLeaderboard,
   getRevenueSeries, getNetworkStats,
@@ -44,6 +45,8 @@ async function fullShape(wallet) {
     },
     rank: lb.viewer ? { position: lb.viewer.rank, total: lb.viewer.total } : { position: null, total: 0 },
     rate: await refRate(),
+    rateNote: 'Program default — actual settlement uses the verified per-protocol policy (see policies); 0% where partner terms are unverified.',
+    policies: REFERRAL_POLICIES,
     windowDays: await windowDays(),
     updatedAt: stats.updatedAt,
     source: 'Noise accounting',
@@ -62,10 +65,10 @@ export default handler(async (req, res, url) => {
     }
     const code = requireQuery(url, 'code');
     await ensureSchema();
-    const row = (await getPool().query('SELECT * FROM referrals WHERE code = $1', [code])).rows[0];
+    const row = (await getPool().query('SELECT id, code, expires_at, created_at FROM referrals WHERE code = $1', [code])).rows[0];
     if (!row) return { error: 'UNKNOWN_CODE', message: 'Referral code not found.', status: 404 };
     const rewards = (await getPool().query('SELECT COALESCE(SUM(CAST(amount AS REAL)),0) AS total FROM referral_rewards WHERE referral_id = $1', [row.id])).rows[0];
-    return { referral: row, earned: rewards.total, rate: await refRate(), windowDays: await windowDays() };
+    return { referral: row, earned: rewards.total, rate: await refRate(), rateNote: 'Program default — actual settlement uses the verified per-protocol policy; 0% where partner terms are unverified.', windowDays: await windowDays() };
   }
 
   if (req.method === 'GET' && action === 'stats') {

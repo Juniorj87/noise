@@ -13,7 +13,7 @@
 //   COMING_SOON — surface exists but execution is intentionally disabled.
 // No protocol may claim execution unless status is LIVE (enforced by test).
 
-export const REGISTRY_VERIFIED_AT = '2026-10-04';
+export const REGISTRY_VERIFIED_AT = '2026-10-07';
 
 export const STATUS = ['LIVE', 'PARTIAL', 'DISCOVER', 'COMING_SOON'];
 
@@ -59,11 +59,11 @@ export const PROTOCOLS = [
   // ---- settlement / infrastructure -------------------------------------------
   p({
     id: 'sui', name: 'Sui', category: 'infrastructure', bucket: 'INFRASTRUCTURE', status: 'LIVE',
-    actions: ['settlement', 'rpc', 'balances', 'objects', 'stakes', 'transfer'],
+    actions: ['settlement', 'rpc', 'balances', 'stakes', 'transfer'],
     capability: C.d({ data: true, execution: true }),
     dataSource: 'Sui RPC / gRPC', fee: 'gas only', ref: '—',
     url: 'https://sui.io', docs: 'https://docs.sui.io',
-    note: 'Settlement layer: balances, objects, stakes and transaction status read live. Plain coin transfers build + simulate in Noise; wallet signs.',
+    note: 'Settlement layer: balances, stakes and transaction status read live. Plain coin transfers build + simulate in Noise; wallet signs. (No `objects` action: no HTTP surface exposes raw object listing.)',
   }),
   p({
     id: 'sui-native', name: 'Sui Native Staking', category: 'staking', bucket: 'STAKING', status: 'LIVE',
@@ -77,19 +77,19 @@ export const PROTOCOLS = [
   // ---- DEX / liquidity -------------------------------------------------------
   p({
     id: 'cetus', name: 'Cetus', category: 'dex', bucket: 'DEX', status: 'LIVE',
-    actions: ['swap', 'quote', 'build-tx', 'simulate', 'position'],
-    capability: C.d({ data: true, swap: true, position: true, execution: true }),
+    actions: ['swap', 'quote', 'build-tx', 'simulate'],
+    capability: C.d({ data: true, swap: true, execution: true }),
     dataSource: 'Cetus Aggregator SDK', fee: 'pool fee + platform bps (cfg)', ref: 'partner closed to new teams → policy 0',
     url: 'https://app.cetus.zone', docs: 'https://cetus-1.gitbook.io/cetus-developer-docs',
-    note: 'Primary swap router: quote → build → simulate → sign, proven live.',
+    note: 'Primary swap router: quote → build → simulate → wallet signing flow; signed E2E is not certified by this audit. No Cetus LP-position adapter exists, so no `position` capability is claimed.',
   }),
   p({
-    id: 'aftermath', name: 'Aftermath', category: 'dex', bucket: 'DEX', status: 'PARTIAL',
-    actions: ['swap-quote', 'swap-build', 'pools', 'staking-apy', 'rewards', 'position'],
-    capability: C.d({ data: true, swap: true, earn: true, position: true }),
+    id: 'aftermath', name: 'Aftermath', category: 'dex', bucket: 'DEX', status: 'LIVE',
+    actions: ['swap-quote', 'swap-build', 'pools', 'staking-apy', 'rewards', 'position', 'deposit', 'withdraw'],
+    capability: C.d({ data: true, swap: true, earn: true, position: true, execution: true }),
     dataSource: 'Aftermath REST + TS SDK', fee: 'router: no protocol fee; pools 0.30%/0.10%', ref: 'router 2.5% of integrator fee',
     url: 'https://aftermath.finance', docs: 'https://docs.aftermath.finance',
-    note: 'Live data + quotes; swap build wired (router tx appended after the Noise fee leg, simulated pre-sign). Selectable in Swap execution route. E2E proof needs a funded wallet run.',
+    note: 'Live data, unsigned swap and LP deposit/withdraw builders. Swap and LP deposit dry-run verified. Wallet signing and funded LP withdrawals require user E2E validation.',
   }),
   p({
     id: 'deepbook', name: 'DeepBook', category: 'trading', bucket: 'TRADING', status: 'LIVE',
@@ -115,33 +115,33 @@ export const PROTOCOLS = [
     note: 'On-chain preflight (enabled pools SUI_USDC, DEEP_USDC + margin pool ids) and margin-account creation wired + simulated. Leveraged borrow/trade needs a user MarginManager + fresh Pyth feeds — built per-manager after setup E2E.',
   }),
   p({
-    id: 'turbos', name: 'Turbos', category: 'dex', bucket: 'DEX', status: 'PARTIAL',
-    actions: ['pools', 'swap-quote'],
-    capability: C.d({ data: true, swap: true }),
+    id: 'turbos', name: 'Turbos', category: 'dex', bucket: 'DEX', status: 'LIVE',
+    actions: ['pools', 'swap-quote', 'swap-build'],
+    capability: C.d({ data: true, swap: true, execution: true }),
     dataSource: 'Turbos REST (TVL/volume/APR) + SDK quotes', fee: 'pool fee (provider)', ref: 'verify',
     url: 'https://turbos.finance', docs: '',
-    note: 'Live CLMM pools and swap quotes compared in every Swap (3rd route). Execution builds via Cetus/Aftermath routers. E2E proof needs a funded wallet run.',
+    note: 'Live pool reads and swaps via Cetus Aggregator restricted to TURBOS; each returned path is checked and must simulate before wallet signing. LP deposits are not included.',
   }),
   p({
-    id: 'flowx', name: 'FlowX', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: ['pools'], capability: C.d(),
+    id: 'flowx', name: 'FlowX', category: 'dex', bucket: 'DEX', status: 'LIVE',
+    actions: ['swap-quote', 'swap-build'], capability: C.d({ data: true, swap: true, execution: true }),
     dataSource: 'Cetus Aggregator (routed liquidity)', fee: 'pool fee (provider)', ref: 'verify',
     url: 'https://flowx.finance', docs: 'https://docs.flowx.finance',
-    note: 'Usable inside Swap via Cetus Aggregator routing when the router selects it — no separate FlowX adapter; deep-link for direct use.',
+    note: 'In-hub swap quotes and PTBs via Cetus Aggregator restricted to FLOWX/FLOWXV3; every returned path is checked. No direct LP integration.',
   }),
   p({
-    id: 'momentum', name: 'Momentum', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: [], capability: C.d(),
+    id: 'momentum', name: 'Momentum', category: 'dex', bucket: 'DEX', status: 'LIVE',
+    actions: ['swap-quote', 'swap-build'], capability: C.d({ data: true, swap: true, execution: true }),
     dataSource: '—', fee: 'verify', ref: 'verify',
     url: '', docs: '',
-    note: 'Site unreachable at audit 2026-10-06 (TLS/DNS fail) — deep-link disabled until a verified domain exists. No data shown rather than a dead link.',
+    note: 'In-hub swap quotes and PTBs via Cetus Aggregator restricted to MOMENTUM. Mainnet dry-run verified; direct LP integration is not included.',
   }),
   p({
     id: 'kriya', name: 'Kriya', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
     actions: [], capability: C.d(),
     dataSource: '—', fee: '—', ref: '—',
-    url: 'https://kriya.finance', docs: 'https://docs.kriya.finance',
-    note: 'SUNSET — protocol is winding down. Excluded from routing and quotes; card stays for history with a deep-link only.',
+    url: '', docs: '',
+    note: 'SUNSET — protocol is winding down. kriya.finance and docs.kriya.finance failed the TLS handshake at the 2026-10-07 audit; deep-link disabled rather than shipping a broken link.',
   }),
   p({
     id: 'metastable', name: 'Metastable', category: 'stablecoin', bucket: 'EARN', status: 'PARTIAL',
@@ -154,19 +154,19 @@ export const PROTOCOLS = [
 
   // ---- perpetuals / derivatives ---------------------------------------------
   p({
-    id: 'bluefin-spot', name: 'Bluefin Spot', category: 'dex', bucket: 'DEX', status: 'DISCOVER',
-    actions: [], capability: C.d(),
+    id: 'bluefin-spot', name: 'Bluefin Spot', category: 'dex', bucket: 'DEX', status: 'LIVE',
+    actions: ['swap-quote', 'swap-build'], capability: C.d({ data: true, swap: true, execution: true }),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://bluefin.io', docs: 'https://docs.bluefin.io',
-    note: 'Bluefin publishes perps market data, not a spot book — spot stays deep-link only.',
+    url: 'https://bluefin.io', docs: '',
+    note: 'Bluefin AMM spot swaps inside Noise via Cetus Aggregator restricted to BLUEFIN. This is not Bluefin perps or account-based orderbook execution.',
   }),
   p({
     id: 'bluefin-perps', name: 'Bluefin Perps', category: 'trading', bucket: 'TRADING', status: 'PARTIAL',
     actions: ['markets', 'orderbook', 'tickers'],
     capability: C.d({ data: true, trade: true }),
     dataSource: 'Bluefin Pro API (public market data, no key)', fee: 'provider fee', ref: 'verify',
-    url: 'https://bluefin.io', docs: 'https://docs.bluefin.io',
-    note: 'Live perps markets, orderbook depth and 24h tickers in Discover. Trading needs a venue account — execution on Bluefin.',
+    url: 'https://bluefin.io', docs: '',
+    note: 'Live perps markets, orderbook depth and 24h tickers in Discover. Trading needs a venue account — execution on Bluefin. (docs.bluefin.io returned 404 at the 2026-10-07 audit.)',
   }),
   p({
     id: 'typus', name: 'Typus', category: 'trading', bucket: 'TRADING', status: 'DISCOVER',
@@ -205,7 +205,7 @@ export const PROTOCOLS = [
     capability: C.d({ data: true, position: true }),
     dataSource: 'Suilend SDK v12 (gRPC)', fee: 'referral-share first', ref: 'terms unverified → policy 0',
     url: 'https://suilend.fi', docs: 'https://docs.suilend.fi',
-    note: 'Live markets (45 reserves) and obligation positions. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run.',
+    note: 'Live markets (45 reserves) with real deposit/borrow APR + utilization from the on-chain interest-rate curve (SDK parseReserve), and obligation positions. Supply/withdraw/borrow/repay/claim PTBs build + simulate; wallet signs. E2E proof needs a funded wallet run.',
   }),
   p({
     id: 'scallop', name: 'Scallop', category: 'lending', bucket: 'LENDING', status: 'PARTIAL',
@@ -227,8 +227,8 @@ export const PROTOCOLS = [
     id: 'alphalend', name: 'AlphaLend', category: 'lending', bucket: 'LENDING', status: 'DISCOVER',
     actions: [], capability: C.d(),
     dataSource: '—', fee: '—', ref: '—',
-    url: 'https://alphalend.xyz', docs: 'https://docs.alphafi.xyz/alphalend/introduction',
-    note: 'SUNSET — AlphaFi (operator) is winding down. Withdraw via the provider; no new positions through Noise.',
+    url: 'https://alphalend.xyz', docs: '',
+    note: 'SUNSET — AlphaFi (operator) is winding down. Withdraw via the provider; no new positions through Noise. (The AlphaLend doc path is gone — it redirects to a generic old-doc page; docs link removed 2026-10-07.)',
   }),
 
   // ---- liquid staking / yield ------------------------------------------------
@@ -236,17 +236,17 @@ export const PROTOCOLS = [
     id: 'haedal', name: 'Haedal', category: 'liquid-staking', bucket: 'STAKING', status: 'PARTIAL',
     actions: ['stake-build', 'unstake-build', 'claim-build', 'position', 'rate'],
     capability: C.d({ data: true, earn: true, position: true, execution: false }),
-    dataSource: 'Haedal on-chain interface (devInspect reads + Move builds)', fee: 'instant unstake 9%; delayed free', ref: 'verify',
+    dataSource: 'Haedal on-chain interface (devInspect reads + Move builds)', fee: 'instant: protocol fee and liquidity; delayed ticket/claim', ref: 'verify',
     url: 'https://haedal.xyz', docs: '',
-    note: 'Live haSUI/SUI rate (1.0825), positions and tickets. Stake (min 1 SUI, auto or chosen validator), delayed/instant unstake and ticket claim PTBs build via the upgraded staking package; wallet signs. E2E proof needs a funded wallet run.',
+    note: 'Live haSUI/SUI rate, positions and tickets. Stake (min 1 SUI, auto or chosen validator), delayed/instant unstake and ticket claim PTBs build via the upgraded staking package; wallet signs. E2E proof needs a funded wallet run.',
   }),
   p({
-    id: 'volo', name: 'Volo', category: 'liquid-staking', bucket: 'STAKING', status: 'PARTIAL',
-    actions: ['stats'],
-    capability: C.d({ data: true, earn: true }),
+    id: 'volo', name: 'Volo', category: 'liquid-staking', bucket: 'STAKING', status: 'LIVE',
+    actions: ['stats', 'stake', 'unstake'],
+    capability: C.d({ data: true, earn: true, execution: true }),
     dataSource: 'NAVI open API (vSUI stats)', fee: 'verify', ref: 'verify',
-    url: 'https://volo.fi', docs: '',
-    note: 'Live totals, validator APYs and stake stats. Stake builds need StakePool/Metadata object IDs unpublished in verified docs — execution blocked with exact reason, never faked.',
+    url: '', docs: 'https://sdk.naviprotocol.io/wallet-client/volo',
+    note: 'Unsigned Volo stake/redeem PTBs; shared object types and protocol fees read on-chain. Stake and atomic stake/redeem dry-run verified; wallet signing remains user-controlled.',
   }),
   p({
     id: 'springsui', name: 'SpringSui', category: 'liquid-staking', bucket: 'STAKING', status: 'PARTIAL',
@@ -254,7 +254,7 @@ export const PROTOCOLS = [
     capability: C.d({ data: true, earn: true, position: true }),
     dataSource: 'SpringSui SDK v4 (gRPC object reads)', fee: 'protocol mint/redeem fees', ref: 'verify',
     url: 'https://springsui.com', docs: 'https://docs.suilend.fi/springsui/springsui-integration.md',
-    note: 'Live sSUI/SUI rate and 60M SUI TVL. Mint/redeem PTBs build + simulate; wallet signs. Instant unstaking via SIP-33. E2E proof needs a funded wallet run.',
+    note: 'Live sSUI/SUI rate and dynamic on-chain totals. Mint/redeem PTBs build + simulate; wallet signs. Instant unstaking via SIP-33. E2E proof needs a funded wallet run.',
   }),
   p({
     id: 'alphafi', name: 'AlphaFi', category: 'yield', bucket: 'EARN', status: 'DISCOVER',
@@ -274,15 +274,15 @@ export const PROTOCOLS = [
     id: 'nemo', name: 'Nemo', category: 'btcfi', bucket: 'BTCFI', status: 'DISCOVER',
     actions: [], capability: C.d(),
     dataSource: '—', fee: 'verify', ref: 'verify',
-    url: 'https://nemo.fi', docs: '',
-    note: 'BTCFi yield. No public markets/execution API found 2026-10-06 (venue slow to respond) — execution on the venue, deep-link only.',
+    url: '', docs: '',
+    note: 'BTCFi yield. nemo.fi did not answer (TCP 443 timeout) at the 2026-10-07 audit — no verified live domain, so the deep-link is disabled rather than shipping a dead link.',
   }),
   p({
-    id: 'steamm', name: 'STEAMM', category: 'yield', bucket: 'EARN', status: 'DISCOVER',
-    actions: [], capability: C.d(),
+    id: 'steamm', name: 'STEAMM', category: 'yield', bucket: 'EARN', status: 'LIVE',
+    actions: ['pools', 'deposit', 'withdraw'], capability: C.d({ data: true, execution: true }),
     dataSource: '—', fee: 'verify', ref: 'verify',
     url: 'https://suilend.fi', docs: 'https://docs.suilend.fi/steamm-developer-integration-guide.md',
-    note: 'Suilend AMM pools need position-aware LP flows — no verified unsigned-build path yet. Deep-link to Suilend only.',
+    note: 'Real STEAMM LP deposit/withdraw PTBs via official SDK, authoritative pool types, quoted minima and simulation gate. CP pool deposit/redeem dry-run verified. STEAMM swap routing is not enabled; oracle swaps require a separate Pyth Pro integration.',
   }),
 
   // ---- discovery / launchpads ------------------------------------------------
@@ -292,7 +292,7 @@ export const PROTOCOLS = [
     capability: C.d({ data: true }),
     dataSource: 'SuiPump API', fee: 'provider fee', ref: '—',
     url: 'https://suipump.fun', docs: '',
-    note: '674+ launchpad tokens: factual metrics only, never recommendations.',
+    note: 'Live launchpad tokens: factual metrics only, never recommendations.',
   }),
 
   // ---- bridges ---------------------------------------------------------------
@@ -348,14 +348,21 @@ export function capabilityMatrix() {
   }));
 }
 
-/** Compact shape the static UI mirror uses (kept in sync by test). */
+export const PUBLIC_PROTOCOL_IDS = ['sui','sui-native','cetus','aftermath','deepbook','deepbook-predict','turbos','flowx','momentum','bluefin-spot','navi','suilend','scallop','bucket','haedal','volo','springsui','steamm','kai','wormhole'];
+export function publicProtocols() {
+  return PROTOCOLS.filter(p=>PUBLIC_PROTOCOL_IDS.includes(p.id)).map(p=>{
+    if(p.id==='suipump')return {...p,status:'DISCOVER',actions:['tokens','token-metadata','curve-stats'],capability:C.d({data:true}),url:'https://suipump.org',note:'Live launchpad token discovery. Native curve trading is not integrated; DEX swaps require a real aggregator route and verified coin metadata.'};
+    if(p.id==='kai')return {...p,status:'LIVE',actions:['deposit','withdraw'],capability:C.d({data:true,earn:true,execution:true}),dataSource:'Kai SDK 0.30.0 + on-chain vaults',note:'SUI and USDC vault deposit/redeem only; no leveraged positions. APR/APY provider ratios converted to percentages.'};
+    if(p.id==='wormhole')return {...p,status:'LIVE',actions:['bridge'],capability:C.d({data:true,execution:true}),dataSource:'Official self-hosted Wormhole Connect 6.0.0',note:'In-hub official bridge widget: quote, wallet signing, tracking and recovery. No Noise bridge fee. Real signed cross-chain E2E was not performed in this audit.'};
+    const scopes={navi:['supply','withdraw','borrow','repay','claim'],suilend:['supply','withdraw','borrow','repay','claim'],scallop:['supply','withdraw','borrow','repay'],bucket:['psm-swap'],haedal:['stake','unstake','claim'],springsui:['stake','unstake']};
+    return scopes[p.id]?{...p,status:'LIVE',actions:scopes[p.id],capability:{...p.capability,execution:true},note:'Only the listed in-hub operations are available. Each transaction requires successful fresh simulation and wallet signature.'}:p;
+  });
+}
+export function publicCapabilityMatrix() { return publicProtocols().map(p=>({id:p.id,name:p.name,category:p.category,bucket:p.bucket,status:p.status,...p.capability})); }
 export function uiRegistry() {
-  return PROTOCOLS.map((x) => ({
-    id: x.id, name: x.name, cat: x.category, status: x.status,
-    caps: x.actions, url: x.url, docs: x.docs, fee: x.fee, ref: x.ref, last: x.last,
-  }));
+  return publicProtocols().map(x=>({id:x.id,name:x.name,cat:x.category,status:x.status,caps:x.actions,url:x.url,docs:x.docs,fee:x.fee,ref:x.ref,last:x.last}));
 }
 
 export function serializeRegistry() {
-  return JSON.stringify({ verifiedAt: REGISTRY_VERIFIED_AT, protocols: PROTOCOLS }, null, 2);
+  return JSON.stringify({ verifiedAt: REGISTRY_VERIFIED_AT, protocols: publicProtocols() }, null, 2);
 }

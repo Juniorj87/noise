@@ -1,3 +1,4 @@
+import { rankRoutes } from '../../shared/route-ranking.js';
 // Protocol adapter layer. Verified live 2026-09-30 / 2026-10-01.
 // Cetus: REAL quotes via @cetusprotocol/aggregator-sdk V3.
 // Aftermath: REAL quotes/prices/rewards via official REST + staking APY via SDK.
@@ -15,9 +16,9 @@ const COIN_TYPES = {
   mainnet: {
     SUI: '0x2::sui::SUI',
     CETUS: '0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS',
-    DEEP: '0xdeeb7a4662eec9c6963f0cfaa815e05d736414b9d381233c00c0de098c74e::deep::DEEP',
+    DEEP: '0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP',
     USDC: '0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC',
-    NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc9bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
+    NAVX: '0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX',
   },
   testnet: {
     SUI: '0x2::sui::SUI',
@@ -53,7 +54,7 @@ export function envelope(value, source, sourceUrl, confidence = 'high') {
 export function coinType(sym, network = sui.network) {
   const upper = (sym || '').toUpperCase();
   const netTypes = COIN_TYPES[network] || COIN_TYPES.mainnet;
-  const t = netTypes[upper] || COIN_TYPES.mainnet[upper];
+  const t = netTypes[upper];
   if (!t) {
     const err = new Error('UNSUPPORTED_ASSET');
     err.code = 'UNSUPPORTED_ASSET';
@@ -74,42 +75,17 @@ function deepBook() {
   });
 }
 
-export const cetusAdapter = {
-  id: 'cetus',
-  capabilities: { read: false, quote: true, build: true, simulate: true, execute: true, rewards: false, referral: false },
-  /** REAL quote path — Aggregator V3 findRouters. */
-  async getQuote({ from, to, amountMist }) {
-    const fromType = coinType(from);
-    const toType = coinType(to);
-    const router = await cetusClient.findRouters({
-      from: fromType,
-      target: toType,
-      amount: BigInt(amountMist),
-      byAmountIn: true,
-    });
-    if (!router || router.insufficientLiquidity) {
-      const err = new Error('INSUFFICIENT_LIQUIDITY');
-      err.code = 'INSUFFICIENT_LIQUIDITY';
-      throw err;
-    }
-    return {
-      provider: 'Cetus',
-      quoteId: router.quoteID ?? null,
-      amountIn: String(router.amountIn ?? amountMist),
-      amountOut: String(router.amountOut ?? 0),
-      paths: (router.paths ?? []).length,
-      protocolFee: 0,
-      insufficientLiquidity: false,
-      fetchedAt: new Date().toISOString(),
-    };
-  },
-};
+export { cetusAdapter } from '../../api/_lib/adapters.js';
 
 export const aftermathAdapter = {
   id: 'aftermath',
   // Honest split: live DATA + QUOTE only. No build/simulate/execute path is wired.
-  capabilities: { read: true, quote: true, build: false, simulate: false, execute: false, rewards: true, referral: true },
+  capabilities: { read: true, quote: true, build: true, simulate: true, execute: true, rewards: true, referral: true },
   /** REAL quote — official Smart Order Router REST. */
+  async buildSwap({from,to,amountMist,sender,slippage}) {
+    const {aftermathSwapBuild} = await import('../../api/_lib/lending.js');
+    return aftermathSwapBuild({wallet:sender,fromType:coinType(from),toType:coinType(to),amountMist,slippage});
+  },
   async getQuote({ from, to, amountMist }) {
     const fromType = coinType(from);
     const toType = coinType(to);
@@ -337,25 +313,9 @@ export const suiAdapter = {
  * quotedOut − protocolFee − providerFee − platformFee − gasEst,
  * penalized by missing data. 'Best execution' only when ≥1 live quote compared.
  */
-export function compareRoutes(quotes, { platformFee = 0, gasEst = 0 } = {}) {
-  const live = (quotes ?? []).filter((q) => q && !q.error && BigInt(q.amountOut ?? 0) > 0n);
-  const ranked = live.map((q) => {
-    const out = Number(q.amountOut);
-    const effective = out - Number(q.protocolFee ?? 0) - Number(q.providerFee ?? 0) - platformFee - gasEst;
-    return { ...q, effectiveOutput: effective };
-  }).sort((a, b) => b.effectiveOutput - a.effectiveOutput);
-  return {
-    compared: live.length,
-    best: ranked[0]?.provider ?? null,
-    routes: ranked,
-    at: new Date().toISOString(),
-  };
-}
+export function compareRoutes(quotes, options = {}) { return rankRoutes(quotes, options); }
 
-export function listProtocols() {
-  return db.prepare('SELECT * FROM protocols WHERE enabled = 1 ORDER BY name').all()
-    .map((p) => ({ ...p, capabilities: JSON.parse(p.capabilities || '[]') }));
-}
+export async function listProtocols() { const {publicProtocols}=await import('../../shared/registry.js'); return publicProtocols().map(p=>({...p,capabilities:p.actions,enabled:1})); }
 
 /** Deep-link fallback: never fake execution. */
 export function deepLink(providerId, ctx = {}) {

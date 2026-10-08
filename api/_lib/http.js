@@ -1,8 +1,9 @@
 // HTTP helpers for Vercel Node functions: strict CORS, safe JSON errors,
 // body parsing, rate limiting (spec §19, §32, §33).
-import { rateLimit } from './util.js';
+import { rateLimit, clientIp } from './util.js';
 
 const DEFAULT_ALLOWED_ORIGINS = [
+  'https://noisesui.vercel.app',
   'https://app.noisehub.xyz',
   'https://noisehub.xyz',
   'http://localhost:3000',
@@ -13,6 +14,10 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:5500',
 ];
 
+/* In production the localhost defaults are NEVER active: only the two public
+ * origins (or an explicit ALLOWED_ORIGINS list) are accepted. */
+const PROD_DEFAULT_ORIGINS = ['https://noisesui.vercel.app', 'https://app.noisehub.xyz', 'https://noisehub.xyz'];
+
 function envOrigins() {
   return (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
@@ -22,32 +27,50 @@ function extraOrigins() {
   return (process.env.ALLOW_PREVIEW_ORIGINS || '').toLowerCase() === 'true';
 }
 
+function isProduction() {
+  return (process.env.VERCEL_ENV || process.env.NODE_ENV || '').toLowerCase() === 'production';
+}
+
 export function corsOrigin(req) {
+  // Unknown origins get NO ACAO header (never the literal string "null").
   try {
     const asked = req.headers?.origin;
-    const list = [...envOrigins(), ...DEFAULT_ALLOWED_ORIGINS];
-    if (!asked) return list[0];
+    const env = envOrigins();
+    const list = isProduction()
+      ? (env.length ? env : PROD_DEFAULT_ORIGINS)
+      : [...env, ...DEFAULT_ALLOWED_ORIGINS];
+    if (!asked) return list[0] || null;
     if (list.includes(asked)) return asked;
     if (extraOrigins() && /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(asked)) return asked;
-    return 'null';
+    return null;
   } catch {
-    return 'null';
+    return null;
   }
 }
 
 export function json(res, status, body, req) {
-  const data = JSON.stringify(body);
+  const data = JSON.stringify(body, (_, value) => typeof value === 'bigint' ? value.toString() : value);
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', corsOrigin(req));
+  const origin = corsOrigin(req);
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Key, X-Cron-Secret, Authorization');
   res.end(data);
 }
 
+const READ_JSON = Symbol('noiseReadJson');
+
+/**
+ * Parse a JSON body AT MOST ONCE per request. A second call returns the first
+ * promise — re-attaching stream listeners to an already-consumed request would
+ * hang forever (no further 'end' event). Already-ended requests resolve {}.
+ */
 export function readJson(req, limitBytes = 256 * 1024) {
-  return new Promise((resolve) => {
+  if (req[READ_JSON]) return req[READ_JSON];
+  const p = new Promise((resolve) => {
+    if (req.readableEnded || req.complete) return resolve({});
     const chunks = [];
     let size = 0;
     req.on('data', (c) => {
@@ -62,6 +85,8 @@ export function readJson(req, limitBytes = 256 * 1024) {
     });
     req.on('error', () => resolve({}));
   });
+  req[READ_JSON] = p;
+  return p;
 }
 
 /**
@@ -73,7 +98,7 @@ export function handler(fn, { limit = 120 } = {}) {
     try {
       if (req.method === 'OPTIONS') return json(res, 204, {}, req);
       const url = new URL(req.url, 'http://localhost');
-      const rl = rateLimit((req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'anon') + '|' + url.pathname, limit);
+      const rl = rateLimit(clientIp(req) + '|' + url.pathname, limit);
       if (!rl.allowed) return json(res, 429, { error: 'RATE_LIMITED', message: 'Too many requests — slow down and retry shortly.' }, req);
       const out = await fn(req, res, url);
       // Only a NUMERIC status selects the HTTP code — payloads may carry a

@@ -10,84 +10,50 @@ import { getPool, ensureSchema } from './pg.js';
 /**
  * Validate a Sui wallet address format.
  */
-function isValidSuiAddress(address) {
-  return /^0x[a-fA-F0-9]{40,}$/.test(address);
+export function isValidSuiAddress(address) {
+  return typeof address === 'string' && /^0x[a-fA-F0-9]{64}$/.test(address);
 }
 
-/**
- * Get fee configuration from database or environment.
- * Returns: { enabled, bps, recipient, source }
- */
-async function getFeeConfig(action = null, provider = null, instrument = null) {
+export function validateFeeConfig(cfg, source) {
+  const bps = Number(cfg.bps ?? 0);
+  if (!Number.isInteger(bps) || bps < 0 || bps > 100) throw new Error('INVALID_FEE_BPS');
+  const recipient = cfg.recipient || '';
+  const enabled = cfg.enabled === true ? bps > 0 : cfg.enabled !== false && bps > 0 && !!recipient;
+  if (enabled && !isValidSuiAddress(recipient)) throw new Error('INVALID_FEE_RECIPIENT');
+  return { enabled, bps, recipient, source };
+}
+
+/** No database is required for the immutable launch defaults. A configured DB
+ * failing is an error, never a silently skipped transaction fee. */
+export async function getFeeConfig(action = null, provider = null, instrument = null) {
+  const { NOISE_HUB_REVENUE_WALLET } = await import('../../shared/logic.js');
+  const fallback = validateFeeConfig({
+    bps: action === 'swap' ? (process.env.ACTION_HUB_DEFAULT_FEE_BPS ?? process.env.PLATFORM_SWAP_FEE_BPS ?? 2) : (process.env.PLATFORM_EARN_FEE_BPS ?? 0),
+    recipient: process.env.ACTION_HUB_FEE_RECIPIENT || process.env.NOISE_HUB_REVENUE_WALLET || NOISE_HUB_REVENUE_WALLET,
+  }, 'server-default');
+  if (!process.env.DATABASE_URL) return fallback;
   await ensureSchema();
   const pool = getPool();
-
-  // Try specific config first (provider + action + instrument)
-  if (provider && action && instrument) {
-    const specific = await pool.query(
-      'SELECT * FROM config WHERE key = $1',
-      [`fee:${provider}:${action}:${instrument}`]
-    );
-    if (specific.rows.length > 0) {
-      const cfg = JSON.parse(specific.rows[0].value);
-      return { ...cfg, source: 'database-specific' };
-    }
+  const keys = [provider && action && instrument && `fee:${provider}:${action}:${instrument}`, provider && `fee:${provider}`, action && `fee:${action}`, 'fee:global'].filter(Boolean);
+  for (const key of keys) {
+    const row = (await pool.query('SELECT value FROM config WHERE key = $1', [key])).rows[0];
+    if (row) return validateFeeConfig({ ...fallback, ...JSON.parse(row.value) }, 'database:' + key);
   }
-
-  // Try provider-specific config
-  if (provider) {
-    const providerCfg = await pool.query(
-      'SELECT * FROM config WHERE key = $1',
-      [`fee:${provider}`]
-    );
-    if (providerCfg.rows.length > 0) {
-      const cfg = JSON.parse(providerCfg.rows[0].value);
-      return { ...cfg, source: 'database-provider' };
-    }
-  }
-
-  // Try action-specific config
-  if (action) {
-    const actionCfg = await pool.query(
-      'SELECT * FROM config WHERE key = $1',
-      [`fee:${action}`]
-    );
-    if (actionCfg.rows.length > 0) {
-      const cfg = JSON.parse(actionCfg.rows[0].value);
-      return { ...cfg, source: 'database-action' };
-    }
-  }
-
-  // Fall back to environment defaults (+ DB global overrides set via admin)
-  const { getConfig } = await import('./pg.js').catch(() => ({}));
-  let defaultBps = parseInt(process.env.ACTION_HUB_DEFAULT_FEE_BPS || '0', 10);
-  let recipient = process.env.ACTION_HUB_FEE_RECIPIENT || '';
-  try {
-    if (getConfig) {
-      const [dbGlobal, dbRecipient] = await Promise.all([
-        pool.query('SELECT * FROM config WHERE key = $1', ['fee:global']).catch(() => ({ rows: [] })),
-        getConfig('feeRecipient', null).catch(() => null),
-      ]);
-      if (dbGlobal.rows.length > 0) {
-        const cfg = JSON.parse(dbGlobal.rows[0].value);
-        if (cfg.bps != null) defaultBps = cfg.bps;
-        if (cfg.recipient !== undefined) recipient = cfg.recipient;
-        return { ...cfg, source: 'database-global' };
-      }
-      if (dbRecipient) recipient = dbRecipient;
-    }
-  } catch { /* env defaults stand */ }
-  const enabled = !!recipient && defaultBps > 0;
-
-  return {
-    enabled,
-    bps: defaultBps,
-    recipient,
-    source: 'environment-default',
-  };
+  const rows=(await pool.query('SELECT key,value FROM config WHERE key = ANY($1::text[])', [[action==='swap'?'swapBps':'earnBps','feeRecipient']])).rows;
+  const bpsRow=rows.find(r=>r.key===(action==='swap'?'swapBps':'earnBps'));
+  const recipientRow=rows.find(r=>r.key==='feeRecipient');
+  return validateFeeConfig({...fallback,bps:bpsRow?Number(bpsRow.value):fallback.bps,recipient:recipientRow?recipientRow.value:fallback.recipient,enabled:recipientRow?.value===''?false:undefined},rows.length?'database-admin-default':'server-default');
 }
 
-const ASSET_DECIMALS = { SUI: 9, USDC: 6, DEEP: 6, CETUS: 6, NAVX: 6 };
+export async function swapFeeInput(amountMist, provider, asset, instrument) {
+  const gross = BigInt(amountMist);
+  if (gross <= 0n || gross > 18446744073709551615n) throw new Error('INVALID_AMOUNT');
+  const cfg = await getFeeConfig('swap', provider, instrument);
+  const amount = cfg.enabled ? gross * BigInt(cfg.bps) / 10000n : 0n;
+  return { net: gross - amount, fee: amount > 0n ? { amountMist: String(amount), recipient: cfg.recipient, bps: cfg.bps, asset, source: cfg.source } : null };
+}
+
+const ASSET_DECIMALS = { SUI: 9, USDC: 6, DEEP: 6, CETUS: 9, NAVX: 9 };
 
 /** Raw base units → whole-token string (no float money on the way in). */
 export function toHumanUnits(baseUnits, asset) {

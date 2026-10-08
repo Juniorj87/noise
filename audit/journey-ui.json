@@ -1,0 +1,107 @@
+{
+  "mode": "Local browser QA; public-address read-only wallet facade; no signing/submission",
+  "results": [
+    {
+      "width": 1440,
+      "route": "journey",
+      "bodyWidth": 1440,
+      "reviewVisible": true,
+      "notice": "Simulation passed. Review the full route, protocol and fee before signing. If any command fails on-chain, the atomic transaction does not leave a completed swap without its deposit.",
+      "assets": 18,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "check": "edit invalidates reviewed bytes",
+      "reviewVisible": false,
+      "signDisabled": true
+    },
+    {
+      "width": 1440,
+      "route": "suipump",
+      "bodyWidth": 1440,
+      "tokenCards": 24,
+      "fresh": "Source: SuiPump Public API · 684 tokens · Updated 11:58:59 AM · indexer metrics are not independently verified — not buy recommendations",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "leaderboard",
+      "bodyWidth": 1440,
+      "text": "No confirmed workflow receipts in this period. Noise prepared digests + verified Sui success receipts; not all Sui activity · 2026-10-07T11:59:00.605Z",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "ai",
+      "bodyWidth": 1440,
+      "text": "Ask in plain language: “Where is my USDC?”, “Compare SUI/USDC routes”, “What fees will I pay?”, or “How does swap and deposit work?”. Noise reads live data where available and prepares the next step; your wallet approves every transaction.\nRead-only guidance · Live sources are fetched when requested\nHow does swap and deposit work?\nLive tools / rules — not a language-model response.\nNoise can prepare swap → deposit as ONE atomic entry transaction in Workflows (Suilend, NAVI, Kai). Your wallet signs; a provider failure reverts the entire entry, except gas.\nAfter confirmation: refresh real positions → choose the owned position → review withdrawal → wallet signs. Withdrawal is a separate transaction, not an automatic action.\n\nSelected current base-market rates (variable, not guaranteed):\nsuilend · SUI: 0.9692% APR · base-interest-only\nsuilend · USDC: 4.3215% APR · base-interest-only\nsuilend · NS: 0% APR · base-interest-only\nsuilend · WAL: 0.0094% APR · base-interest-only\nnavi · WAL: 13.317% APY · NAVI provider fields; APR and APY are separate\nnavi · USDC: 5.866% APY · NAVI provider fields; APR and APY are separate\nnavi · SUI: 1.716% APY · NAVI provider fields; APR and APY are separate\nkai · SUI: 0% APY · Kai vault strategy rate, variable\nkai · USDC: 0.6365% APY · Kai vault strategy rate, variable\n\nSource: read-only Noise workflow tools · Updated: 2026-10-07T11:59:06.629Z. Contract, liquidity, oracle and strategy risks remain. No investment recommendation.\nSource: live-workflow-tools · Updated: 11:59:06 AM",
+      "provider": "Language-model key and model are not fully configured. Live tools and deterministic answers remain available, clearly labelled.",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "referral",
+      "visible": true,
+      "nav": true,
+      "bodyWidth": 1440,
+      "status": "No invitations recorded yet. Signed invitation attribution + verified Noise workflow receipts · 2026-10-07T11:59:07.461Z",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "duplicateIds": []
+    },
+    {
+      "width": 390,
+      "route": "journey",
+      "bodyWidth": 390,
+      "reviewVisible": true,
+      "notice": "Simulation passed. Review the full route, protocol and fee before signing. If any command fails on-chain, the atomic transaction does not leave a completed swap without its deposit.",
+      "assets": 18,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "check": "edit invalidates reviewed bytes",
+      "reviewVisible": false,
+      "signDisabled": true
+    },
+    {
+      "width": 390,
+      "route": "suipump",
+      "bodyWidth": 390,
+      "tokenCards": 24,
+      "fresh": "Source: SuiPump Public API · 684 tokens · Updated 11:58:59 AM · indexer metrics are not independently verified — not buy recommendations",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "leaderboard",
+      "bodyWidth": 390,
+      "text": "No confirmed workflow receipts in this period. Noise prepared digests + verified Sui success receipts; not all Sui activity · 2026-10-07T11:59:14.175Z",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "ai",
+      "bodyWidth": 390,
+      "text": "Ask in plain language: “Where is my USDC?”, “Compare SUI/USDC routes”, “What fees will I pay?”, or “How does swap and deposit work?”. Noise reads live data where available and prepares the next step; your wallet approves every transaction.\nRead-only guidance · Live sources are fetched when requested\nHow does swap and deposit work?\nLive tools / rules — not a language-model response.\nNoise can prepare swap → deposit as ONE atomic entry transaction in Workflows (Suilend, NAVI, Kai). Your wallet signs; a provider failure reverts the entire entry, except gas.\nAfter confirmation: refresh real positions → choose the owned position → review withdrawal → wallet signs. Withdrawal is a separate transaction, not an automatic action.\n\nSelected current base-market rates (variable, not guaranteed):\nsuilend · SUI: 0.9692% APR · base-interest-only\nsuilend · USDC: 4.3215% APR · base-interest-only\nsuilend · NS: 0% APR · base-interest-only\nsuilend · WAL: 0.0094% APR · base-interest-only\nnavi · WAL: 13.317% APY · NAVI provider fields; APR and APY are separate\nnavi · USDC: 5.866% APY · NAVI provider fields; APR and APY are separate\nnavi · SUI: 1.716% APY · NAVI provider fields; APR and APY are separate\nkai · SUI: 0% APY · Kai vault strategy rate, variable\nkai · USDC: 0.6365% APY · Kai vault strategy rate, variable\n\nSource: read-only Noise workflow tools · Updated: 2026-10-07T11:59:20.150Z. Contract, liquidity, oracle and strategy risks remain. No investment recommendation.\nSource: live-workflow-tools · Updated: 11:59:20 AM",
+      "provider": "Language-model key and model are not fully configured. Live tools and deterministic answers remain available, clearly labelled.",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "referral",
+      "visible": true,
+      "nav": true,
+      "bodyWidth": 390,
+      "status": "No invitations recorded yet. Signed invitation attribution + verified Noise workflow receipts · 2026-10-07T11:59:20.711Z",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "duplicateIds": []
+    }
+  ]
+}

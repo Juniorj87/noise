@@ -1,0 +1,1673 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Noise Hub — Visual preview only</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"><style>
+        :root {
+            --bg: #0a0a0a;
+            --text: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.42);
+            --text-faint: rgba(255,255,255,0.24);
+            --accent: #0066ff;
+            --line: rgba(255, 255, 255, 0.08);
+            --surface: rgba(255, 255, 255, 0.02);
+            --surface-hover: rgba(255, 255, 255, 0.04);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Noise visual refinement — editorial Sui / DeepBook language */
+        .sidebar { padding:30px 18px; }
+        .sidebar-logo { margin-bottom:34px; padding-bottom:22px; }
+        .sidebar-logo a { text-transform:none; letter-spacing:-1.3px; }
+        .nav-group { margin:18px 0 7px; padding:0 12px; font-size:9px; letter-spacing:2.2px; color:var(--text-faint); }
+        .nav-item { border-radius:0; padding:10px 12px; }
+        .nav-item.active { background:transparent; }
+        .nav-item.active::before { height:18px; border-radius:0; }
+        .main { padding:56px 56px 72px; max-width:1600px; }
+        .page-header { margin-bottom:58px; }
+        .page-title { font-size:clamp(42px,4vw,64px); line-height:.98; letter-spacing:-2.8px; }
+        button, .btn, input, select, textarea { border-radius:0 !important; }
+        .app::after { content:""; position:fixed; inset:0; pointer-events:none; z-index:90; background:radial-gradient(circle at 78% 8%,rgba(0,102,255,.035),transparent 32%); opacity:.65; }
+        .sidebar-wallet span { color:#7ee2b8; }
+
+        /* App Shell */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar — fixed shell, independently scrolling nav, pinned footer.
+           .sidebar-nav is the ONLY scroll container (min-height:0 lets it shrink);
+           logo + wallet footer stay pinned. Main content scrolls with the page. */
+        .sidebar {
+            width: 220px;
+            background: var(--bg);
+            border-right: 1px solid var(--line);
+            padding: 32px 20px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+
+        .sidebar-logo a {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: -1px;
+            color: var(--accent);
+            text-transform: lowercase;
+            text-decoration: none;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding-bottom: 12px;
+            scrollbar-width: thin;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 6px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            color: var(--text);
+            background: var(--surface);
+        }
+
+        .nav-item.active {
+            color: var(--text);
+            background: var(--surface);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+        .topbar-utilities { display:flex; align-items:center; gap:16px; margin-left:auto; white-space:nowrap; }
+        .topbar-utilities a { color:var(--text-dim); text-decoration:none; font-size:11px; letter-spacing:.4px; }
+        .topbar-utilities a:hover { color:var(--text); }
+        @media (max-width:768px) {
+            .topbar { position:sticky; top:0; z-index:20; background:rgba(10,10,10,.96); border-bottom:1px solid var(--line); padding:10px 0 12px; flex-wrap:wrap; }
+            .topbar .search-input { flex:1 1 100%; order:1; min-width:0; }
+            .topbar .net-badge, .topbar #freshBadge { display:none; }
+            .topbar-utilities { order:2; margin-left:0; gap:14px; }
+            .noise-mark { order:3; margin-left:auto; }
+            .sidebar { padding:10px 14px; }
+            .sidebar-logo { margin-bottom:8px; }
+            .sidebar-wallet, .sidebar-net { display:none; }
+            .sidebar-nav { gap:2px; padding-bottom:2px; }
+            .sidebar-nav .nav-group-label { display:none; }
+            .sidebar-nav .nav-item { padding:8px 11px; font-size:12px; background:transparent; }
+            .sidebar-nav .nav-item[data-page="ai"], .sidebar-nav .nav-item[data-page="skills"], .sidebar-nav .nav-item[data-page="referral"], .sidebar-nav .nav-item[data-page="leaderboard"], .sidebar-nav .nav-item[data-page="security"], .sidebar-nav .nav-item[data-page="settings"] { display:none; }
+            .main { padding:18px 16px 48px; }
+            .page-title { font-size:30px; letter-spacing:-1px; }
+            .page-header { margin-bottom:22px; }
+            .command-intro { padding:20px; margin-bottom:20px; }
+            .command-copy { font-size:13px; line-height:1.65; }
+            .command-steps { gap:1px; }
+            .command-step { padding:14px; }
+            .quick-actions { gap:1px; margin-bottom:28px; }
+            .quick-action { min-height:82px; padding:16px; }
+            .assets-grid { grid-template-columns:repeat(2,1fr); gap:1px; }
+            .opportunity-grid { gap:12px; margin-bottom:28px; }
+            .opportunity-card { padding:20px; }
+            .opportunity-apy { font-size:30px; }
+            .panel, .available-capital { padding:18px; margin-bottom:20px; }
+            .page-section-intro { margin-bottom:16px; }
+        }
+
+
+        .sidebar-wallet {
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            font-size: 11px;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .sidebar-net {
+            margin-top: 10px;
+            font-size: 10px;
+            letter-spacing: 1.6px;
+            color: var(--text-faint);
+            flex-shrink: 0;
+        }
+
+        .sidebar-wallet span {
+            color: #00ff88;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: 220px;
+            padding: 48px;
+        }
+
+        /* Page */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 48px;
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
+            font-weight: 300;
+            letter-spacing: -2px;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        /* Capital Page */
+        .capital-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 72px;
+            font-weight: 300;
+            letter-spacing: -3px;
+            margin: 32px 0 8px;
+        }
+
+        .capital-change {
+            font-size: 14px;
+            color: #00ff88;
+            margin-bottom: 48px;
+        }
+
+        .assets-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--line);
+            border: 1px solid var(--line);
+            margin-bottom: 48px;
+        }
+
+        .asset-item {
+            background: var(--bg);
+            padding: 32px 24px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .asset-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .asset-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 400;
+        }
+
+        /* Actions Grid */
+        .actions-section {
+            margin-bottom: 48px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1px;
+            background: var(--line);
+            border: 1px solid var(--line);
+        }
+
+        .action-item {
+            background: var(--bg);
+            padding: 24px 16px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-item:hover {
+            background: var(--surface);
+            color: var(--accent);
+        }
+
+        /* Positions Table */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 48px;
+        }
+
+        .positions-table th {
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            padding: 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .positions-table td {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+        }
+
+        .positions-table tr:hover td {
+            background: var(--surface);
+        }
+
+        .positions-table .value {
+            font-family: 'Space Grotesk', monospace;
+        }
+
+        .positions-table .yield {
+            color: #00ff88;
+        }
+
+        /* Rewards Block */
+        .rewards-block {
+            border: 1px solid var(--line);
+            padding: 32px;
+            margin-bottom: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rewards-info h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .rewards-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        .claim-btn {
+            padding: 12px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .claim-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* NFT Preview */
+        .nft-preview {
+            border: 1px solid var(--line);
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nft-info h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .nft-count {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .view-btn {
+            font-size: 12px;
+            color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Discover Page */
+        .discover-tabs {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 16px;
+        }
+
+        .discover-tab {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 8px 0;
+            transition: color 0.3s;
+        }
+
+        .discover-tab:hover,
+        .discover-tab.active {
+            color: var(--text);
+        }
+
+        .discover-tab.active {
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .token-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .token-table th {
+            text-align: left;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            padding: 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .token-table td {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--line);
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .token-table tr:hover td {
+            background: var(--surface);
+        }
+
+        .token-table .token-name {
+            font-weight: 500;
+        }
+
+        .token-table .token-symbol {
+            color: var(--text-dim);
+            font-size: 11px;
+        }
+
+        .token-table .value {
+            font-family: 'Space Grotesk', monospace;
+        }
+
+        .token-table .change {
+            color: #00ff88;
+        }
+
+        .token-table .change.negative {
+            color: #ff4d4d;
+        }
+
+        /* Opportunity Cards */
+        .opportunity-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .opportunity-card {
+            border: 1px solid var(--line);
+            padding: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .opportunity-card:hover {
+            border-color: var(--accent);
+            background: var(--surface);
+        }
+
+        .opportunity-apy {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 36px;
+            font-weight: 400;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .opportunity-asset {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+
+        .opportunity-protocol {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        .opportunity-metrics {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        .opportunity-action {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        /* Discovery token cards — same grid language as opportunity cards */
+        .token-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        /* Earn Page */
+        .available-capital {
+            border: 1px solid var(--line);
+            padding: 32px;
+            margin-bottom: 48px;
+        }
+
+        .capital-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .capital-amount {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
+            font-weight: 300;
+        }
+
+        .earn-filters {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: var(--surface);
+            border-color: var(--text);
+            color: var(--text);
+        }
+
+        /* Actions Page — text-only intents, same language as landing.
+           No emoji / no pictogram icons: title + description only. */
+        .action-intents {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--line);
+            border: 1px solid var(--line);
+            margin-bottom: 48px;
+        }
+
+        .intent-item {
+            background: var(--bg);
+            padding: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .intent-item:hover {
+            background: var(--surface);
+        }
+
+        .intent-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .intent-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* Action Composer */
+        .action-composer {
+            border: 1px solid var(--line);
+            padding: 48px;
+            margin-bottom: 48px;
+        }
+
+        .composer-flow {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            margin-bottom: 48px;
+        }
+
+        .flow-step {
+            flex: 1;
+            text-align: center;
+        }
+
+        .flow-step-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        .flow-step-content {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--text-dim);
+        }
+
+        .action-details {
+            border-top: 1px solid var(--line);
+            padding-top: 32px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .detail-value {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 13px;
+        }
+
+        .confirm-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 32px;
+            transition: opacity 0.3s;
+        }
+
+        .confirm-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Automation Page */
+        .automation-input {
+            width: 100%;
+            padding: 24px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            margin-bottom: 48px;
+            resize: none;
+        }
+
+        .automation-input::placeholder {
+            color: var(--text-dim);
+        }
+
+        .automation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .automation-item {
+            border: 1px solid var(--line);
+            padding: 24px;
+        }
+
+        .automation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .automation-title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .automation-status {
+            font-size: 11px;
+            color: var(--accent);
+            padding: 4px 8px;
+            background: rgba(0, 102, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .automation-conditions {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.8;
+        }
+
+        /* Generated Automation */
+        .generated-automation {
+            border: 1px solid var(--line);
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .generated-section {
+            margin-bottom: 24px;
+        }
+
+        .generated-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .generated-content {
+            font-size: 14px;
+        }
+
+        .create-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .create-btn:hover {
+            opacity: 0.8;
+        }
+
+        /* Activity Page */
+        .activity-filters {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .activity-timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .activity-timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: var(--line);
+        }
+
+        .activity-day {
+            margin-bottom: 32px;
+        }
+
+        .day-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+        }
+
+        .activity-event {
+            position: relative;
+            padding: 16px 0;
+            padding-left: 24px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .activity-event::before {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: 20px;
+            width: 8px;
+            height: 8px;
+            background: var(--bg);
+            border: 1px solid var(--line);
+            border-radius: 50%;
+        }
+
+        .activity-event:last-child {
+            border-bottom: none;
+        }
+
+        .event-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .event-detail {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        .event-protocol {
+            font-size: 11px;
+            color: var(--accent);
+            margin-top: 4px;
+        }
+
+        /* Token Detail Page */
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .token-info h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 48px;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+
+        .token-price {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 32px;
+            font-weight: 400;
+        }
+
+        .token-change {
+            font-size: 14px;
+            color: #00ff88;
+        }
+
+        .token-actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        .token-action-btn {
+            padding: 12px 24px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .token-action-btn:hover {
+            opacity: 0.8;
+        }
+
+        .token-action-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--line);
+        }
+
+        .token-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--line);
+            border: 1px solid var(--line);
+            margin-bottom: 48px;
+        }
+
+        .token-metric {
+            background: var(--bg);
+            padding: 24px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        .chart-container {
+            height: 300px;
+            border: 1px solid var(--line);
+            padding: 24px;
+            margin-bottom: 48px;
+        }
+
+        /* Settings Page */
+        .settings-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 0;
+            border-bottom: 1px solid var(--line);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .settings-item:hover {
+            padding-left: 16px;
+        }
+
+        .settings-label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .settings-arrow {
+            color: var(--text-dim);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 160px;
+            }
+
+            .main {
+                margin-left: 160px;
+                padding: 32px;
+            }
+
+            .assets-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .token-grid,
+            .opportunity-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .action-intents {
+                grid-template-columns: 1fr;
+            }
+
+            .token-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: none;
+                position: relative;
+                overflow: visible;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                padding: 20px;
+            }
+
+            .sidebar-nav {
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                gap: 4px;
+                padding-bottom: 8px;
+            }
+
+            .nav-group-label {
+                display: none;
+            }
+
+            .nav-item {
+                white-space: nowrap;
+                padding: 10px 14px;
+            }
+
+            .sidebar-wallet {
+                margin-top: 12px;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px;
+            }
+
+            .page-title {
+                font-size: 36px;
+            }
+
+            .capital-value {
+                font-size: 48px;
+            }
+
+            .assets-grid,
+            .action-intents,
+            .opportunity-grid,
+            .token-grid,
+            .token-metrics {
+                grid-template-columns: 1fr;
+            }
+
+            /* Tables scroll inside the viewport — never page-level overflow */
+            .positions-table, .token-table, .fee-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            .positions-table thead, .positions-table tbody,
+            .token-table thead, .token-table tbody { display: table; width: 100%; }
+
+            .composer-flow {
+                flex-direction: column;
+                gap: 24px;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+
+            .discover-tabs {
+                overflow-x: auto;
+            }
+
+            .token-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 24px;
+            }
+        }
+
+        @media (max-width: 430px) {
+            .page-title { font-size: 30px; }
+            .capital-value { font-size: 36px; overflow-wrap: anywhere; }
+            .capital-amount { font-size: 34px; }
+            .token-info h1 { font-size: 34px; }
+            .token-price { font-size: 26px; }
+            .panel { padding: 20px; }
+            .modal { padding: 24px; }
+            .action-composer { padding: 24px; }
+            .chat-row { flex-wrap: wrap; }
+            .topbar { gap: 8px; }
+            .search-input { min-width: 0; }
+        }
+
+        /* Unified Hub additions — same design language (#0a0a0a / #0066ff) */
+        .topbar {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .search-input {
+            flex: 1;
+            min-width: 220px;
+            padding: 12px 16px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            color: var(--text);
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+        }
+        .net-badge {
+            font-size: 11px;
+            letter-spacing: 1px;
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            color: var(--text-dim);
+        }
+        .net-badge.live { color: #00ff88; border-color: rgba(0,255,136,.3); }
+        .noise-mark {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-decoration: none;
+            margin-left: auto;
+        }
+
+        /* Site-wide noise motif — same accent-blue particles as landing */
+        #noiseField {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app {
+            position: relative;
+            z-index: 1;
+        }
+
+        .sidebar {
+            background: transparent;
+        }
+        .fresh { font-size: 11px; color: var(--text-dim); }
+        .fresh.stale { color: #ff4d4d; }
+        .status-pill {
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 4px 8px;
+            border: 1px solid var(--line);
+            color: var(--text-dim);
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .status-pill.live, .status-pill.confirmed { color: #00ff88; border-color: rgba(0,255,136,.35); background: rgba(0,255,136,.06); }
+        .status-pill.ro { color: var(--accent); border-color: rgba(0,102,255,.4); }
+        .status-pill.pending, .status-pill.submitted { color: #ffbb00; border-color: rgba(255,187,0,.4); background: rgba(255,187,0,.06); }
+        .status-pill.failed, .status-pill.simulation_failed { color: #ff4444; border-color: rgba(255,68,68,.4); background: rgba(255,68,68,.06); }
+        .status-pill.rejected { color: #888888; border-color: rgba(136,136,136,.4); background: rgba(136,136,136,.06); }
+        .net-badge.testnet { color: #ffbb00; border-color: rgba(255,187,0,.4); }
+        .how { border: 1px solid var(--line); margin: 16px 0 32px; }
+        .how summary { padding: 16px 20px; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .how div { padding: 0 20px 20px; font-size: 12px; color: var(--text-dim); line-height: 1.8; }
+        .sub-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,.82);
+            display: none; align-items: center; justify-content: center;
+            z-index: 1000; padding: 24px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #0a0a0a; border: 1px solid var(--line);
+            max-width: 560px; width: 100%; padding: 36px;
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+        .modal .sub { font-size: 12px; color: var(--text-dim); margin-bottom: 24px; }
+        .fee-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        .fee-table td { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+        .fee-table td:last-child { text-align: right; font-family: 'Space Grotesk', monospace; }
+        .custody {
+            border: 1px solid rgba(0,102,255,.4); background: rgba(0,102,255,.06);
+            padding: 16px; font-size: 12px; line-height: 1.7; margin: 16px 0;
+        }
+        .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-ghost {
+            flex: 1; padding: 14px; background: transparent; color: var(--text);
+            border: 1px solid var(--line); font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .btn-solid {
+            flex: 1; padding: 14px; background: var(--accent); color: #fff;
+            border: none; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+            background: #0a0a0a; border: 1px solid var(--accent);
+            padding: 14px 20px; font-size: 12px; display: none; max-width: 360px;
+        }
+        .toast.active { display: block; }
+        .chat-box {
+            border: 1px solid var(--line); padding: 24px; margin-bottom: 24px;
+            min-height: 220px; max-height: 420px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 14px;
+        }
+        .msg { font-size: 13px; line-height: 1.7; padding: 12px 16px; border: 1px solid var(--line); }
+        .msg.user { background: var(--surface); align-self: flex-end; max-width: 85%; }
+        .msg.ai { align-self: flex-start; max-width: 95%; }
+        .msg .src { display: block; margin-top: 8px; font-size: 11px; color: var(--text-dim); }
+        .chat-row { display: flex; gap: 12px; }
+        .sec-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .panel { border: 1px solid var(--line); padding: 28px; margin-bottom: 24px; }
+        .panel h3 { font-size: 11px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 16px; }
+        .kv { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+        .kv:last-child { border-bottom: none; }
+        .kv b { font-family: 'Space Grotesk', monospace; font-weight: 400; }
+        /* Shared select — same language as .search-input */
+        .select-input {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--line);
+            padding: 8px 14px;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+        .select-input:focus { border-color: var(--accent); }
+        /* Disabled = honest unavailable, never a dead button look-alike */
+        button:disabled, .btn-solid:disabled, .btn-ghost:disabled, .claim-btn:disabled,
+        .filter-btn:disabled, .token-action-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        @media (max-width: 768px) { .sec-grid2 { grid-template-columns: 1fr; } }
+
+        /* ===== Noise Hub app polish / command-center layer ===== */
+        .main{width:100%;max-width:none;padding:42px 56px 88px;}
+        .main > *{max-width:1240px;margin-left:auto;margin-right:auto;}
+        .topbar{max-width:1240px;margin-bottom:34px;padding-bottom:18px;border-bottom:1px solid var(--line);}
+        .noise-mark{font-size:12px;letter-spacing:2.6px;}
+        .nav-group-label{font-size:9px;letter-spacing:2.2px;color:var(--text-faint);padding:18px 12px 7px;}
+        .sidebar{width:236px;padding:30px 18px;}
+        .main{margin-left:236px;}
+        .sidebar-logo a b{color:#fff;font-weight:300;}
+        .sidebar-wallet{margin-top:auto;}
+        .sidebar-wallet .claim-btn{font-family:'Inter',sans-serif;letter-spacing:.2px;}
+        .page-header{position:relative;margin-bottom:34px;}
+        .page-title{font-size:clamp(40px,4vw,60px);}
+        .page-subtitle{max-width:720px;line-height:1.7;}
+        .command-intro{border:1px solid var(--line);background:linear-gradient(135deg,rgba(0,102,255,.07),rgba(255,255,255,.015) 48%,transparent);padding:30px 32px;margin:0 0 34px;position:relative;overflow:hidden;}
+        .command-intro:after{content:'';position:absolute;width:260px;height:260px;border:1px solid rgba(0,102,255,.12);border-radius:50%;right:-100px;top:-130px;}
+        .command-kicker{font-size:10px;letter-spacing:2.2px;color:var(--accent);margin-bottom:10px;}
+        .command-title{font-family:'Space Grotesk',sans-serif;font-size:28px;letter-spacing:-1.2px;font-weight:400;margin-bottom:8px;}
+        .command-copy{font-size:13px;color:var(--text-dim);max-width:760px;line-height:1.8;}
+        .command-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:24px;}
+        .command-step{background:rgba(10,10,10,.82);padding:18px 18px 20px;min-height:92px;}
+        .command-step b{display:block;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:400;margin-bottom:6px;}
+        .command-step span{font-size:11px;color:var(--text-dim);line-height:1.55;}
+        .command-number{font-size:9px;letter-spacing:1.8px;color:var(--accent);margin-bottom:12px;display:block;}
+        .quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:0 0 42px;}
+        .quick-action{border:1px solid var(--line);padding:18px 20px;background:rgba(255,255,255,.012);cursor:pointer;transition:.2s;min-height:94px;}
+        .quick-action:hover{border-color:rgba(0,102,255,.55);background:rgba(0,102,255,.045);transform:translateY(-1px);}
+        .quick-action .qa-label{font-size:10px;letter-spacing:1.8px;color:var(--text-faint);margin-bottom:9px;}
+        .quick-action strong{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:400;display:block;margin-bottom:4px;}
+        .quick-action span{font-size:11px;color:var(--text-dim);}
+        .page-section-intro{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:0 0 22px;}
+        .page-section-intro p{font-size:12px;color:var(--text-dim);max-width:560px;line-height:1.7;}
+        .capital-value{margin-top:18px;}
+        .actions-grid{grid-template-columns:repeat(6,1fr);}
+        .action-item{min-height:76px;display:flex;align-items:center;justify-content:center;}
+        .assets-grid,.token-metrics{box-shadow:0 0 0 1px rgba(255,255,255,.015);}
+        .panel,.available-capital,.action-composer,.generated-automation,.rewards-block,.nft-preview,.chart-container,.opportunity-card,.automation-item{background:rgba(255,255,255,.012);}
+        .panel h3{font-weight:500;}
+        .how{background:rgba(255,255,255,.012);}
+        .btn-solid,.claim-btn,.confirm-btn,.create-btn{font-family:'Inter',sans-serif;letter-spacing:.1px;}
+        .status-pill{vertical-align:middle;}
+        @media(max-width:1024px){.sidebar{width:190px}.main{margin-left:190px;padding:36px 32px 72px}.command-steps{grid-template-columns:repeat(2,1fr)}.quick-actions{grid-template-columns:repeat(2,1fr)}}
+        @media(max-width:768px){.sidebar{width:100%;padding:14px 16px}.main{margin-left:0;padding:26px 20px 56px}.command-intro{padding:24px}.command-title{font-size:24px}.command-steps,.quick-actions{grid-template-columns:1fr}.topbar{padding-bottom:14px}.page-section-intro{display:block}.page-section-intro p{margin-top:8px}}
+    
+        .topbar-utilities{display:flex;align-items:center;gap:16px;margin-left:auto;white-space:nowrap}.topbar-utilities a{color:var(--text-dim);text-decoration:none;font-size:11px;letter-spacing:.4px}.topbar-utilities a:hover{color:var(--text)}
+        .earn-provider-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 20px;margin-bottom:10px}.earn-provider-bar .select-input{min-width:220px}
+        @media(max-width:768px){.topbar{position:sticky;top:0;z-index:20;background:rgba(10,10,10,.97);border-bottom:1px solid var(--line);padding:10px 0 12px;flex-wrap:wrap}.topbar .search-input{flex:1 1 100%;order:1;min-width:0}.topbar .net-badge,.topbar #freshBadge{display:none}.topbar-utilities{order:2;margin-left:0;gap:14px}.noise-mark{order:3;margin-left:auto}.sidebar{padding:10px 14px}.sidebar-logo{margin-bottom:8px}.sidebar-wallet,.sidebar-net{display:none}.sidebar-nav{gap:2px;padding-bottom:2px}.sidebar-nav .nav-group-label{display:none}.sidebar-nav .nav-item{padding:8px 11px;font-size:12px;background:transparent}.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="skills"],.sidebar-nav .nav-item[data-page="referral"],.sidebar-nav .nav-item[data-page="leaderboard"],.sidebar-nav .nav-item[data-page="security"],.sidebar-nav .nav-item[data-page="settings"]{display:none}.main{padding:18px 16px 48px}.page-title{font-size:30px;letter-spacing:-1px}.command-intro{padding:20px;margin-bottom:20px}.quick-actions{gap:1px;margin-bottom:28px}.quick-action{min-height:82px;padding:16px}.opportunity-grid{gap:12px;margin-bottom:28px}.opportunity-card{padding:20px}.opportunity-apy{font-size:30px}.panel,.available-capital{padding:18px;margin-bottom:20px}.earn-provider-bar{display:block}.earn-provider-bar .select-input{width:100%;margin-top:12px}.assets-grid{grid-template-columns:repeat(2,1fr);gap:1px}}
+
+        /* Noise Hub clarity pass — reduce cognitive load without changing the execution engine. */
+        .topbar-utilities{display:flex;align-items:center;gap:18px;margin-left:auto;font-size:11px;letter-spacing:.2px}
+        .topbar-utilities a{color:var(--text-dim);text-decoration:none}
+        .topbar-utilities a:hover{color:var(--text)}
+        .ai-purpose-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px}
+        .ai-prompt{appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.018);color:var(--text);text-align:left;padding:16px;cursor:pointer;min-height:82px}
+        .ai-prompt:hover{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.16)}
+        .ai-prompt b{display:block;font-size:12px;font-weight:600;margin-bottom:7px}
+        .ai-prompt span{display:block;font-size:11px;line-height:1.5;color:var(--text-dim)}
+        .automation-intro{margin-bottom:14px}
+        @media(max-width:900px){.ai-purpose-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:768px){.topbar-utilities{width:100%;order:2;justify-content:space-between;margin:0;padding-top:4px;gap:8px}.topbar-utilities a{font-size:10px}.ai-purpose-grid{grid-template-columns:1fr}.ai-prompt{min-height:70px}.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="skills"]{display:none}}
+
+
+/* NOISE APP UNIFIED — same tokens as the landing. Kills gray wash + stuck blocks. */
+:root{--radius:0}
+*{border-radius:0 !important}
+.page{scroll-margin-top:20px}
+.main{padding:48px 56px 88px !important}
+.main>*{max-width:1240px;margin-left:auto;margin-right:auto}
+.page-header{margin-bottom:36px !important}
+.page-title{font-size:clamp(40px,4vw,60px) !important;letter-spacing:-2.8px !important;line-height:.98 !important;font-weight:300 !important}
+.page-subtitle{max-width:680px !important;line-height:1.7 !important}
+.section-label{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
+/* Panels: ink, not smoke */
+.panel,.available-capital,.action-composer,.generated-automation,.rewards-block,.nft-preview,
+.chart-container,.opportunity-card,.automation-item,.command-intro,.how,.noise-live-panel{
+  background:rgba(10,10,10,.55) !important;
+  border:1px solid var(--line) !important;
+}
+.opportunity-card:hover,.quick-action:hover,.intent-item:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+.asset-item,.token-metric,.command-step,.eco-node{background:#0a0a0a !important}
+.ai-prompt{background:rgba(10,10,10,.55) !important}
+.ai-prompt:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+/* Breathing room: no stuck grids, no gray voids in half-filled rows */
+.opportunity-grid,.token-grid{gap:16px !important;margin-bottom:40px !important}
+.assets-grid,.token-metrics{background:transparent !important;border:none !important;gap:12px !important}
+.asset-item,.token-metric{border:1px solid var(--line) !important}
+.action-intents{background:transparent !important;border:none !important;gap:12px !important}
+.intent-item{border:1px solid var(--line) !important}
+.asset-item:hover{border-color:rgba(0,102,255,.55) !important}
+.quick-actions{gap:12px !important;margin-bottom:40px !important}
+.command-intro{padding:28px 30px !important;margin-bottom:32px !important}
+.panel{padding:26px !important;margin-bottom:22px !important}
+.positions-table td,.token-table td{padding:18px 16px !important}
+/* Status pills: one language */
+.status-pill{border-radius:0 !important;font-size:9px !important;letter-spacing:1.8px !important}
+.status-pill.sunset{color:#ff8844 !important;border-color:rgba(255,136,68,.5) !important;background:rgba(255,136,68,.06) !important}
+/* Sidebar = landing nav */
+.sidebar{background:rgba(10,10,10,.92) !important}
+.nav-item{border-left:1px solid transparent !important}
+.nav-item:hover{border-left-color:rgba(255,255,255,.18) !important}
+.nav-item.active{border-left-color:var(--accent) !important;background:transparent !important}
+#noiseField{opacity:.22 !important}
+@media(max-width:768px){
+  .main{padding:24px 20px 56px !important}
+  .command-intro,.panel{padding:20px !important}
+  .opportunity-grid,.token-grid{gap:12px !important}
+}
+
+
+.panel:has(#mstableAmount),.panel:has(#aiKey),.panel:has(#slipPref){display:none!important}
+/* Same colour/type system. Fix flex min-content overflow, not a redesign. */
+input,select,textarea,button{font-family:inherit;max-width:100%}
+.app,.main,.page,.panel,.chat-row,.execution-composers>div,#tGrid>div{min-width:0}
+.activity-filters,.sub-tabs{flex-wrap:wrap}
+.positions-table,.token-table{max-width:100%}
+
+.execution-composers:has(#noiseBridgeHost[style*="block"]) {grid-template-columns:minmax(0,1fr)!important}
+.execution-composers>div{max-width:100%}
+#automation,#skills,#discoverPerpsplexity,#discoverBluefin,#tMarginPanel,#discoverBluefin,#mstableBox,#tradeMarginSection{
+display:none!important}
+[data-page="automation"],[data-page="skills"],[data-dsrc="perpsplexity"],[data-trade-tab="margin"]{display:none!important}
+@media(max-width:768px){
+ .app{display:block!important;width:100%}.sidebar{position:relative!important;width:100%!important;max-width:100%;height:auto!important;min-width:0;left:auto!important}
+ .sidebar-nav{max-width:100%;min-width:0}.main{width:100%!important;max-width:100%;margin-left:0!important}
+ #tGrid{grid-template-columns:minmax(0,1fr)!important}#tBookPane,#tOrderPane{width:100%;max-width:100%;min-width:0}
+ .positions-table,.token-table{width:100%;max-width:100%;table-layout:fixed}.positions-table td.fresh{white-space:normal;overflow-wrap:anywhere}
+ .actions-list{flex-wrap:wrap}.action-item{min-width:0}
+ .execution-composers{grid-template-columns:minmax(0,1fr)!important}.chat-row{flex-wrap:wrap}.chat-row>*{min-width:0;max-width:100%}
+ .topbar{position:static!important;max-width:100%;min-width:0}.search-input{min-width:0}.main>*{max-width:100%}.fresh,.detail-value,.page-subtitle{overflow-wrap:anywhere}
+ .composer-flow,.action-details,.app-footer{max-width:100%;min-width:0}.app-footer{flex-wrap:wrap}
+ .modal{max-width:calc(100vw - 24px)!important;max-height:90dvh;overflow:auto}.modal-overlay{padding:12px!important}
+ .discover-tabs{max-width:100%;flex-wrap:wrap}.action-intents{grid-template-columns:minmax(0,1fr)!important}
+}
+
+.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="leaderboard"]{display:flex!important}
+
+                        .p-grid { display:grid; grid-template-columns: 1.1fr 1fr; gap:24px; align-items:start; }
+                        .p-side-btn { flex:1; padding:14px; font-size:15px; font-weight:700; letter-spacing:1px; border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; }
+                        .p-side-btn.up.active { background:rgba(0,255,136,.12); border-color:#00ff88; color:#00ff88; }
+                        .p-side-btn.down.active { background:rgba(255,68,68,.12); border-color:#ff4444; color:#ff4444; }
+                        .p-exp-btn.active { border-color:var(--accent, #0066ff); color:var(--text); }
+                        @media (max-width: 860px) {
+                            .p-grid { grid-template-columns: 1fr; }
+                            .trade-grid { grid-template-columns: 1fr !important; }
+                            .m-tabs { display:flex; gap:8px; margin-bottom:12px; }
+                        }
+                        @media (min-width: 861px) { .m-tabs { display:none; } }
+
+        /* ============================================================
+           NOISE VISUAL CONSOLIDATION
+           The landing page is the visual source of truth.
+           UI-only overrides: no data, wallet, routing or API logic.
+           ============================================================ */
+        .sidebar {
+            width: 224px;
+            padding: 32px 24px;
+            background: rgba(10,10,10,.92);
+            border-right: 1px solid var(--line);
+        }
+        .sidebar-logo {
+            margin-bottom: 34px;
+            padding: 0 0 22px;
+            border-bottom: 1px solid var(--line);
+        }
+        .sidebar-logo a {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 4px;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: -1.4px;
+            color: var(--accent);
+        }
+        .sidebar-logo a b {
+            color: var(--text);
+            font-weight: 300;
+        }
+        .sidebar-nav { gap: 2px; }
+        .nav-group-label {
+            margin: 20px 0 7px;
+            padding: 0 4px;
+            font-size: 9px;
+            line-height: 1;
+            letter-spacing: 2.4px;
+            color: rgba(255,255,255,.28);
+        }
+        .nav-group-label:first-child { margin-top: 0; }
+        .nav-item {
+            padding: 9px 10px;
+            border-radius: 0;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: -.05px;
+            border-left: 1px solid transparent;
+        }
+        .nav-item:hover {
+            background: transparent;
+            color: var(--text);
+            border-left-color: rgba(255,255,255,.18);
+        }
+        .nav-item.active {
+            background: transparent;
+            color: var(--text);
+            border-left-color: var(--accent);
+        }
+        .nav-item.active::before { display: none; }
+        .sidebar-wallet { padding-top: 18px; }
+        .sidebar-wallet .claim-btn { border-radius: 0; }
+        .main {
+            margin-left: 224px;
+            padding: 48px 56px 72px;
+            max-width: 1600px;
+        }
+        .topbar {
+            margin-bottom: 54px;
+            gap: 16px;
+        }
+        .search-input {
+            background: transparent;
+            border-radius: 0;
+            padding: 11px 0;
+            border-width: 0 0 1px;
+            border-color: var(--line);
+            max-width: 560px;
+        }
+        .search-input:focus { border-color: rgba(0,102,255,.65); }
+        .net-badge, .status-pill, .status-badge { border-radius: 0; }
+        .net-badge.live { color: rgba(255,255,255,.5); border-color: var(--line); }
+        .noise-mark {
+            color: var(--accent);
+            font-size: 11px;
+            letter-spacing: 2.5px;
+            font-weight: 600;
+        }
+        .page-header { margin-bottom: 42px; }
+        .page-title {
+            font-size: clamp(42px, 5vw, 64px);
+            line-height: .98;
+            font-weight: 300;
+            letter-spacing: -3px;
+            text-transform: none;
+        }
+        .page-subtitle { max-width: 620px; line-height: 1.7; }
+        .section-label {
+            font-size: 10px;
+            letter-spacing: 2.5px;
+            margin-bottom: 18px;
+        }
+        .panel, .rewards-block, .nft-preview, .action-composer, .action-panel, .modal, .how {
+            border-radius: 0 !important;
+        }
+        .panel { background: rgba(255,255,255,.012); }
+        .assets-grid, .actions-grid, .token-grid, .opportunity-grid, .token-metrics {
+            border-radius: 0;
+        }
+        .action-item, .asset-item, .discover-item { border-radius: 0 !important; }
+        .capital-value {
+            font-size: clamp(56px, 7vw, 84px);
+            line-height: .95;
+            letter-spacing: -4px;
+        }
+        .capital-change, .yield, .change, .interface-change { color: rgba(255,255,255,.62) !important; }
+        .capital-change::first-letter { color: var(--text); }
+        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {
+            border-radius: 0 !important;
+        }
+        .claim-btn, .primary-btn, .btn-primary, .result-cta, button.primary {
+            background: var(--accent);
+        }
+        .filter-btn, .secondary-btn, .btn-secondary { border-radius: 0 !important; }
+        .fresh { letter-spacing: .2px; }
+        .app-footer {
+            margin-top: 96px;
+            padding-top: 28px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 32px;
+        }
+        .footer-brand {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 300;
+            letter-spacing: -1px;
+            color: var(--accent);
+        }
+        .footer-brand span { color: var(--text); }
+        .footer-note {
+            margin-top: 7px;
+            font-size: 10px;
+            letter-spacing: 1.2px;
+            color: rgba(255,255,255,.3);
+            text-transform: uppercase;
+        }
+        .app-footer .footer-links { display:flex; gap:26px; }
+        .app-footer .footer-links a {
+            color: rgba(255,255,255,.42);
+            font-size: 11px;
+            letter-spacing: .4px;
+        }
+        .app-footer .footer-links a:hover { color: var(--text); }
+        /* Keep the landing-page ambient motif, but make it quieter inside the app. */
+        #noiseField { opacity: .24; }
+        @media (max-width: 1024px) {
+            .sidebar { width: 184px; }
+            .main { margin-left: 184px; padding: 40px 36px 64px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { width:100%; padding:20px 24px; }
+            .sidebar-logo { margin-bottom:20px; }
+            .sidebar-nav { gap: 2px; }
+            .nav-group-label { display:none; }
+            .nav-item { padding: 9px 12px; }
+            .main { margin-left:0; padding:32px 24px 56px; }
+            .topbar { margin-bottom:36px; }
+            .page-title { font-size:36px; letter-spacing:-2px; }
+            .capital-value { font-size:48px; letter-spacing:-2.5px; }
+            .app-footer { flex-direction:column; align-items:flex-start; margin-top:64px; }
+        }
+        @media (max-width:430px) {
+            .main { padding:24px 20px 48px; }
+            .sidebar { padding:18px 20px; }
+            .sidebar-logo a { font-size:22px; }
+            .page-title { font-size:30px; }
+            .capital-value { font-size:36px; }
+            .app-footer .footer-links { gap:18px; }
+        }
+
+        
+/* Existing Noise typography, colour and square panel vocabulary. */
+.journey-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.j-box{border:1px solid var(--line);background:rgba(255,255,255,.015);padding:28px;margin-bottom:24px;min-width:0}.j-box h3{font-size:16px;font-weight:500;margin-bottom:12px}.j-box p{margin:8px 0;line-height:1.65}.j-box label{display:block;font-size:13px;margin:16px 0 8px}.j-box select,.j-box input:not([type=checkbox]){width:100%;min-width:0}.j-buttons{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}.j-buttons button,.j-box>.btn-solid{min-height:44px}.j-review-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(0,2fr);gap:16px;padding:12px 0;border-bottom:1px solid var(--line);font-size:13px;line-height:1.6}.j-review-row span{color:rgba(255,255,255,.6)}.j-review-row b{font-weight:400;overflow-wrap:anywhere}.j-position{display:flex;justify-content:space-between;gap:18px;border-top:1px solid var(--line);padding:20px 0}.j-position>div{min-width:0}.j-position button{align-self:flex-start;min-height:44px;flex-shrink:0}.j-provider{margin-bottom:26px}.j-box code{font-size:11px;overflow-wrap:anywhere;color:rgba(255,255,255,.6)}.j-risk-check{display:flex!important;gap:12px;align-items:flex-start;line-height:1.6}.j-risk-check input{flex-shrink:0;margin-top:4px}.j-box button:disabled{opacity:.45;cursor:not-allowed}.j-box [hidden],#journey [hidden]{display:none!important}#jNotice{padding:16px 0;line-height:1.7}#jReviewRows{margin-bottom:20px}#jPositionsFresh{margin-bottom:20px}.j-flow{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;letter-spacing:1px;margin:24px 0;color:rgba(255,255,255,.6)}.j-flow span{padding:10px;border:1px solid var(--line)}@media(max-width:1000px){.journey-layout{grid-template-columns:minmax(0,1fr)}}@media(max-width:520px){.j-box{padding:20px}.j-position{flex-direction:column}.j-review-row{grid-template-columns:minmax(0,1fr);gap:4px}.j-buttons>*{flex:1}.j-box .fresh{font-size:12px}.j-flow{gap:8px;font-size:10px}}
+
+.j-table-scroll{overflow-x:auto;max-width:100%}.j-table-scroll table{min-width:620px}#jLbState{margin-bottom:16px;line-height:1.6}
+
+.sidebar-nav .nav-item[data-page="referral"]{display:block!important}
+#referral .j-buttons .search-input{flex:1 1 200px;min-width:0;width:100%}#referral label{display:block;margin:20px 0 10px}#referral .token-table{min-width:400px}#referral p{line-height:1.6}
+
+#referral .j-buttons button{flex:0 0 auto;min-width:150px;min-height:44px}#referral .j-buttons input{flex:1 1 250px}@media(max-width:520px){#referral .j-buttons>*{flex:1 1 100%;width:100%}}
+/* Task-first layout: retain the original black / blue palette and fonts. */
+.ux-task-grid,.ux-more-grid,.ux-market-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:24px 0}.ux-task{text-align:left;border:1px solid var(--line);background:transparent;color:var(--text,#fff);padding:28px;cursor:pointer;font:inherit;min-width:0}.ux-task:hover,.ux-task:focus-visible{border-color:#0066ff;outline:none}.ux-task h2{font-family:inherit;font-size:22px;font-weight:400;margin:20px 0}.ux-task p,.ux-market p{font-size:13px;line-height:1.7;color:rgba(255,255,255,.6);margin:12px 0}.ux-task-link{display:block;color:#0066ff;margin-top:24px;font-size:13px}.ux-home-strip{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 0;border-bottom:1px solid var(--line);margin-bottom:24px}.ux-home-strip p{font-size:13px;line-height:1.7;overflow-wrap:anywhere}.ux-home-strip button{min-height:44px;flex-shrink:0}.ux-market{padding:22px;border:1px solid var(--line);min-width:0}.ux-market h3{line-height:1.5;font-size:17px}.ux-market button{width:100%;min-height:44px}.ux-market .fresh{font-size:11px;overflow-wrap:anywhere}.ux-assistant{padding:24px;border:1px solid var(--line);margin:24px 0;line-height:1.7;font-size:13px;overflow-wrap:anywhere}.ux-assistant[hidden],#uxPositionJob[hidden]{display:none!important}.journey-layout{display:block;max-width:850px}.j-position{flex-wrap:wrap}.j-position>div{flex:1 1 100%}.j-position button{flex:0 1 auto}.how>div{padding:20px 0}.ux-home-strip .section-label{margin-bottom:12px}#jPositions code{word-break:break-all}#uxReviewSummary{margin:16px 0}#uxMonitor p{font-size:12px;line-height:1.7}.ux-more-grid{grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:1100px){.ux-task-grid,.ux-market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.ux-task-grid,.ux-more-grid,.ux-market-grid{grid-template-columns:minmax(0,1fr)}.ux-task{padding:22px}.ux-home-strip{flex-direction:column;align-items:stretch}.ux-home-strip button{width:100%}.ux-market{padding:20px}.j-position button{flex:1 1 100%}}
+.ux-conditions{font-size:12px;margin-top:16px}.ux-conditions summary{cursor:pointer;color:rgba(255,255,255,.6);line-height:1.7}.ux-market .section-label{margin-bottom:12px}
+
+.preview-note{position:sticky;top:0;z-index:1000;background:#111;border-bottom:1px solid #0066ff;padding:12px 20px;color:#bbb;font:12px Arial;line-height:1.6}.preview-note b{color:#fff} .sidebar{top:44px}@media(max-width:1000px){.sidebar{top:0}} </style></head><body><div class="preview-note"><b>ВИЗУАЛЬНЫЙ ПРЕДПРОСМОТР · НЕ РАБОЧИЙ КОШЕЛЁК</b> — можно переключать основные разделы. Ставки — снимок 2026-10-07T12:59:40.452Z, не обновляются. Финансовых операций нет; рабочий app.html и API находятся в ZIP.</div><div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo"><a href="index.html"><span>noise</span><b> hub</b></a></div>
+            <nav class="sidebar-nav" aria-label="Main tasks">
+                <div class="nav-group-label">YOUR TASKS</div>
+                <a class="nav-item" data-page="home">Start</a>
+                <a class="nav-item" data-page="swap">Swap</a>
+                <a class="nav-item" data-page="deposit">Place funds</a>
+                <a class="nav-item" data-page="manage">Positions / exit</a>
+                <div class="nav-group-label">SECONDARY</div>
+                <a class="nav-item active" data-page="more">More</a>
+            </nav>
+            <div class="sidebar-wallet" id="walletBox"><div style="margin-bottom:10px;">NOT CONNECTED</div><button class="claim-btn" id="connectBtn" style="width:100%;">Connect</button></div>
+            <div class="sidebar-net" id="sideNet">SUI MAINNET</div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="topbar">
+                <input class="search-input" id="globalSearch" placeholder="Search token, protocol, pool, action — e.g. USDC">
+                <span class="net-badge live" id="netBadge">MAINNET · Sui RPC</span>
+                <span class="fresh" id="freshBadge">VISUAL PREVIEW</span>
+                <div class="topbar-utilities" aria-label="Utilities">
+                    
+                    
+                    
+                </div>
+                <a class="noise-mark" href="index.html" title="Back to landing">NOISE HUB</a>
+            </div>
+            <div id="searchResults" style="margin-bottom:24px; display:none;"></div>
+            <div class="fresh" style="margin:-10px auto 28px;max-width:1240px;line-height:1.7;">NON-CUSTODIAL · WALLET AUTHORIZATION · LIVE SOURCES · REVIEW BEFORE SIGN</div>
+
+
+
+            <!-- Portfolio Page -->
+            
+
+            
+
+
+<!-- Discover Page -->
+            
+
+            <!-- Earn Page -->
+            
+
+            <!-- Actions Page — Action Center (reference: text-only, MOVE / GROW / MANAGE) -->
+            
+
+            <!-- Automation Page -->
+            
+
+            <!-- Activity Page -->
+            
+
+            <!-- Trade Page — Spot / Predict / Margin -->
+            
+
+            <!-- Token Detail Page — live price + wallet balance + pools; rest Unavailable -->
+            
+
+            <!-- AI Page (from Wallet OS AI Agent + spec /app/ai tool router) -->
+            
+
+            <!-- Referral: verified invitations, not an unimplemented payout dashboard -->
+            
+
+            <!-- Security Page (Wallet OS Security + privacy/memory plan) -->
+            
+
+            <!-- Settings Page -->
+            
+            <!-- Leaderboard Page (spec §38-42, §79) — global ranking, separate from Referral -->
+            
+
+<!-- Skills are an internal capability registry, not a user-facing product page. -->
+            
+            <div id="previewContent"></div><footer class="app-footer">
+                <div>
+                    <div class="footer-brand">noise <span>hub</span></div>
+                    <div class="footer-note">Built openly on Sui · non-custodial</div>
+                </div>
+                <div class="footer-links">
+                    <a href="https://x.com/NoiseHubSui" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+                    <a href="https://github.com/Juniorj87/noise" target="_blank" rel="noopener noreferrer">GitHub</a>
+                </div>
+            </footer>
+        </main>
+    </div><script>const snapshots={"home":"\u003cdiv class=\"page active\" id=\"home\" style=\"\">\n \u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\">WHAT DO YOU WANT TO DO?\u003c/h1>\u003cp class=\"page-subtitle\">Your Sui assets. One clear next step.\u003c/p>\u003c/div>\n \u003cdiv class=\"ux-task-grid\">\n  \u003cbutton class=\"ux-task\" onclick=\"navigateTo('swap')\">\u003cspan class=\"section-label\">01 · EXCHANGE\u003c/span>\u003ch2>Swap a token\u003c/h2>\u003cp>SUI, USDC, WAL, NS and verified ecosystem assets. Check the route, minimum received and fees before signing.\u003c/p>\u003cspan class=\"ux-task-link\">Choose tokens →\u003c/span>\u003c/button>\n  \u003cbutton class=\"ux-task\" onclick=\"navigateTo('deposit')\">\u003cspan class=\"section-label\">02 · PLACE FUNDS\u003c/span>\u003ch2>Put funds to work\u003c/h2>\u003cp>Compare lending, vaults and liquid staking. Choose the asset first, then the service and its conditions.\u003c/p>\u003cspan class=\"ux-task-link\">Compare placement options →\u003c/span>\u003c/button>\n  \u003cbutton class=\"ux-task\" onclick=\"navigateTo('manage')\">\u003cspan class=\"section-label\">03 · MANAGE / EXIT\u003c/span>\u003ch2>See positions &amp; withdraw\u003c/h2>\u003cp>See where your funds are, check debt and protocol-specific risk, then review an exit. No invented earnings.\u003c/p>\u003cspan class=\"ux-task-link\">Open your positions →\u003c/span>\u003c/button>\n \u003c/div>\n \u003cdiv class=\"ux-home-strip\">\u003cdiv>\u003cdiv class=\"section-label\">WALLET CONTROLLED\u003c/div>\u003cp id=\"uxWalletState\">Browse first. Connect only when you need wallet balances or execution.\u003c/p>\u003c/div>\u003cbutton class=\"btn-ghost\" onclick=\"NoiseTasks.wallet()\" id=\"uxWalletButton\">Connect wallet\u003c/button>\u003c/div>\n \u003cdiv class=\"ux-home-strip\">\u003cp>Need bridging, staking alternatives, liquidity pools or order-book trading?\u003c/p>\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('more')\">Advanced services →\u003c/button>\u003c/div>\n \u003cdetails class=\"how\">\u003csummary>Service status — read checks, not security guarantees\u003c/summary>\u003cdiv>\u003cdiv id=\"uxMonitor\">No probe result assumed. Check current provider reads.\u003c/div>\u003cbutton class=\"btn-ghost\" onclick=\"NoiseTasks.monitor(true)\">Check providers\u003c/button>\u003cp class=\"fresh\">A successful read does not prove a trade will execute. Unsigned simulations are not funded-wallet E2E tests or an independent security audit.\u003c/p>\u003c/div>\u003c/details>\n\u003c/div>","deposit":"\u003cdiv class=\"page active\" id=\"journey\" style=\"\">\n \u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\" id=\"jTitle\">PLACE FUNDS\u003c/h1>\u003cdiv class=\"page-subtitle\" id=\"jSubtitle\">Choose the asset, compare conditions, then review one wallet-approved transaction.\u003c/div>\u003c/div>\n \u003cdiv class=\"j-flow\">\u003cspan>01 · CHOOSE\u003c/span>\u003cspan>02 · REVIEW &amp; SIMULATE\u003c/span>\u003cspan>03 · WALLET → RECEIPT\u003c/span>\u003c/div>\n \u003cdiv class=\"j-buttons\" hidden=\"\">\u003cbutton id=\"jEnter\">Place funds\u003c/button>\u003cbutton id=\"jSwapMode\">Swap only\u003c/button>\u003cbutton id=\"jRefresh\">Refresh balances &amp; positions\u003c/button>\u003c/div>\n \u003csection class=\"j-box\" id=\"uxCompare\">\u003cdiv class=\"section-label\">CHOOSE YOUR DEPOSIT ASSET FIRST\u003c/div>\u003clabel for=\"uxCompareAsset\">Asset you want to place\u003c/label>\u003cselect class=\"select-input\" id=\"uxCompareAsset\">\u003coption>SUI\u003c/option>\u003coption>afSUI\u003c/option>\u003coption>ALKIMI\u003c/option>\u003coption>AUSD\u003c/option>\u003coption>BLUB\u003c/option>\u003coption>BLUE\u003c/option>\u003coption>BTC\u003c/option>\u003coption>BUCK\u003c/option>\u003coption>CETUS\u003c/option>\u003coption>COIN\u003c/option>\u003coption>DEEP\u003c/option>\u003coption>DMC\u003c/option>\u003coption>enzoBTC\u003c/option>\u003coption>ETH\u003c/option>\u003coption>FDUSD\u003c/option>\u003coption>FL_SUI\u003c/option>\u003coption>FP_SUI\u003c/option>\u003coption>FUD\u003c/option>\u003coption>FUD_SUI\u003c/option>\u003coption>HAEDAL\u003c/option>\u003coption>haSUI\u003c/option>\u003coption>haWAL\u003c/option>\u003coption>I_SUI\u003c/option>\u003coption>IKA\u003c/option>\u003coption>JUG_SUI\u003c/option>\u003coption>KOBAN\u003c/option>\u003coption>KSUI\u003c/option>\u003coption>LBTC\u003c/option>\u003coption>MBTC\u003c/option>\u003coption>MSUI\u003c/option>\u003coption>mUSD\u003c/option>\u003coption>MUSD\u003c/option>\u003coption>NAVX\u003c/option>\u003coption>NS\u003c/option>\u003coption>O_SUI\u003c/option>\u003coption>OSHI_SUI\u003c/option>\u003coption>sbETH\u003c/option>\u003coption>sbUSDT\u003c/option>\u003coption>sbwBTC\u003c/option>\u003coption>SCA\u003c/option>\u003coption>scaSUI\u003c/option>\u003coption>SEND\u003c/option>\u003coption>SOL\u003c/option>\u003coption>SPRING_SUI\u003c/option>\u003coption>STEAMM_LP_BSUI_BUSDC\u003c/option>\u003coption>STRAT_SUI\u003c/option>\u003coption>stSUI\u003c/option>\u003coption>SUDENG\u003c/option>\u003coption>suiETH\u003c/option>\u003coption>suiUSDe\u003c/option>\u003coption>SUIUSDE\u003c/option>\u003coption>TREVIN_SUI\u003c/option>\u003coption>UP\u003c/option>\u003coption>UPSUI\u003c/option>\u003coption>USDC\u003c/option>\u003coption>USDsui\u003c/option>\u003coption>USDSUI\u003c/option>\u003coption>USDT\u003c/option>\u003coption>USDY\u003c/option>\u003coption>vSUI\u003c/option>\u003coption>WAL\u003c/option>\u003coption>wAPT\u003c/option>\u003coption>wBTC\u003c/option>\u003coption>WBTC\u003c/option>\u003coption>wETH\u003c/option>\u003coption>WETH\u003c/option>\u003coption>wSOL\u003c/option>\u003coption>wUSDC\u003c/option>\u003coption>WUSDC\u003c/option>\u003coption>wUSDT\u003c/option>\u003coption>WUSDT\u003c/option>\u003coption>wWAL\u003c/option>\u003coption>XAUm\u003c/option>\u003coption>xBTC\u003c/option>\u003coption>XBTC\u003c/option>\u003coption>YAP_SUI\u003c/option>\u003coption>zwBTC\u003c/option>\u003c/select>\u003cp class=\"fresh\">Provider APR/APY are shown as reported, not added together. No option is labelled “best” or “safest”. Unknown rewards are not zero.\u003c/p>\u003cdiv id=\"uxCompareState\" class=\"fresh\">Provider snapshots · rates vary. Refresh before every transaction.\u003c/div>\u003cbutton class=\"btn-ghost\" id=\"uxCompareToggle\" hidden=\"\">Change provider / compare conditions\u003c/button>\u003cdiv class=\"ux-market-grid\" id=\"uxCompareCards\">\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">suilend · LENDING\u003c/div>\u003ch3>SUI · 0.9691% APR\u003c/h3>\u003cp>Base: 0.9691% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Lending position · liquidity / debt-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"suilend\" data-market=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">Choose suilend →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">base-interest-only. Rewards not quantified in this response; base interest only, not assumed zero\u003c/p>\u003cp>Available liquidity: 26,236,414.6625 SUI (snapshot)\u003c/p>\u003cp>Withdrawal depends on current reserve liquidity and debt/collateral health; a fresh full transaction simulation is required\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Suilend SDK (gRPC) · 2026-10-07T12:59:38.001Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">navi · LENDING\u003c/div>\u003ch3>SUI · 1.709% APY\u003c/h3>\u003cp>Base: 1.363% APR\u003cbr>Incentives: 0.3465% APR\u003c/p>\u003cp>Lending position · liquidity / debt-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"navi\" data-market=\"0\">Choose navi →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">NAVI provider fields; APR and APY are separate. Provider boost APR; not added to APY by Noise\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Withdrawal depends on current reserve liquidity and debt/collateral health; a fresh full transaction simulation is required\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">NAVI Lending SDK (gRPC) · 2026-10-07T12:59:37.691Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">kai · STRATEGY VAULT\u003c/div>\u003ch3>SUI · 0% APY\u003c/h3>\u003cp>Base: 0% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Vault shares · strategy and liquidity risk\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"kai\" data-market=\"SUI\">Choose kai →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Kai vault strategy rate, variable. No independently quantified incentive component in this response; not assumed zero\u003c/p>\u003cp>Protocol performance fee: 15%\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Redeem vault shares to the underlying asset; output depends on current vault state, strategy liquidity and simulation\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Kai SDK + on-chain vault · 2026-10-07T12:59:37.836Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">scallop · LENDING\u003c/div>\u003ch3>SUI · 1.5933% APY\u003c/h3>\u003cp>Base: 1.5808% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Free lending shares · liquidity-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"scallop\" data-market=\"sui\">Choose scallop →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Scallop on-chain lending curve; APR and APY are separately provided. Base lending rate only. Spool incentives and boosted rewards are not included.\u003c/p>\u003cp>Available liquidity: 2,247,036.8747 SUI (snapshot)\u003c/p>\u003cp>Redeem liquid lending shares subject to current market liquidity. These shares are not collateral; staked spool shares need separate unstaking.\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Scallop SDK (query) · 2026-10-07T12:59:38.363Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">haedal · LIQUID STAKING\u003c/div>\u003ch3>SUI · Annual yield unavailable\u003c/h3>\u003cp>Base: Not quantified\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Receive haSUI · minimum 1 SUI · ticket / instant exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"haedal\" data-market=\"SUI\">Choose haedal →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Exchange rate is NOT an annual yield; no verified APY provided here. Yield accrues in haSUI exchange rate; annual rate not quantified here\u003c/p>\u003cp>Exchange rate: 1.0825 SUI / haSUI — not APY\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Delayed: request an unstake ticket, then claim after protocol unlock. Instant: protocol fee and liquidity constraints; review simulation. No guessed percentage or guaranteed delay.\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Haedal staking::get_exchange_rate (devInspect) · 2026-10-07T12:59:38.114Z\u003c/p>\u003c/details>\u003c/article>\u003c/div>\u003c/section>\n \u003cdiv id=\"jNotice\" role=\"status\" aria-live=\"polite\">Choose the asset you hold and the destination market. Swap + deposit use one atomic transaction.\u003c/div>\n \u003cdiv class=\"journey-layout\">\n  \u003cdiv>\n   \u003cdiv class=\"j-box\" id=\"jForm\">\u003cdiv class=\"section-label\" id=\"jMode\">YOUR PLACEMENT\u003c/div>\u003cp class=\"fresh\">Noise builds and checks the complete action. Nothing moves without your wallet approval. Entry swap and placement are atomic; exits are separately reviewed.\u003c/p>\n    \u003cdiv id=\"jFromField\">\u003clabel for=\"jFrom\">Asset you hold\u003c/label>\u003cselect class=\"select-input\" id=\"jFrom\">\u003coption value=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">SUI\u003c/option>\u003coption value=\"0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC\">USDC\u003c/option>\u003coption value=\"0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP\">DEEP\u003c/option>\u003coption value=\"0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL\">WAL\u003c/option>\u003coption value=\"0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS\">NS\u003c/option>\u003coption value=\"0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA\">IKA\u003c/option>\u003coption value=\"0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND\">SEND\u003c/option>\u003coption value=\"0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD\">AUSD\u003c/option>\u003coption value=\"0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI\">USDSUI\u003c/option>\u003coption value=\"0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE\">SUIUSDE\u003c/option>\u003coption value=\"0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC\">XBTC\u003c/option>\u003coption value=\"0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT\">USDT\u003c/option>\u003coption value=\"0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN\">WUSDC\u003c/option>\u003coption value=\"0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN\">WUSDT\u003c/option>\u003coption value=\"0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN\">WETH\u003c/option>\u003coption value=\"0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN\">WBTC\u003c/option>\u003coption value=\"0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS\">CETUS\u003c/option>\u003coption value=\"0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX\">NAVX\u003c/option>\u003c/select>\u003cp class=\"fresh\" id=\"jBalance\">Connect wallet to see your available balance\u003c/p>\u003c/div>\n    \u003cdiv id=\"jProviderField\">\u003clabel for=\"jProvider\">Destination protocol\u003c/label>\u003cselect class=\"select-input\" id=\"jProvider\">\u003coption value=\"suilend\">Suilend\u003c/option>\u003coption value=\"navi\">NAVI\u003c/option>\u003coption value=\"kai\">Kai vaults\u003c/option>\u003coption value=\"scallop\">Scallop lending\u003c/option>\u003coption value=\"haedal\">Haedal liquid staking\u003c/option>\u003c/select>\u003c/div>\n    \u003cdiv id=\"jMarketField\">\u003clabel for=\"jMarket\">Deposit asset / market\u003c/label>\u003cselect class=\"select-input\" id=\"jMarket\">\u003coption value=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">SUI · 0.969% APR\u003c/option>\u003coption value=\"0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN\">WUSDC · 10.725% APR\u003c/option>\u003coption value=\"0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN\">WUSDT · 0.303% APR\u003c/option>\u003coption value=\"0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN\">WETH · 0.170% APR\u003c/option>\u003coption value=\"0xb7844e289a8410e50fb3ca48d69eb9cf29e27d223ef90353fe1bd8e27ff8f3f8::coin::COIN\">COIN · 0.085% APR\u003c/option>\u003coption value=\"0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD\">AUSD · 0.846% APR\u003c/option>\u003coption value=\"0x76cb819b01abed502bee8a702b4c2d547532c12f25001c9dea795a5e631c26f1::fud::FUD\">FUD · 0.000% APR\u003c/option>\u003coption value=\"0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC\">USDC · 4.321% APR\u003c/option>\u003coption value=\"0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP\">DEEP · 0.195% APR\u003c/option>\u003coption value=\"0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH\">ETH · 0.108% APR\u003c/option>\u003coption value=\"0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI\">SPRING_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x922d15d7f55c13fd790f6e54397470ec592caa2b508df292a2e8553f3d3b274f::msui::MSUI\">MSUI · 0.000% APR\u003c/option>\u003coption value=\"0x8993129d72e733985f7f1a00396cbd055bad6f817fee36576ce483c8bbb8b87b::sudeng::SUDENG\">SUDENG · 0.000% APR\u003c/option>\u003coption value=\"0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS\">NS · 0.000% APR\u003c/option>\u003coption value=\"0x02358129a7d66f943786a10b518fdc79145f1fc8d23420d9948c4aeea190f603::fud_sui::FUD_SUI\">FUD_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x41ff228bfd566f0c707173ee6413962a77e3929588d010250e4e76f0d1cc0ad4::ksui::KSUI\">KSUI · 0.000% APR\u003c/option>\u003coption value=\"0x502867b177303bf1bf226245fcdd3403c177e78d175a55a56c0602c7ff51c7fa::trevin_sui::TREVIN_SUI\">TREVIN_SUI · 0.000% APR\u003c/option>\u003coption value=\"0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND\">SEND · 0.000% APR\u003c/option>\u003coption value=\"0xe68fad47384e18cd79040cb8d72b7f64d267eebb73a0b8d54711aa860570f404::upsui::UPSUI\">UPSUI · 0.000% APR\u003c/option>\u003coption value=\"0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT\">USDT · 4.020% APR\u003c/option>\u003coption value=\"0xce7ff77a83ea0cb6fd39bd8748e2ec89a3f41e8efdc3f4eb123e0ca37b184db2::buck::BUCK\">BUCK · 0.000% APR\u003c/option>\u003coption value=\"0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC\">BTC · 0.062% APR\u003c/option>\u003coption value=\"0xe1b45a0e641b9955a20aa0ad1c1f4ad86aad8afb07296d4085e349a50e90bdca::blue::BLUE\">BLUE · 0.000% APR\u003c/option>\u003coption value=\"0x83f1bb8c91ecd1fd313344058b0eed94d63c54e41d8d1ae5bff1353443517d65::yap_sui::YAP_SUI\">YAP_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x3e8e9423d80e1774a7ca128fccd8bf5f1f7753be658c5e645929037f7c819040::lbtc::LBTC\">LBTC · 0.000% APR\u003c/option>\u003coption value=\"0xe44df51c0b21a27ab915fa1fe2ca610cd3eaa6d9666fe5e62b988bf7f0bd8722::musd::MUSD\">MUSD · 0.000% APR\u003c/option>\u003coption value=\"0x285b49635f4ed253967a2a4a5f0c5aea2cbd9dd0fc427b4086f3fad7ccef2c29::i_sui::I_SUI\">I_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x6b82b1ac4bf420f649c052746594a18c5df0c9fccff3a98d6856a16ba4f4e47a::steamm_lp_bsui_busdc::STEAMM_LP_BSUI_BUSDC\">STEAMM_LP_BSUI_BUSDC · 0.000% APR\u003c/option>\u003coption value=\"0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL\">WAL · 0.009% APR\u003c/option>\u003coption value=\"0xaded77ced91afca17e03306d24962f782a51c7395eaf0e7bc1e08ac0dca0fd52::fl_sui::FL_SUI\">FL_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x3a304c7feba2d819ea57c3542d68439ca2c386ba02159c740f7b406e592c62ea::haedal::HAEDAL\">HAEDAL · 0.009% APR\u003c/option>\u003coption value=\"0x87dfe1248a1dc4ce473bd9cb2937d66cdc6c30fee63f3fe0dbb55c7a09d35dec::up::UP\">UP · 0.000% APR\u003c/option>\u003coption value=\"0x8400e7044d360c28dd338111d2aa54ca5bdc960a8d6b60bf3b28e1ca503df3e2::koban::KOBAN\">KOBAN · 0.000% APR\u003c/option>\u003coption value=\"0x95f9ff87d8e0640cb3369bb470761b9ec46eb0ff3cc1eed417df4fa24c853f42::oshi_sui::OSHI_SUI\">OSHI_SUI · 0.000% APR\u003c/option>\u003coption value=\"0xb2d912e4f100e03b7de58d874835e358dc2802f2fb8559f56a70a7c900f8fc78::jug_sui::JUG_SUI\">JUG_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x4c981f3ff786cdb9e514da897ab8a953647dae2ace9679e8358eec1e3e8871ac::dmc::DMC\">DMC · 0.000% APR\u003c/option>\u003coption value=\"0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC\">XBTC · 0.007% APR\u003c/option>\u003coption value=\"0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA\">IKA · 0.001% APR\u003c/option>\u003coption value=\"0x1fea5652ae6ba58120a3262cff764b5abefe39ce603cdd5c5ca19fc584b6847e::strat_sui::STRAT_SUI\">STRAT_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x1a8f4bc33f8ef7fbc851f156857aa65d397a6a6fd27a7ac2ca717b51f2fd9489::alkimi::ALKIMI\">ALKIMI · 0.000% APR\u003c/option>\u003coption value=\"0x5a71532c1e812daeffd07ef375451fad7a2906d01151bade4d5018ffc5a3c267::o_sui::O_SUI\">O_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x5fb5365e645d9728660e4ba13cb1c8eefcb950e7c20472c168d97adb36b7415c::fp_sui::FP_SUI\">FP_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC\">WBTC · 0.055% APR\u003c/option>\u003coption value=\"0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE\">SUIUSDE · 3.448% APR\u003c/option>\u003coption value=\"0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI\">USDSUI · 1.573% APR\u003c/option>\u003c/select>\u003c/div>\n    \u003cdiv id=\"jToField\" hidden=\"\">\u003clabel for=\"jTo\">Receive token\u003c/label>\u003cselect class=\"select-input\" id=\"jTo\">\u003c/select>\u003c/div>\n    \u003cp class=\"fresh\" id=\"jWithdrawInfo\" hidden=\"\">\u003c/p>\u003cp class=\"fresh\" id=\"jRate\">0.969% APR · variable · base-interest-only\u003c/p>\n    \u003cdiv id=\"jAmountField\">\u003clabel for=\"jAmount\" id=\"jAmountLabel\">Amount you pay\u003c/label>\u003cdiv class=\"chat-row\">\u003cinput id=\"jAmount\" class=\"search-input\" inputmode=\"decimal\" placeholder=\"0.00\" autocomplete=\"off\">\u003cbutton class=\"btn-ghost\" id=\"jMax\">Max\u003c/button>\u003c/div>\u003c/div>\u003cdiv id=\"jExitField\" hidden=\"\">\u003clabel for=\"jExitMode\">Haedal exit method\u003c/label>\u003cselect class=\"select-input\" id=\"jExitMode\">\u003coption value=\"delayed\">Delayed — ticket now, claim after unlock\u003c/option>\u003coption value=\"instant\">Instant — protocol fee &amp; liquidity limits\u003c/option>\u003c/select>\u003c/div>\n    \u003clabel for=\"jSlip\">Swap slippage tolerance (%)\u003c/label>\u003cinput id=\"jSlip\" class=\"search-input\" inputmode=\"decimal\" value=\"0.5\">\u003cp class=\"fresh\">0.01–3%. Only used when a swap is included. Protocol fees remain in the provider's execution.\u003c/p>\n    \u003cbutton class=\"btn-solid\" style=\"width:100%;margin-top:20px\" id=\"jBuild\">Review &amp; simulate\u003c/button>\u003cp class=\"fresh\" id=\"jAssetsNote\">18 on-chain verified ecosystem assets · not a ranking\u003c/p>\n   \u003c/div>\n   \u003cdiv class=\"j-box\" id=\"jReview\" hidden=\"\">\u003cdiv class=\"section-label\">BEFORE YOU SIGN · SIMULATION PASSED\u003c/div>\u003cdiv id=\"uxReviewSummary\">\u003c/div>\u003cdiv class=\"j-buttons\">\u003cbutton class=\"btn-ghost\" id=\"uxExplainReview\">What am I signing?\u003c/button>\u003cbutton class=\"btn-ghost\" id=\"uxExplainRisk\">Explain the risks\u003c/button>\u003c/div>\u003cdiv class=\"ux-assistant\" id=\"uxReviewAssistant\" hidden=\"\">\u003c/div>\u003cdetails class=\"how\">\u003csummary>Technical details — coin types, receipt digest, route and recipient\u003c/summary>\u003cdiv id=\"jReviewRows\">\u003c/div>\u003c/details>\u003clabel class=\"j-risk-check\">\u003cinput type=\"checkbox\" id=\"jAccept\">I reviewed the token types, destination protocol, minimum output, fees and risks. Simulation does not guarantee yield or eliminate protocol risk.\u003c/label>\u003cbutton class=\"btn-solid\" style=\"width:100%\" id=\"jSign\" disabled=\"\">Sign &amp; execute in wallet\u003c/button>\u003c/div>\n   \u003cdiv class=\"j-box\" id=\"jJob\" hidden=\"\">\u003c/div>\n  \u003c/div>\n\n \u003c/div>\n\u003c/div>","swap":"\u003cdiv class=\"page active\" id=\"journey\" style=\"\">\n \u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\" id=\"jTitle\">SWAP A TOKEN\u003c/h1>\u003cdiv class=\"page-subtitle\" id=\"jSubtitle\">You pay → route and fees → minimum received → wallet approves.\u003c/div>\u003c/div>\n \u003cdiv class=\"j-flow\">\u003cspan>01 · CHOOSE\u003c/span>\u003cspan>02 · REVIEW &amp; SIMULATE\u003c/span>\u003cspan>03 · WALLET → RECEIPT\u003c/span>\u003c/div>\n \u003cdiv class=\"j-buttons\" hidden=\"\">\u003cbutton id=\"jEnter\">Place funds\u003c/button>\u003cbutton id=\"jSwapMode\">Swap only\u003c/button>\u003cbutton id=\"jRefresh\">Refresh balances &amp; positions\u003c/button>\u003c/div>\n \u003csection class=\"j-box\" id=\"uxCompare\" hidden=\"\">\u003cdiv class=\"section-label\">CHOOSE YOUR DEPOSIT ASSET FIRST\u003c/div>\u003clabel for=\"uxCompareAsset\">Asset you want to place\u003c/label>\u003cselect class=\"select-input\" id=\"uxCompareAsset\">\u003coption>SUI\u003c/option>\u003coption>afSUI\u003c/option>\u003coption>ALKIMI\u003c/option>\u003coption>AUSD\u003c/option>\u003coption>BLUB\u003c/option>\u003coption>BLUE\u003c/option>\u003coption>BTC\u003c/option>\u003coption>BUCK\u003c/option>\u003coption>CETUS\u003c/option>\u003coption>COIN\u003c/option>\u003coption>DEEP\u003c/option>\u003coption>DMC\u003c/option>\u003coption>enzoBTC\u003c/option>\u003coption>ETH\u003c/option>\u003coption>FDUSD\u003c/option>\u003coption>FL_SUI\u003c/option>\u003coption>FP_SUI\u003c/option>\u003coption>FUD\u003c/option>\u003coption>FUD_SUI\u003c/option>\u003coption>HAEDAL\u003c/option>\u003coption>haSUI\u003c/option>\u003coption>haWAL\u003c/option>\u003coption>I_SUI\u003c/option>\u003coption>IKA\u003c/option>\u003coption>JUG_SUI\u003c/option>\u003coption>KOBAN\u003c/option>\u003coption>KSUI\u003c/option>\u003coption>LBTC\u003c/option>\u003coption>MBTC\u003c/option>\u003coption>MSUI\u003c/option>\u003coption>mUSD\u003c/option>\u003coption>MUSD\u003c/option>\u003coption>NAVX\u003c/option>\u003coption>NS\u003c/option>\u003coption>O_SUI\u003c/option>\u003coption>OSHI_SUI\u003c/option>\u003coption>sbETH\u003c/option>\u003coption>sbUSDT\u003c/option>\u003coption>sbwBTC\u003c/option>\u003coption>SCA\u003c/option>\u003coption>scaSUI\u003c/option>\u003coption>SEND\u003c/option>\u003coption>SOL\u003c/option>\u003coption>SPRING_SUI\u003c/option>\u003coption>STEAMM_LP_BSUI_BUSDC\u003c/option>\u003coption>STRAT_SUI\u003c/option>\u003coption>stSUI\u003c/option>\u003coption>SUDENG\u003c/option>\u003coption>suiETH\u003c/option>\u003coption>suiUSDe\u003c/option>\u003coption>SUIUSDE\u003c/option>\u003coption>TREVIN_SUI\u003c/option>\u003coption>UP\u003c/option>\u003coption>UPSUI\u003c/option>\u003coption>USDC\u003c/option>\u003coption>USDsui\u003c/option>\u003coption>USDSUI\u003c/option>\u003coption>USDT\u003c/option>\u003coption>USDY\u003c/option>\u003coption>vSUI\u003c/option>\u003coption>WAL\u003c/option>\u003coption>wAPT\u003c/option>\u003coption>wBTC\u003c/option>\u003coption>WBTC\u003c/option>\u003coption>wETH\u003c/option>\u003coption>WETH\u003c/option>\u003coption>wSOL\u003c/option>\u003coption>wUSDC\u003c/option>\u003coption>WUSDC\u003c/option>\u003coption>wUSDT\u003c/option>\u003coption>WUSDT\u003c/option>\u003coption>wWAL\u003c/option>\u003coption>XAUm\u003c/option>\u003coption>xBTC\u003c/option>\u003coption>XBTC\u003c/option>\u003coption>YAP_SUI\u003c/option>\u003coption>zwBTC\u003c/option>\u003c/select>\u003cp class=\"fresh\">Provider APR/APY are shown as reported, not added together. No option is labelled “best” or “safest”. Unknown rewards are not zero.\u003c/p>\u003cdiv id=\"uxCompareState\" class=\"fresh\">Provider snapshots · rates vary. Refresh before every transaction.\u003c/div>\u003cbutton class=\"btn-ghost\" id=\"uxCompareToggle\" hidden=\"\">Change provider / compare conditions\u003c/button>\u003cdiv class=\"ux-market-grid\" id=\"uxCompareCards\">\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">suilend · LENDING\u003c/div>\u003ch3>SUI · 0.9691% APR\u003c/h3>\u003cp>Base: 0.9691% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Lending position · liquidity / debt-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"suilend\" data-market=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">Choose suilend →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">base-interest-only. Rewards not quantified in this response; base interest only, not assumed zero\u003c/p>\u003cp>Available liquidity: 26,236,414.6625 SUI (snapshot)\u003c/p>\u003cp>Withdrawal depends on current reserve liquidity and debt/collateral health; a fresh full transaction simulation is required\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Suilend SDK (gRPC) · 2026-10-07T12:59:38.001Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">navi · LENDING\u003c/div>\u003ch3>SUI · 1.709% APY\u003c/h3>\u003cp>Base: 1.363% APR\u003cbr>Incentives: 0.3465% APR\u003c/p>\u003cp>Lending position · liquidity / debt-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"navi\" data-market=\"0\">Choose navi →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">NAVI provider fields; APR and APY are separate. Provider boost APR; not added to APY by Noise\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Withdrawal depends on current reserve liquidity and debt/collateral health; a fresh full transaction simulation is required\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">NAVI Lending SDK (gRPC) · 2026-10-07T12:59:37.691Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">kai · STRATEGY VAULT\u003c/div>\u003ch3>SUI · 0% APY\u003c/h3>\u003cp>Base: 0% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Vault shares · strategy and liquidity risk\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"kai\" data-market=\"SUI\">Choose kai →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Kai vault strategy rate, variable. No independently quantified incentive component in this response; not assumed zero\u003c/p>\u003cp>Protocol performance fee: 15%\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Redeem vault shares to the underlying asset; output depends on current vault state, strategy liquidity and simulation\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Kai SDK + on-chain vault · 2026-10-07T12:59:37.836Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">scallop · LENDING\u003c/div>\u003ch3>SUI · 1.5933% APY\u003c/h3>\u003cp>Base: 1.5808% APR\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Free lending shares · liquidity-gated exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"scallop\" data-market=\"sui\">Choose scallop →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Scallop on-chain lending curve; APR and APY are separately provided. Base lending rate only. Spool incentives and boosted rewards are not included.\u003c/p>\u003cp>Available liquidity: 2,247,036.8747 SUI (snapshot)\u003c/p>\u003cp>Redeem liquid lending shares subject to current market liquidity. These shares are not collateral; staked spool shares need separate unstaking.\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Scallop SDK (query) · 2026-10-07T12:59:38.363Z\u003c/p>\u003c/details>\u003c/article>\u003carticle class=\"ux-market\">\u003cdiv class=\"section-label\">haedal · LIQUID STAKING\u003c/div>\u003ch3>SUI · Annual yield unavailable\u003c/h3>\u003cp>Base: Not quantified\u003cbr>Incentives: Not quantified\u003c/p>\u003cp>Receive haSUI · minimum 1 SUI · ticket / instant exit\u003c/p>\u003cbutton class=\"btn-ghost\" data-choose-provider=\"haedal\" data-market=\"SUI\">Choose haedal →\u003c/button>\u003cdetails class=\"ux-conditions\">\u003csummary>Conditions, fees &amp; source\u003c/summary>\u003cp class=\"fresh\">Exchange rate is NOT an annual yield; no verified APY provided here. Yield accrues in haSUI exchange rate; annual rate not quantified here\u003c/p>\u003cp>Exchange rate: 1.0825 SUI / haSUI — not APY\u003c/p>\u003cp>Available liquidity: not quantified; fresh exit checks required\u003c/p>\u003cp>Delayed: request an unstake ticket, then claim after protocol unlock. Instant: protocol fee and liquidity constraints; review simulation. No guessed percentage or guaranteed delay.\u003c/p>\u003cp class=\"fresh\">Noise direct deposit fee: 0. A swap, if needed, has its own route and Noise fee shown in review; gas and protocol costs remain.\u003c/p>\u003cp class=\"fresh\">Haedal staking::get_exchange_rate (devInspect) · 2026-10-07T12:59:38.114Z\u003c/p>\u003c/details>\u003c/article>\u003c/div>\u003c/section>\n \u003cdiv id=\"jNotice\" role=\"status\" aria-live=\"polite\">Choose the tokens. No executable route means no transaction.\u003c/div>\n \u003cdiv class=\"journey-layout\">\n  \u003cdiv>\n   \u003cdiv class=\"j-box\" id=\"jForm\">\u003cdiv class=\"section-label\" id=\"jMode\">YOUR SWAP\u003c/div>\u003cp class=\"fresh\">Noise builds and checks the complete action. Nothing moves without your wallet approval. Entry swap and placement are atomic; exits are separately reviewed.\u003c/p>\n    \u003cdiv id=\"jFromField\">\u003clabel for=\"jFrom\">Asset you hold\u003c/label>\u003cselect class=\"select-input\" id=\"jFrom\">\u003coption value=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">SUI\u003c/option>\u003coption value=\"0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC\">USDC\u003c/option>\u003coption value=\"0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP\">DEEP\u003c/option>\u003coption value=\"0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL\">WAL\u003c/option>\u003coption value=\"0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS\">NS\u003c/option>\u003coption value=\"0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA\">IKA\u003c/option>\u003coption value=\"0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND\">SEND\u003c/option>\u003coption value=\"0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD\">AUSD\u003c/option>\u003coption value=\"0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI\">USDSUI\u003c/option>\u003coption value=\"0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE\">SUIUSDE\u003c/option>\u003coption value=\"0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC\">XBTC\u003c/option>\u003coption value=\"0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT\">USDT\u003c/option>\u003coption value=\"0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN\">WUSDC\u003c/option>\u003coption value=\"0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN\">WUSDT\u003c/option>\u003coption value=\"0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN\">WETH\u003c/option>\u003coption value=\"0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN\">WBTC\u003c/option>\u003coption value=\"0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS\">CETUS\u003c/option>\u003coption value=\"0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX\">NAVX\u003c/option>\u003c/select>\u003cp class=\"fresh\" id=\"jBalance\">Connect wallet to see your available balance\u003c/p>\u003c/div>\n    \u003cdiv id=\"jProviderField\" hidden=\"\">\u003clabel for=\"jProvider\">Destination protocol\u003c/label>\u003cselect class=\"select-input\" id=\"jProvider\">\u003coption value=\"suilend\">Suilend\u003c/option>\u003coption value=\"navi\">NAVI\u003c/option>\u003coption value=\"kai\">Kai vaults\u003c/option>\u003coption value=\"scallop\">Scallop lending\u003c/option>\u003coption value=\"haedal\">Haedal liquid staking\u003c/option>\u003c/select>\u003c/div>\n    \u003cdiv id=\"jMarketField\" hidden=\"\">\u003clabel for=\"jMarket\">Deposit asset / market\u003c/label>\u003cselect class=\"select-input\" id=\"jMarket\">\u003coption value=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">SUI · 0.969% APR\u003c/option>\u003coption value=\"0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN\">WUSDC · 10.725% APR\u003c/option>\u003coption value=\"0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN\">WUSDT · 0.303% APR\u003c/option>\u003coption value=\"0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN\">WETH · 0.170% APR\u003c/option>\u003coption value=\"0xb7844e289a8410e50fb3ca48d69eb9cf29e27d223ef90353fe1bd8e27ff8f3f8::coin::COIN\">COIN · 0.085% APR\u003c/option>\u003coption value=\"0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD\">AUSD · 0.846% APR\u003c/option>\u003coption value=\"0x76cb819b01abed502bee8a702b4c2d547532c12f25001c9dea795a5e631c26f1::fud::FUD\">FUD · 0.000% APR\u003c/option>\u003coption value=\"0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC\">USDC · 4.321% APR\u003c/option>\u003coption value=\"0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP\">DEEP · 0.195% APR\u003c/option>\u003coption value=\"0xd0e89b2af5e4910726fbcd8b8dd37bb79b29e5f83f7491bca830e94f7f226d29::eth::ETH\">ETH · 0.108% APR\u003c/option>\u003coption value=\"0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI\">SPRING_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x922d15d7f55c13fd790f6e54397470ec592caa2b508df292a2e8553f3d3b274f::msui::MSUI\">MSUI · 0.000% APR\u003c/option>\u003coption value=\"0x8993129d72e733985f7f1a00396cbd055bad6f817fee36576ce483c8bbb8b87b::sudeng::SUDENG\">SUDENG · 0.000% APR\u003c/option>\u003coption value=\"0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS\">NS · 0.000% APR\u003c/option>\u003coption value=\"0x02358129a7d66f943786a10b518fdc79145f1fc8d23420d9948c4aeea190f603::fud_sui::FUD_SUI\">FUD_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x41ff228bfd566f0c707173ee6413962a77e3929588d010250e4e76f0d1cc0ad4::ksui::KSUI\">KSUI · 0.000% APR\u003c/option>\u003coption value=\"0x502867b177303bf1bf226245fcdd3403c177e78d175a55a56c0602c7ff51c7fa::trevin_sui::TREVIN_SUI\">TREVIN_SUI · 0.000% APR\u003c/option>\u003coption value=\"0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND\">SEND · 0.000% APR\u003c/option>\u003coption value=\"0xe68fad47384e18cd79040cb8d72b7f64d267eebb73a0b8d54711aa860570f404::upsui::UPSUI\">UPSUI · 0.000% APR\u003c/option>\u003coption value=\"0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT\">USDT · 4.020% APR\u003c/option>\u003coption value=\"0xce7ff77a83ea0cb6fd39bd8748e2ec89a3f41e8efdc3f4eb123e0ca37b184db2::buck::BUCK\">BUCK · 0.000% APR\u003c/option>\u003coption value=\"0xaafb102dd0902f5055cadecd687fb5b71ca82ef0e0285d90afde828ec58ca96b::btc::BTC\">BTC · 0.062% APR\u003c/option>\u003coption value=\"0xe1b45a0e641b9955a20aa0ad1c1f4ad86aad8afb07296d4085e349a50e90bdca::blue::BLUE\">BLUE · 0.000% APR\u003c/option>\u003coption value=\"0x83f1bb8c91ecd1fd313344058b0eed94d63c54e41d8d1ae5bff1353443517d65::yap_sui::YAP_SUI\">YAP_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x3e8e9423d80e1774a7ca128fccd8bf5f1f7753be658c5e645929037f7c819040::lbtc::LBTC\">LBTC · 0.000% APR\u003c/option>\u003coption value=\"0xe44df51c0b21a27ab915fa1fe2ca610cd3eaa6d9666fe5e62b988bf7f0bd8722::musd::MUSD\">MUSD · 0.000% APR\u003c/option>\u003coption value=\"0x285b49635f4ed253967a2a4a5f0c5aea2cbd9dd0fc427b4086f3fad7ccef2c29::i_sui::I_SUI\">I_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x6b82b1ac4bf420f649c052746594a18c5df0c9fccff3a98d6856a16ba4f4e47a::steamm_lp_bsui_busdc::STEAMM_LP_BSUI_BUSDC\">STEAMM_LP_BSUI_BUSDC · 0.000% APR\u003c/option>\u003coption value=\"0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL\">WAL · 0.009% APR\u003c/option>\u003coption value=\"0xaded77ced91afca17e03306d24962f782a51c7395eaf0e7bc1e08ac0dca0fd52::fl_sui::FL_SUI\">FL_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x3a304c7feba2d819ea57c3542d68439ca2c386ba02159c740f7b406e592c62ea::haedal::HAEDAL\">HAEDAL · 0.009% APR\u003c/option>\u003coption value=\"0x87dfe1248a1dc4ce473bd9cb2937d66cdc6c30fee63f3fe0dbb55c7a09d35dec::up::UP\">UP · 0.000% APR\u003c/option>\u003coption value=\"0x8400e7044d360c28dd338111d2aa54ca5bdc960a8d6b60bf3b28e1ca503df3e2::koban::KOBAN\">KOBAN · 0.000% APR\u003c/option>\u003coption value=\"0x95f9ff87d8e0640cb3369bb470761b9ec46eb0ff3cc1eed417df4fa24c853f42::oshi_sui::OSHI_SUI\">OSHI_SUI · 0.000% APR\u003c/option>\u003coption value=\"0xb2d912e4f100e03b7de58d874835e358dc2802f2fb8559f56a70a7c900f8fc78::jug_sui::JUG_SUI\">JUG_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x4c981f3ff786cdb9e514da897ab8a953647dae2ace9679e8358eec1e3e8871ac::dmc::DMC\">DMC · 0.000% APR\u003c/option>\u003coption value=\"0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC\">XBTC · 0.007% APR\u003c/option>\u003coption value=\"0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA\">IKA · 0.001% APR\u003c/option>\u003coption value=\"0x1fea5652ae6ba58120a3262cff764b5abefe39ce603cdd5c5ca19fc584b6847e::strat_sui::STRAT_SUI\">STRAT_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x1a8f4bc33f8ef7fbc851f156857aa65d397a6a6fd27a7ac2ca717b51f2fd9489::alkimi::ALKIMI\">ALKIMI · 0.000% APR\u003c/option>\u003coption value=\"0x5a71532c1e812daeffd07ef375451fad7a2906d01151bade4d5018ffc5a3c267::o_sui::O_SUI\">O_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x5fb5365e645d9728660e4ba13cb1c8eefcb950e7c20472c168d97adb36b7415c::fp_sui::FP_SUI\">FP_SUI · 0.000% APR\u003c/option>\u003coption value=\"0x0041f9f9344cac094454cd574e333c4fdb132d7bcc9379bcd4aab485b2a63942::wbtc::WBTC\">WBTC · 0.055% APR\u003c/option>\u003coption value=\"0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE\">SUIUSDE · 3.448% APR\u003c/option>\u003coption value=\"0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI\">USDSUI · 1.573% APR\u003c/option>\u003c/select>\u003c/div>\n    \u003cdiv id=\"jToField\">\u003clabel for=\"jTo\">Receive token\u003c/label>\u003cselect class=\"select-input\" id=\"jTo\">\u003coption value=\"0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI\">SUI\u003c/option>\u003coption value=\"0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC\">USDC\u003c/option>\u003coption value=\"0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP\">DEEP\u003c/option>\u003coption value=\"0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL\">WAL\u003c/option>\u003coption value=\"0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS\">NS\u003c/option>\u003coption value=\"0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA\">IKA\u003c/option>\u003coption value=\"0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND\">SEND\u003c/option>\u003coption value=\"0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD\">AUSD\u003c/option>\u003coption value=\"0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI\">USDSUI\u003c/option>\u003coption value=\"0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE\">SUIUSDE\u003c/option>\u003coption value=\"0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC\">XBTC\u003c/option>\u003coption value=\"0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT\">USDT\u003c/option>\u003coption value=\"0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN\">WUSDC\u003c/option>\u003coption value=\"0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN\">WUSDT\u003c/option>\u003coption value=\"0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN\">WETH\u003c/option>\u003coption value=\"0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN\">WBTC\u003c/option>\u003coption value=\"0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS\">CETUS\u003c/option>\u003coption value=\"0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX\">NAVX\u003c/option>\u003c/select>\u003c/div>\n    \u003cp class=\"fresh\" id=\"jWithdrawInfo\" hidden=\"\">\u003c/p>\u003cp class=\"fresh\" id=\"jRate\" hidden=\"\">0.969% APR · variable · base-interest-only\u003c/p>\n    \u003cdiv id=\"jAmountField\">\u003clabel for=\"jAmount\" id=\"jAmountLabel\">Amount you pay\u003c/label>\u003cdiv class=\"chat-row\">\u003cinput id=\"jAmount\" class=\"search-input\" inputmode=\"decimal\" placeholder=\"0.00\" autocomplete=\"off\">\u003cbutton class=\"btn-ghost\" id=\"jMax\">Max\u003c/button>\u003c/div>\u003c/div>\u003cdiv id=\"jExitField\" hidden=\"\">\u003clabel for=\"jExitMode\">Haedal exit method\u003c/label>\u003cselect class=\"select-input\" id=\"jExitMode\">\u003coption value=\"delayed\">Delayed — ticket now, claim after unlock\u003c/option>\u003coption value=\"instant\">Instant — protocol fee &amp; liquidity limits\u003c/option>\u003c/select>\u003c/div>\n    \u003clabel for=\"jSlip\">Swap slippage tolerance (%)\u003c/label>\u003cinput id=\"jSlip\" class=\"search-input\" inputmode=\"decimal\" value=\"0.5\">\u003cp class=\"fresh\">0.01–3%. Only used when a swap is included. Protocol fees remain in the provider's execution.\u003c/p>\n    \u003cbutton class=\"btn-solid\" style=\"width:100%;margin-top:20px\" id=\"jBuild\">Review &amp; simulate\u003c/button>\u003cp class=\"fresh\" id=\"jAssetsNote\">18 on-chain verified ecosystem assets · not a ranking\u003c/p>\n   \u003c/div>\n   \u003cdiv class=\"j-box\" id=\"jReview\" hidden=\"\">\u003cdiv class=\"section-label\">BEFORE YOU SIGN · SIMULATION PASSED\u003c/div>\u003cdiv id=\"uxReviewSummary\">\u003c/div>\u003cdiv class=\"j-buttons\">\u003cbutton class=\"btn-ghost\" id=\"uxExplainReview\">What am I signing?\u003c/button>\u003cbutton class=\"btn-ghost\" id=\"uxExplainRisk\">Explain the risks\u003c/button>\u003c/div>\u003cdiv class=\"ux-assistant\" id=\"uxReviewAssistant\" hidden=\"\">\u003c/div>\u003cdetails class=\"how\">\u003csummary>Technical details — coin types, receipt digest, route and recipient\u003c/summary>\u003cdiv id=\"jReviewRows\">\u003c/div>\u003c/details>\u003clabel class=\"j-risk-check\">\u003cinput type=\"checkbox\" id=\"jAccept\">I reviewed the token types, destination protocol, minimum output, fees and risks. Simulation does not guarantee yield or eliminate protocol risk.\u003c/label>\u003cbutton class=\"btn-solid\" style=\"width:100%\" id=\"jSign\" disabled=\"\">Sign &amp; execute in wallet\u003c/button>\u003c/div>\n   \u003cdiv class=\"j-box\" id=\"jJob\" hidden=\"\">\u003c/div>\n  \u003c/div>\n\n \u003c/div>\n\u003c/div>","manage":"\u003cdiv class=\"page active\" id=\"manage\" style=\"\">\u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\">YOUR POSITIONS\u003c/h1>\u003cp class=\"page-subtitle\">Where your funds are, what can be reviewed for withdrawal, and the risk that remains.\u003c/p>\u003c/div>\u003cdiv class=\"j-buttons\">\u003cbutton class=\"btn-solid\" onclick=\"NoiseTasks.wallet()\">Connect / view wallet\u003c/button>\u003cbutton class=\"btn-ghost\" onclick=\"NoiseJourney.positions()\">Refresh positions\u003c/button>\u003c/div>\u003cdiv id=\"uxPositionJob\" class=\"ux-assistant\" hidden=\"\">\u003c/div>\u003cdiv id=\"uxPositionAssistant\" class=\"ux-assistant\" hidden=\"\">\u003c/div>\u003cp class=\"fresh\">Core view: Suilend, NAVI, Kai, free Scallop lending shares and Haedal balances/tickets. Other supported positions and advanced collateral/spool controls remain in More.\u003c/p>  \u003cdiv class=\"j-box\">\u003cdiv class=\"section-label\">YOUR POSITIONS · LIVE SOURCES\u003c/div>\u003cp class=\"fresh\" id=\"jPositionsFresh\">No invented positions or total yield.\u003c/p>\u003cdiv id=\"jPositions\">\u003cp class=\"fresh\">Connect wallet for live supplied balances, debt, health and withdrawal controls. No demo positions.\u003c/p>\u003c/div>\u003cp class=\"fresh\">Health = provider-specific liquidation measure, not a universal risk score. A deposit without borrowing still carries contract, liquidity and strategy risk. Kai withdrawal amounts use vault shares.\u003c/p>\u003c/div>\u003cdiv class=\"j-buttons\">\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('capital')\">Broader portfolio\u003c/button>\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('more')\">Advanced position tools\u003c/button>\u003c/div>\u003c/div>","more":"\u003cdiv class=\"page active\" id=\"more\" style=\"\">\u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\">MORE SERVICES\u003c/h1>\u003cp class=\"page-subtitle\">Advanced tools when you need them. The three main tasks stay simple.\u003c/p>\u003c/div>\u003cdiv class=\"ux-more-grid\">\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('capital')\">\u003ch2>Wallet overview\u003c/h2>\u003cp>Available coins and the broader protocol portfolio.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('earn')\">\u003ch2>Staking &amp; liquidity\u003c/h2>\u003cp>Native staking, Aftermath, Volo, SpringSui and liquidity pools. Use each service's own conditions.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('actions')\">\u003ch2>Advanced actions\u003c/h2>\u003cp>Collateral, borrowing, repayments, claims, transfers and specialized execution controls.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('actions');openBridge()\">\u003ch2>Bridge\u003c/h2>\u003cp>Official Wormhole Connect. Separate source/destination wallets and recovery.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('trade')\">\u003ch2>Order-book trading\u003c/h2>\u003cp>DeepBook Spot and Predict. Not the simple token swap.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('discover');setDiscoverSource('ecosystem')\">\u003ch2>Supported services\u003c/h2>\u003cp>Scoped protocol capabilities. No launchpad or unconnected perps listings.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('activity')\">\u003ch2>Activity\u003c/h2>\u003cp>Transaction status and recorded activity.\u003c/p>\u003c/button>\n \u003cbutton class=\"ux-task\" onclick=\"navigateTo('community')\">\u003ch2>Community\u003c/h2>\u003cp>Invitation attribution and confirmed-workflow rankings. No reward or payout is promised.\u003c/p>\u003c/button>\n\u003c/div>\u003cdiv class=\"j-buttons\">\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('security')\">Security &amp; provider checks\u003c/button>\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('settings')\">Settings\u003c/button>\u003cbutton class=\"btn-ghost\" onclick=\"navigateTo('ai')\">Full assistant\u003c/button>\u003c/div>\u003c/div>","community":"\u003cdiv class=\"page active\" id=\"community\" style=\"\">\u003cdiv class=\"page-header\">\u003ch1 class=\"page-title\">COMMUNITY\u003c/h1>\u003cp class=\"page-subtitle\">Secondary tools, not the reason to make a financial transaction.\u003c/p>\u003c/div>\u003cdiv class=\"ux-more-grid\">\u003cbutton class=\"ux-task\" data-page=\"referral\" onclick=\"navigateTo('referral')\">\u003ch2>Invitations\u003c/h2>\u003cp>Signed wallet attribution and real post-attribution workflow counts. No earnings balance or payouts.\u003c/p>\u003c/button>\u003cbutton class=\"ux-task\" data-page=\"leaderboard\" onclick=\"navigateTo('leaderboard')\">\u003ch2>Confirmed activity\u003c/h2>\u003cp>Non-monetary ranking of confirmed Noise workflows, not trading skill or investment results.\u003c/p>\u003c/button>\u003c/div>\u003c/div>"};function preview(route){if(!snapshots[route])return note();document.getElementById('previewContent').innerHTML=snapshots[route];document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===route||n.dataset.page==='more'&&route==='community'));const sel=document.getElementById('uxCompareAsset');if(sel){sel.innerHTML='<option>SUI — captured conditions</option>';sel.disabled=true;}window.scrollTo(0,0);}function note(){alert('Это визуальный предпросмотр. Для актуальных данных, review, кошелька и транзакций запустите полный проект из ZIP по инструкции. Ничего не подписывается и не отправляется.');}document.addEventListener('click',e=>{const t=e.target.closest('button,.nav-item,[onclick]');if(!t)return;e.preventDefault();e.stopImmediatePropagation();const route=t.dataset.page||(t.getAttribute('onclick')||'').match(/navigateTo\('([^']+)'\)/)?.[1];if(route)return preview(route);if(t.dataset.chooseProvider){const prov=document.getElementById('jProvider');prov.value=t.dataset.chooseProvider;document.getElementById('uxCompareCards').hidden=true;document.getElementById('uxCompareToggle').hidden=false;document.getElementById('jForm').scrollIntoView({behavior:'smooth'});return;}if(t.id==='uxCompareToggle'){document.getElementById('uxCompareCards').hidden=false;t.hidden=true;return;}note();},true);preview('home');</script></body></html>

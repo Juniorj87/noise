@@ -123,6 +123,16 @@ CREATE TABLE IF NOT EXISTS memory_records (
   wallet TEXT NOT NULL, category TEXT NOT NULL,
   content_cipher TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS memory_challenges (
+  nonce_hash TEXT PRIMARY KEY,
+  wallet TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS memory_sessions (
+  token_hash TEXT PRIMARY KEY,
+  wallet TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
   wallet TEXT NOT NULL, channel TEXT NOT NULL DEFAULT 'in-app',

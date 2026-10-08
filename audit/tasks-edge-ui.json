@@ -1,0 +1,39 @@
+{
+  "mode": "Read-only public wallet facade; forced outage and UI-only ticket/position fixtures; no financial signing",
+  "checks": [
+    {
+      "check": "five-provider real position reads",
+      "text": "SUILEND\n\nSuilend SDK parseObligation (gRPC) · 2026-10-07T12:57:49.301Z\n\nNo supplied positions reported by this provider.\n\nNAVI\n\nNAVI Lending SDK (gRPC) · 2026-10-07T12:57:50.727Z\n\nNo supplied positions reported by this provider.\n\nKAI\n\nKai SDK + Sui · 2026-10-07T12:57:49.330Z\n\nNo supplied positions reported by this provider.\n\nSCALLOP\n\nScallop SDK + Sui balances · 2026-10-07T12:57:50.251Z · Unstaked liquid lending shares only, not all Scallop obligation/spool positions\n\nNo supplied positions reported by this provider.\n\nHAEDAL\n\nSui balances + Haedal rate + paginated owned tickets · 2026-10-07T12:57:49.834Z\n\nNo supplied positions reported by this provider."
+    },
+    {
+      "check": "read outage is not an empty balance",
+      "pass": true
+    },
+    {
+      "check": "ticket mode retained after navigation",
+      "mode": "claim",
+      "amountHidden": true
+    },
+    {
+      "check": "non-owned claim cannot return a review",
+      "reviewVisible": false,
+      "notice": "Select a Haedal ticket owned by this wallet"
+    },
+    {
+      "check": "read-only monitor",
+      "pass": true,
+      "text": "Snapshot only — never a safety certificate\n\nRead check at 2026-10-07T12:57:52.632Z · expires 2026-10-07T12:58:52.632Z\n\nSui RPC — available · 134 ms · Checkpoint 331318490\n\nsuilend — available · 125 ms · 45 markets reported\n\nnavi — available · 57 ms · 24 markets reported\n\nkai — available · 56 ms · 2 markets reported\n\nscallop — available · 276 ms · 33 markets reported\n\nhaedal — available · 142 ms · 1 markets reported\n\nRead probes for five placement providers and Sui RPC only; not an independent security audit, route guarantee or funded execution test"
+    },
+    {
+      "check": "referral secondary navigation",
+      "visible": true,
+      "activeMainNav": 1
+    },
+    {
+      "check": "leaderboard secondary navigation",
+      "visible": true,
+      "activeMainNav": 1
+    }
+  ],
+  "errors": []
+}

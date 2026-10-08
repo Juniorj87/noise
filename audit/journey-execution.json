@@ -1,0 +1,409 @@
+{
+  "at": "2026-10-07T11:49:17.243Z",
+  "mode": "Unsigned build and simulation only. No wallet signatures or submissions.",
+  "assets": {
+    "assets": [
+      {
+        "symbol": "SUI",
+        "name": "Sui",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "decimals": 9,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "USDC",
+        "name": "USDC",
+        "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "DEEP",
+        "name": "DeepBook Token",
+        "coinType": "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "WAL",
+        "name": "WAL Token",
+        "coinType": "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL",
+        "decimals": 9,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "NS",
+        "name": "SuiNS Token",
+        "coinType": "0x5145494a5f5100e645e4b0aa950fa6b68f614e8c59e17bc5ded3495123a79178::ns::NS",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "IKA",
+        "name": "IKA Token",
+        "coinType": "0x7262fb2f7a3a14c888c438a3cd9b912469a58cf60f367352c46584262e8299aa::ika::IKA",
+        "decimals": 9,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "SEND",
+        "name": "SEND",
+        "coinType": "0xb45fcfcc2cc07ce0702cc2d229621e046c906ef14d9b25e8e4d25f6e8763fef7::send::SEND",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "AUSD",
+        "name": "AUSD",
+        "coinType": "0x2053d08c1e2bd02791056171aab0fd12bd7cd7efad2ab8f6b9c8902f14df2ff2::ausd::AUSD",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "USDSUI",
+        "name": "Sui Dollar",
+        "coinType": "0x44f838219cf67b058f3b37907b655f226153c18e33dfcd0da559a844fea9b1c1::usdsui::USDSUI",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "SUIUSDE",
+        "name": "eSui Dollar",
+        "coinType": "0x41d587e5336f1c86cad50d38a7136db99333bb9bda91cea4ba69115defeb1402::sui_usde::SUI_USDE",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "XBTC",
+        "name": "OKX Wrapped BTC",
+        "coinType": "0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC",
+        "decimals": 8,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "USDT",
+        "name": "Tether",
+        "coinType": "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "WUSDC",
+        "name": "USD Coin",
+        "coinType": "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "WUSDT",
+        "name": "Tether USD",
+        "coinType": "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN",
+        "decimals": 6,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "WETH",
+        "name": "Wrapped Ether",
+        "coinType": "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN",
+        "decimals": 8,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "WBTC",
+        "name": "Wrapped BTC",
+        "coinType": "0x027792d9fed7f9844eb4839566001bb6f6cb4804f66aa2da6fe1ee242d896881::coin::COIN",
+        "decimals": 8,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "CETUS",
+        "name": "Cetus Token",
+        "coinType": "0x06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS",
+        "decimals": 9,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      },
+      {
+        "symbol": "NAVX",
+        "name": "NAVX Token",
+        "coinType": "0xa99b8952d4f7d947ea77fe0ecdcc9e5fc0bcab2841d6e2a5aa00c3044e5544b5::navx::NAVX",
+        "decimals": 9,
+        "source": "On-chain CoinMetadata; identity is coin type, not ticker"
+      }
+    ],
+    "unavailable": [],
+    "source": "Curated ecosystem list; chain metadata verified; not a ranking",
+    "updatedAt": "2026-10-07T11:49:08.845Z"
+  },
+  "results": [
+    {
+      "provider": "suilend",
+      "symbol": "SUI",
+      "ok": true,
+      "digest": "J2m9wrSGwFH2nb2j5UGPSWtFhpaamnYtcKkRJUR3sMKb",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "deposit"
+      ],
+      "fee": null,
+      "quote": null
+    },
+    {
+      "provider": "suilend",
+      "symbol": "USDC",
+      "ok": true,
+      "digest": "BdnHG1PVd5k6secshpZ8nx4caPv5dg1DuUrnNUuKit8Q",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "swap",
+        "deposit"
+      ],
+      "fee": {
+        "amountMist": "20000",
+        "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+        "bps": 2,
+        "asset": "SUI",
+        "source": "server-default"
+      },
+      "quote": {
+        "provider": "Cetus Aggregator",
+        "quoteId": "399f488d-5d47-40df-b2c0-28c6d4e44311",
+        "amountIn": "100000000",
+        "routeAmountIn": "99980000",
+        "expectedOutput": "112646",
+        "minOutput": "112082",
+        "feeCollected": {
+          "amountMist": "20000",
+          "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+          "bps": 2,
+          "asset": "SUI",
+          "source": "server-default"
+        },
+        "routeProviders": [
+          "FLOWXV3",
+          "TURBOS",
+          "CETUS"
+        ]
+      }
+    },
+    {
+      "provider": "navi",
+      "symbol": "SUI",
+      "ok": true,
+      "digest": "9L6Ra9r8MKZ4zqbD6aQ4YTzWzMZ64DreUerHoe6Kw3Uz",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "deposit"
+      ],
+      "fee": null,
+      "quote": null
+    },
+    {
+      "provider": "navi",
+      "symbol": "USDC",
+      "ok": true,
+      "digest": "2nsWFCeJrvWJsru2K4s2CX7FDNafTGhCqv1PnNwDfXCh",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "swap",
+        "deposit"
+      ],
+      "fee": {
+        "amountMist": "20000",
+        "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+        "bps": 2,
+        "asset": "SUI",
+        "source": "server-default"
+      },
+      "quote": {
+        "provider": "Cetus Aggregator",
+        "quoteId": "c61cff83-4bb7-4af2-96e3-e2a81c1277bf",
+        "amountIn": "100000000",
+        "routeAmountIn": "99980000",
+        "expectedOutput": "112646",
+        "minOutput": "112082",
+        "feeCollected": {
+          "amountMist": "20000",
+          "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+          "bps": 2,
+          "asset": "SUI",
+          "source": "server-default"
+        },
+        "routeProviders": [
+          "FLOWXV3",
+          "TURBOS",
+          "CETUS"
+        ]
+      }
+    },
+    {
+      "provider": "kai",
+      "symbol": "SUI",
+      "ok": true,
+      "digest": "AWeMBdT2qyAq5jmgmPC67etNTZQyGrFFBuuJREPfvoCf",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "deposit"
+      ],
+      "fee": null,
+      "quote": null
+    },
+    {
+      "provider": "kai",
+      "symbol": "USDC",
+      "ok": true,
+      "digest": "Cx6t6qNShdethy1VZ2X4ea7tkBN9bqxPFTFPUANBQE9j",
+      "simulation": {
+        "status": "success",
+        "error": null
+      },
+      "steps": [
+        "swap",
+        "deposit"
+      ],
+      "fee": {
+        "amountMist": "20000",
+        "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+        "bps": 2,
+        "asset": "SUI",
+        "source": "server-default"
+      },
+      "quote": {
+        "provider": "Cetus Aggregator",
+        "quoteId": "626d6ba8-deae-402f-b0a8-c62a456ba5a2",
+        "amountIn": "100000000",
+        "routeAmountIn": "99980000",
+        "expectedOutput": "112646",
+        "minOutput": "112082",
+        "feeCollected": {
+          "amountMist": "20000",
+          "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+          "bps": 2,
+          "asset": "SUI",
+          "source": "server-default"
+        },
+        "routeProviders": [
+          "FLOWXV3",
+          "TURBOS",
+          "CETUS"
+        ]
+      }
+    }
+  ],
+  "positionReads": [
+    {
+      "provider": "suilend",
+      "ok": true,
+      "rows": 0,
+      "complete": true
+    },
+    {
+      "provider": "navi",
+      "ok": true,
+      "rows": 0,
+      "complete": true
+    },
+    {
+      "provider": "kai",
+      "ok": true,
+      "rows": 0,
+      "complete": true
+    }
+  ],
+  "tokenQuotes": [
+    {
+      "to": "WAL",
+      "ok": true,
+      "amountOut": "3161576932"
+    },
+    {
+      "to": "NS",
+      "ok": true,
+      "amountOut": "7579311"
+    },
+    {
+      "to": "IKA",
+      "ok": true,
+      "amountOut": "58712498634"
+    },
+    {
+      "to": "SEND",
+      "ok": true,
+      "amountOut": "1826285"
+    },
+    {
+      "to": "AUSD",
+      "ok": true,
+      "amountOut": "81944"
+    },
+    {
+      "to": "USDSUI",
+      "ok": true,
+      "amountOut": "112321"
+    },
+    {
+      "to": "SUIUSDE",
+      "ok": true,
+      "amountOut": "112331"
+    },
+    {
+      "to": "XBTC",
+      "ok": true,
+      "amountOut": "134"
+    },
+    {
+      "to": "USDT",
+      "ok": true,
+      "amountOut": "112346"
+    },
+    {
+      "to": "WUSDC",
+      "ok": true,
+      "amountOut": "112778"
+    },
+    {
+      "to": "WUSDT",
+      "ok": true,
+      "amountOut": "113128"
+    },
+    {
+      "to": "WETH",
+      "ok": true,
+      "amountOut": "4351"
+    },
+    {
+      "to": "WBTC",
+      "ok": true,
+      "amountOut": "134"
+    },
+    {
+      "to": "DEEP",
+      "ok": true,
+      "amountOut": "5157041"
+    },
+    {
+      "to": "CETUS",
+      "ok": true,
+      "amountOut": "4293333861"
+    },
+    {
+      "to": "NAVX",
+      "ok": true,
+      "amountOut": "8604494264"
+    }
+  ]
+}

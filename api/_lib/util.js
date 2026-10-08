@@ -18,12 +18,39 @@ export function invalidateCache(prefixOrKey) {
 }
 
 const buckets = new Map();
+
+/* Client IP that cannot be trivially spoofed: platform-set x-real-ip wins;
+ * otherwise the LAST X-Forwarded-For hop (added by the closest trusted
+ * proxy), never the attacker-controlled first entry. Dev/direct connections
+ * fall back to the socket address. */
+export function clientIp(req) {
+  try {
+    const real = String(req.headers?.['x-real-ip'] || '').trim();
+    if (real) return real.split(',')[0].trim();
+    const xff = String(req.headers?.['x-forwarded-for'] || '').trim();
+    if (xff) {
+      const hops = xff.split(',').map((s) => s.trim()).filter(Boolean);
+      if (hops.length) return hops[hops.length - 1];
+    }
+    return req.socket?.remoteAddress || 'anon';
+  } catch {
+    return 'anon';
+  }
+}
+
 export function rateLimit(key, max = 60, windowMs = 60_000) {
   const now = Date.now();
   const b = buckets.get(key) || { count: 0, reset: now + windowMs };
   if (now > b.reset) { b.count = 0; b.reset = now + windowMs; }
   b.count += 1;
   buckets.set(key, b);
+  // Bound memory: drop expired buckets once the table grows large.
+  if (buckets.size > 5000) {
+    for (const [k, v] of buckets) {
+      if (now > v.reset) buckets.delete(k);
+      if (buckets.size <= 4000) break;
+    }
+  }
   return { allowed: b.count <= max, remaining: Math.max(0, max - b.count) };
 }
 

@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-07T10:37:15.068Z",
+  "mode": "Unsigned build and read-only simulation; no signing/submission",
+  "results": [
+    {
+      "name": "voloStake",
+      "built": true,
+      "simulationOk": true,
+      "ms": 162,
+      "error": null
+    },
+    {
+      "name": "voloStakeAndRedeem",
+      "built": true,
+      "simulationOk": true,
+      "ms": 99,
+      "error": null
+    },
+    {
+      "name": "turbosSwap",
+      "built": true,
+      "simulationOk": true,
+      "ms": 571,
+      "error": null,
+      "routeProviders": [
+        "TURBOS"
+      ]
+    },
+    {
+      "name": "flowxSwap",
+      "built": true,
+      "simulationOk": true,
+      "ms": 244,
+      "error": null,
+      "routeProviders": [
+        "FLOWXV3"
+      ]
+    },
+    {
+      "name": "momentumSwap",
+      "built": true,
+      "simulationOk": true,
+      "ms": 249,
+      "error": null,
+      "routeProviders": [
+        "MOMENTUM"
+      ]
+    },
+    {
+      "name": "bluefin-spotSwap",
+      "built": true,
+      "simulationOk": true,
+      "ms": 244,
+      "error": null,
+      "routeProviders": [
+        "BLUEFIN"
+      ]
+    }
+  ]
+}

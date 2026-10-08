@@ -1,0 +1,4 @@
+import{jsonClient}from'../api/_lib/lending.js';import{journeyReceipt}from'../api/_lib/journey.js';import{writeFileSync}from'node:fs';
+const c=jsonClient(),recent=await c.queryTransactionBlocks({limit:1,order:'descending',options:{showInput:true,showEffects:true}}),tx=recent.data[0],wallet=tx.transaction.data.sender;
+const receipt=await journeyReceipt({wallet,digest:tx.digest,expectedDigest:tx.digest});let wrongWalletRejected=false;try{await journeyReceipt({wallet:'0x'+'1'.repeat(64),digest:tx.digest,expectedDigest:tx.digest});}catch(e){wrongWalletRejected=e.code==='RECEIPT_MISMATCH';}
+writeFileSync('audit/journey-receipts.json',JSON.stringify({at:new Date().toISOString(),mode:'Public existing transaction read, no signature or submission. This is not a Noise E2E transaction.',receipt,wrongWalletRejected},null,2));console.log(receipt.status,'activityRecorded',receipt.activityRecorded,'wrongWalletRejected',wrongWalletRejected);process.exit(!wrongWalletRejected?1:0);

@@ -1,5 +1,6 @@
 // /api/admin/<action> — summary | fees | protocol | health. X-Admin-Key guarded.
 // ADMIN_KEY lives only in env; never in responses, never in frontend (§12).
+import {NOISE_HUB_REVENUE_WALLET} from '../../../shared/logic.js';
 import { handler, readJson, requireAdmin } from '../http.js';
 import { listProtocols } from '../adapters.js';
 import { REFERRAL_POLICIES, isValidBps } from '../services.js';
@@ -24,10 +25,10 @@ export default handler(async (req, res, url) => {
       failedActivity: failed,
       protocols: await listProtocols(),
       fees: {
-        swapBps: Number(swapBps ?? process.env.PLATFORM_SWAP_FEE_BPS ?? 20),
+        swapBps: Number(swapBps ?? process.env.PLATFORM_SWAP_FEE_BPS ?? 2),
         earnBps: Number(earnBps ?? process.env.PLATFORM_EARN_FEE_BPS ?? 0),
         refRate: Number(referralRate ?? process.env.REFERRAL_DEFAULT_RATE ?? 30),
-        feeRecipient: feeRecipient ?? process.env.ACTION_HUB_FEE_RECIPIENT ?? '',
+        feeRecipient: feeRecipient ?? process.env.ACTION_HUB_FEE_RECIPIENT ?? NOISE_HUB_REVENUE_WALLET,
         defaultFeeBps: Number(process.env.ACTION_HUB_DEFAULT_FEE_BPS ?? 0),
         overrides: feeOverrides,
         note: 'DB-backed overrides via POST /api/admin/fees. Empty recipient = platform fee disabled.',
@@ -46,6 +47,7 @@ export default handler(async (req, res, url) => {
       if (!isValidBps(v)) return { error: 'INVALID_BPS', message: 'bps must be 0–100.', status: 400 };
       await setConfig('swapBps', String(v));
     }
+    if (b.earnBps != null && Number(b.earnBps)!==0)return{error:'UNSUPPORTED_FEE_POLICY',message:'Hub fees on earn operations are not implemented.',status:400};
     if (b.earnBps != null) {
       const v = Number(b.earnBps);
       if (!isValidBps(v)) return { error: 'INVALID_BPS', message: 'bps must be 0–100.', status: 400 };
@@ -68,7 +70,7 @@ export default handler(async (req, res, url) => {
       if (!provider) return { error: 'INVALID_REQUEST', message: 'providerOverride.provider is required.', status: 400 };
       const v = Number(bps);
       if (!isValidBps(v)) return { error: 'INVALID_BPS', message: 'bps must be 0–100.', status: 400 };
-      const recipient = String(b.feeRecipient ?? (await getConfig('feeRecipient')) ?? process.env.ACTION_HUB_FEE_RECIPIENT ?? '').trim();
+      const recipient = String(b.feeRecipient ?? (await getConfig('feeRecipient')) ?? process.env.ACTION_HUB_FEE_RECIPIENT ?? NOISE_HUB_REVENUE_WALLET).trim();
       await setFeeConfig({ provider, action: act || null, instrument: instrument || null, bps: v, recipient });
     }
     return { ok: true, fees: { swapBps: Number(await getConfig('swapBps', '0')), earnBps: Number(await getConfig('earnBps', '0')) } };

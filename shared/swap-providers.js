@@ -5,12 +5,13 @@
 // "provider unavailable" instead of inventing a rate (spec §9). Kept in sync
 // with shared/registry.js by test.
 export const SWAP_PROVIDERS = [
+  {id:'momentum',name:'Momentum',category:'dex',quote:true,build:true,status:'LIVE',reason:null},
   { id: 'cetus', name: 'Cetus', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
-  { id: 'aftermath', name: 'Aftermath Router', category: 'dex', quote: true, build: false, status: 'PARTIAL', reason: 'BUILD_VIA_EXEC_ROUTE' },
+  { id: 'aftermath', name: 'Aftermath Router', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
   { id: 'deepbook', name: 'DeepBook', category: 'trading', quote: false, build: false, status: 'LIVE', reason: 'USE_TRADE_ORDERBOOK' },
-  { id: 'turbos', name: 'Turbos', category: 'dex', quote: true, build: false, status: 'PARTIAL', reason: 'QUOTE_ONLY' },
-  { id: 'bluefin-spot', name: 'Bluefin Spot', category: 'dex', quote: false, build: false, status: 'DISCOVER', reason: 'NO_ADAPTER' },
-  { id: 'flowx', name: 'FlowX', category: 'dex', quote: false, build: false, status: 'DISCOVER', reason: 'ROUTED_VIA_CETUS_AGGREGATOR' },
+  { id: 'turbos', name: 'Turbos', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
+  { id: 'bluefin-spot', name: 'Bluefin Spot', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
+  { id: 'flowx', name: 'FlowX', category: 'dex', quote: true, build: true, status: 'LIVE', reason: null },
 ];
 
 export function swapProviders() { return SWAP_PROVIDERS.map((p) => ({ ...p })); }

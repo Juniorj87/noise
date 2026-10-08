@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-07T10:44:53.146Z",
+  "mode": "Read-only, no signing/submission; round-trip minOut=0 only in audit, production builders enforce quoted minima",
+  "results": [
+    {
+      "name": "aftermathLpDeposit",
+      "built": true,
+      "simulationOk": true,
+      "meta": {
+        "provider": "aftermath",
+        "action": "deposit",
+        "poolId": "0x97aae7a80abb29c9feabbe7075028550230401ffe7fb745757d3c28a30437408",
+        "amounts": {
+          "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "1000000000"
+        },
+        "lpAmount": null,
+        "expectedLp": "482753780",
+        "minimumLp": null,
+        "slippageBps": 100,
+        "feeCollected": null
+      }
+    },
+    {
+      "name": "steammLpDeposit",
+      "built": true,
+      "simulationOk": true,
+      "meta": {
+        "provider": "steamm",
+        "action": "deposit",
+        "poolId": "0xfa57ae40b14353ab4c9b9c49cb68f4f4feb062b2b623d5308b70794d150298c5",
+        "amounts": {
+          "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "100000000",
+          "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC": "100000"
+        },
+        "lpAmount": null,
+        "expectedLp": "2400273",
+        "minimumLp": "2376270",
+        "slippageBps": 100,
+        "feeCollected": null
+      }
+    },
+    {
+      "name": "steammLpDepositAndWithdraw",
+      "built": true,
+      "simulationOk": true,
+      "meta": {
+        "poolId": "0xfa57ae40b14353ab4c9b9c49cb68f4f4feb062b2b623d5308b70794d150298c5",
+        "roundTrip": true
+      }
+    }
+  ]
+}

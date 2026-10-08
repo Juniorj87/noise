@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   PROTOCOLS, STATUS, FILTERS, EXECUTION_ACTIONS,
-  statusCounts, capabilityMatrix, uiRegistry, getProtocol, byBucket, searchProtocols,
+  statusCounts, capabilityMatrix, publicCapabilityMatrix, uiRegistry, getProtocol, byBucket, searchProtocols,
 } from '../../shared/registry.js';
 
 test('registry: every protocol has unique id, valid status/bucket and a name', () => {
@@ -120,6 +120,6 @@ test('ui sync: app.html CAP_MATRIX equals capabilityMatrix()', () => {
   const html = readHtml();
   const m = html.match(/window\.CAP_MATRIX = ([^\n]*);/);
   assert.ok(m, 'window.CAP_MATRIX not found in app.html');
-  const expected = Object.fromEntries(capabilityMatrix().map((r) => [r.id, r]));
+  const expected = Object.fromEntries(publicCapabilityMatrix().map((r) => [r.id, r]));
   assert.deepEqual(JSON.parse(m[1]), expected, 'app.html CAP_MATRIX drifted — run: node scripts/gen-ui-registry.mjs');
 });

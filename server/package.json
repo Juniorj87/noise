@@ -1,14 +1,14 @@
 {
   "name": "noise-hub-api",
   "version": "0.1.0",
-  "description": "NOISE HUB backend — non-custodial Sui execution layer API",
+  "description": "NOISE HUB backend \u2014 non-custodial Sui execution layer API",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js test/referral-analytics.test.js test/registry.test.js test/ecosystem.test.js test/earn-data.test.js test/capabilities.test.js test/memory-leaderboard.test.js",
+    "test": "node --test --test-concurrency=1 test/unit.test.js test/tx.test.js test/deepbook-logic.test.js test/earn-logic.test.js test/api.test.js test/hub2.test.js test/production-fixes.test.js test/referral-analytics.test.js test/registry.test.js test/ecosystem.test.js test/earn-data.test.js test/capabilities.test.js test/memory-leaderboard.test.js test/audit-regression.test.js test/revision.test.js test/journey.test.js test/referrals-live.test.js",
     "test:integration": "node --test test/integration.test.js",
     "test:data": "node --test --test-concurrency=1 test/data-coverage.test.js test/earn-data.test.js test/earn-logic.test.js test/registry.test.js test/ecosystem.test.js test/capabilities.test.js",
     "test:pg": "node --test test/pg.test.js"
@@ -16,6 +16,7 @@
   "dependencies": {
     "@bucket-protocol/sdk": "^2.3.0",
     "@cetusprotocol/aggregator-sdk": "1.7.3",
+    "@kunalabs-io/kai": "0.30.0",
     "@mysten/deepbook-v3": "^2.6.4",
     "@mysten/sui": "2.33.2",
     "@mysten/suins": "^2.0.13",
@@ -23,9 +24,15 @@
     "@scallop-io/sui-scallop-sdk": "^5.4.1",
     "@suilend/sdk": "^12.4.1",
     "@suilend/springsui-sdk": "^4.1.0",
+    "@suilend/steamm-sdk": "7.1.0",
     "aftermath-ts-sdk": "^5.1.1",
     "metastable-ts-sdk": "^1.0.3",
-    "navi-sdk": "^1.7.3",
+    "pg": "^8.13.1",
     "turbos-clmm-sdk": "^4.0.2"
+  },
+  "overrides": {
+    "axios": "^1.20.0",
+    "braces": "^3.0.3",
+    "vite": "^5.4.21"
   }
 }

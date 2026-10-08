@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-08T00:50:45.325Z",
+  "mode": "Public on-chain sender used for unsigned build and read-only dry-run only; no signature, no submission",
+  "results": [
+    {
+      "name": "suilendSupply",
+      "built": true,
+      "simulationOk": true,
+      "ms": 3672,
+      "error": null
+    },
+    {
+      "name": "naviSupply",
+      "built": true,
+      "simulationOk": true,
+      "ms": 1271,
+      "error": null
+    },
+    {
+      "name": "scallopSupply",
+      "built": true,
+      "simulationOk": true,
+      "ms": 1169,
+      "error": null
+    },
+    {
+      "name": "haedalStake",
+      "built": true,
+      "simulationOk": true,
+      "ms": 604,
+      "error": null
+    },
+    {
+      "name": "springMint",
+      "built": true,
+      "simulationOk": true,
+      "ms": 1057,
+      "error": null
+    },
+    {
+      "name": "nativeStake",
+      "built": true,
+      "simulationOk": true,
+      "ms": 424,
+      "error": null
+    },
+    {
+      "name": "aftermathSwap",
+      "built": true,
+      "simulationOk": true,
+      "ms": 1065,
+      "error": null
+    }
+  ]
+}

@@ -1,5 +1,5 @@
-// /api/lending/<provider>/<action> — NAVI + Suilend + Haedal execution layer.
-// Reads (GET): markets | position | rewards (navi) | rate (haedal).
+// /api/lending/<provider>/<action> — NAVI + Suilend + Haedal + Scallop + Bucket execution layer.
+// Reads (GET): markets (navi/suilend/scallop/bucket) | position | rewards (navi) | rate (haedal).
 // Builds (POST): supply | withdraw | borrow | repay | claim | stake | unstake.
 // Every build is devInspect-simulated BEFORE bytes are returned: a failed
 // simulation is SIMULATION_FAILED, never silent bytes. The backend never signs.
@@ -17,12 +17,14 @@ import {
   marginPreflight, marginSetupBuild,
   mstableMint, mstableBurn,
   springsuiMint, springsuiRedeem,
-  scallopSupply, scallopWithdraw, scallopBorrow, scallopRepay,
+  scallopMarkets, scallopSupply, scallopWithdraw, scallopBorrow, scallopRepay,
   scallopPositions,
-  bucketPsmSwap, bucketPositions,
+  bucketMarkets, bucketPsmSwap, bucketPositions,
 } from '../lending.js';
 
-const PROVIDERS = ['navi', 'suilend', 'haedal', 'margin', 'metastable', 'springsui', 'scallop', 'bucket'];
+import { voloBuild, voloState } from '../protocol-execution.js';
+
+const PROVIDERS = ['navi', 'suilend', 'haedal', 'margin', 'metastable', 'springsui', 'scallop', 'bucket', 'volo'];
 
 function bad(e) {
   const n = normalizeLendingError(e);
@@ -32,6 +34,8 @@ function bad(e) {
   return { error: n.code, message: String(n.message || '').slice(0, 300), status };
 }
 
+/* Fail-closed simulation gate: signable bytes are returned ONLY on devInspect
+ * success. No success → SIMULATION_FAILED with no txBytes, never a fallback. */
 async function simulated(txBytes, wallet, meta) {
   let sim = null, gasEst = null;
   try {
@@ -44,7 +48,7 @@ async function simulated(txBytes, wallet, meta) {
     const gu = sim?.effects?.gasUsed;
     if (gu) gasEst = String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0)));
   } catch (e) {
-    return { simulationStatus: 'unavailable', simulation: null, gasEst: null, txBytes, meta };
+    return { error: 'SIMULATION_FAILED', message: 'Simulation unavailable (' + String(e.message || e).slice(0, 120) + ') — signing blocked for safety. Retry shortly.', status: 400 };
   }
   return { txBytes, simulation: sim, simulationStatus: 'success', gasEst, meta };
 }
@@ -68,6 +72,7 @@ export default handler(async (req, res, url) => {
   /* ------------------------------- reads ------------------------------- */
   if (req.method === 'GET') {
     try {
+      if (provider === 'volo' && action === 'state') return await voloState();
       if (provider === 'navi' && action === 'markets') {
         return await withBreaker('navi', () => cached('lending:navi:markets', 120_000, () => naviMarkets()));
       }
@@ -101,10 +106,16 @@ export default handler(async (req, res, url) => {
         const pool = url.searchParams.get('pool') || 'SUI_USDC';
         return await withBreaker('margin', () => cached('lending:margin:pre:' + pool, 120_000, () => marginPreflight(pool)));
       }
+      if (provider === 'scallop' && action === 'markets') {
+        return await withBreaker('scallop', () => cached('lending:scallop:markets', 120_000, () => scallopMarkets()));
+      }
       if (provider === 'scallop' && action === 'position') {
         const wallet = url.searchParams.get('wallet');
         if (!wallet) return { error: 'MISSING_WALLET', message: 'wallet required.', status: 400 };
         return await withBreaker('scallop', () => cached('lending:scallop:pos:' + wallet, 30_000, () => scallopPositions(wallet)));
+      }
+      if (provider === 'bucket' && action === 'markets') {
+        return await withBreaker('bucket', () => cached('lending:bucket:markets', 120_000, () => bucketMarkets()));
       }
       if (provider === 'bucket' && action === 'position') {
         const wallet = url.searchParams.get('wallet');
@@ -119,6 +130,10 @@ export default handler(async (req, res, url) => {
   if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required for builds.', status: 400 };
   const b = preBody || await readJson(req).catch(() => ({}));
   try {
+    if (provider === 'volo') {
+      const r = await voloBuild({wallet:b.wallet,amountMist:b.amountMist,action});
+      return await simulated(r.txBytes,b.wallet,r.meta);
+    }
     if (provider === 'navi') {
       if (action === 'supply') {
         const r = await naviSupply({ wallet: b.wallet, coinType: b.coinType, amountMist: b.amountMist, pool: b.pool });

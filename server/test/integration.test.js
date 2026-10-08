@@ -66,13 +66,13 @@ test('deepbook markets + orderbook live', async () => {
   assert.ok(ob.value.bid_prices.length > 0 && ob.value.ask_prices.length > 0);
 });
 
-test('swap build returns txBytes + simulation object', async () => {
+test('swap build either fails safely or returns explicit successful simulation', async () => {
   const r = await fetch(BASE + '/api/swap/build', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'SUI', to: 'CETUS', amountMist: 100000000, sender: ZERO, slippage: 0.01 }),
-  }).then((x) => x.json());
-  assert.ok(r.txBytes && r.txBytes.length > 100);
-  assert.ok(r.simulation && (r.simulation.effects || r.simulation.error));
+    body: JSON.stringify({ from: 'SUI', to: 'CETUS', amountMist: '100000000', sender: ZERO, slippage: 0.01 }),
+  }).then(x => x.json());
+  if (r.error) assert.equal(r.txBytes, undefined);
+  else { assert.ok(r.txBytes); assert.equal(r.simulationStatus, 'success'); assert.equal(r.simulation.effects.status.status, 'success'); }
 });
 
 test('rewards claimable endpoint honest for empty wallet', async () => {

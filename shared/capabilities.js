@@ -26,7 +26,7 @@ export const ACTION_CAPABILITIES = {
   setup_trading_account: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech' }),
 
   // Data / quote readable, but no verified build in Noise.
-  liquidity: cap('LIVE', 'LIVE', 'READ_ONLY', 'UNAVAILABLE', 'READ_ONLY', { provider: 'Cetus / Aftermath pools', url: 'https://app.cetus.zone', note: 'Pool TVL/APR are live; pool add-liquidity build is not wired.' }),
+  liquidity: cap('LIVE', 'LIVE', 'LIVE', 'LIVE', 'LIVE', {provider:'Aftermath / STEAMM',url:'https://aftermath.finance',note:'Real LP deposit/withdraw builders; live pool metadata, slippage minima, successful dry-run required before wallet signing. Cetus CLMM LP is not wired.'}),
   claim: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Reward claims build + simulate for NAVI and Suilend; wallet signs. Aftermath/Cetus claims remain provider-side.' }),
   supply: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Supply builds + simulates via official SDKs (NAVI lending v2, Suilend SDK v12, gRPC); wallet signs. E2E proof needs a funded wallet run.' }),
   borrow: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'NAVI / Suilend', url: 'https://naviprotocol.io', note: 'Borrow builds with collateral/health preflight; wallet signs. E2E proof needs a funded wallet run.' }),

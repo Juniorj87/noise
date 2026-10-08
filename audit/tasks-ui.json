@@ -1,0 +1,139 @@
+{
+  "mode": "Local Chromium read-only QA; no financial signing",
+  "results": [
+    {
+      "width": 1440,
+      "route": "home",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "deposit",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "swap",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "manage",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "more",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "community",
+      "bodyWidth": 1440,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "route": "review",
+      "visible": true,
+      "notice": "Simulation passed. Review the full route, protocol and fee before signing. If any command fails on-chain, the atomic transaction does not leave a completed swap without its deposit.",
+      "summary": "You pay\n0.1 SUI\nResult\nCreate / increase your scallop position in SUI\nExchange protection\nNo token exchange\nPosition receipt\nScallop SUI lending shares\nNoise fee\n0 — no swap fee leg\nGas estimate\n0.00513978 SUI (simulation, can change)\nExit conditions\nRedeem liquid lending shares subject to current market liquidity. These shares are not collateral; staked spool shares need separate unstaking.\nReview valid until\n2026-10-07T12:58:56.449Z — rebuild if expired\nYield\n1.5933% APY · variable, not guaranteed\nShare units\nScallop lending shares are not 1:1 underlying tokens. Redemption uses the current pool conversion ratio; a lower share count is not itself a fee or loss.\nSimulated wallet changes\n-0.10513978 SUI · +0.089968462 Scallop SUI lending shares — includes gas; not profit or a guarantee\n\nProtocol fees are not all separately quantified here; the provider execution and received amount include its rules. Inspect balance changes and technical details. Simulation is not a guarantee or a security audit.",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "check": "changed input invalidates bytes and explanation",
+      "hidden": true,
+      "assistantHidden": true,
+      "signDisabled": true
+    },
+    {
+      "width": 1440,
+      "route": "services",
+      "pumpDOM": 0,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "duplicates": []
+    },
+    {
+      "width": 390,
+      "route": "home",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "deposit",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "swap",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "manage",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "more",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "community",
+      "bodyWidth": 390,
+      "activeNav": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "route": "review",
+      "visible": true,
+      "notice": "Simulation passed. Review the full route, protocol and fee before signing. If any command fails on-chain, the atomic transaction does not leave a completed swap without its deposit.",
+      "summary": "You pay\n0.1 SUI\nResult\nCreate / increase your scallop position in SUI\nExchange protection\nNo token exchange\nPosition receipt\nScallop SUI lending shares\nNoise fee\n0 — no swap fee leg\nGas estimate\n0.00513978 SUI (simulation, can change)\nExit conditions\nRedeem liquid lending shares subject to current market liquidity. These shares are not collateral; staked spool shares need separate unstaking.\nReview valid until\n2026-10-07T12:59:08.635Z — rebuild if expired\nYield\n1.5933% APY · variable, not guaranteed\nShare units\nScallop lending shares are not 1:1 underlying tokens. Redemption uses the current pool conversion ratio; a lower share count is not itself a fee or loss.\nSimulated wallet changes\n-0.10513978 SUI · +0.089968462 Scallop SUI lending shares — includes gas; not profit or a guarantee\n\nProtocol fees are not all separately quantified here; the provider execution and received amount include its rules. Inspect balance changes and technical details. Simulation is not a guarantee or a security audit.",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "check": "changed input invalidates bytes and explanation",
+      "hidden": true,
+      "assistantHidden": true,
+      "signDisabled": true
+    },
+    {
+      "width": 390,
+      "route": "services",
+      "pumpDOM": 0,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "duplicates": []
+    }
+  ]
+}

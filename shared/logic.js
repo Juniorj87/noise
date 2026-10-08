@@ -2,7 +2,60 @@
 // (server/src/services.js) and the Vercel API layer (api/_lib/services.js).
 // Keep this file import-free so tests can load it in isolation.
 
-/* ---------- validators ---------- */
+/* ---------- memory session challenge (wallet-ownership proof) ----------
+ * The Memory API is owner-scoped: every read/write/delete requires a session
+ * token bound to the wallet, issued only after the wallet signs a challenge
+ * with a personal-message signature. Format is strict — any deviation fails. */
+export const MEMORY_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+export const MEMORY_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+export function buildMemoryChallenge(wallet, nonceHex, expiresAt) {
+  return 'Noise Hub — memory access\nwallet: ' + wallet + '\nnonce: ' + nonceHex + '\nexpires: ' + expiresAt;
+}
+export function parseMemoryChallenge(message) {
+  if (typeof message !== 'string') return null;
+  const m = message.match(/^Noise Hub — memory access\nwallet: (0x[0-9a-fA-F]{64})\nnonce: ([0-9a-f]{32,128})\nexpires: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)$/);
+  if (!m) return null;
+  return { wallet: m[1], nonce: m[2], expiresAt: m[3] };
+}
+
+/* Activity-ledger input guard: the ledger is rendered in the wallet session,
+ * so every free-text field is validated fail-closed. Markup characters are
+ * rejected (never stripped-and-kept), lengths are capped, digests and
+ * statuses come from allowlists. Returns a sanitized copy or throws. */
+const ACT_ACTION = /^[A-Za-z0-9 _\-()]{1,40}$/;
+const ACT_SAFE = /^[^\x00-\x1f<>&"']{0,64}$/;
+const ACT_STATUS = ['submitted', 'pending', 'confirmed', 'failed', 'simulation_failed', 'rejected'];
+export function sanitizeActivityInput(b) {
+  const o = (b && typeof b === 'object') ? b : {};
+  if (!isWalletAddress(o.wallet)) {
+    throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  }
+  if (typeof o.action !== 'string' || !ACT_ACTION.test(o.action)) {
+    throw Object.assign(new Error('INVALID_ACTIVITY'), { code: 'INVALID_ACTIVITY' });
+  }
+  const out = { wallet: o.wallet, action: o.action.slice(0, 40) };
+  for (const k of ['provider', 'asset', 'origin']) {
+    if (o[k] == null || o[k] === '') continue;
+    const v = String(o[k]);
+    if (!ACT_SAFE.test(v)) throw Object.assign(new Error('INVALID_ACTIVITY'), { code: 'INVALID_ACTIVITY' });
+    out[k] = v.slice(0, 64);
+  }
+  if (o.amount != null && o.amount !== '') {
+    const v = String(o.amount);
+    if (!/^[0-9.,\sA-Za-z→\-]{0,64}$/.test(v) || /[<>&"']/.test(v)) {
+      throw Object.assign(new Error('INVALID_ACTIVITY'), { code: 'INVALID_ACTIVITY' });
+    }
+    out.amount = v.slice(0, 64);
+  }
+  if (o.digest != null && o.digest !== '') {
+    if (!isValidDigest(o.digest)) throw Object.assign(new Error('INVALID_ACTIVITY'), { code: 'INVALID_ACTIVITY' });
+    out.digest = o.digest;
+  }
+  const st = String(o.status || 'submitted').toLowerCase();
+  if (!ACT_STATUS.includes(st)) throw Object.assign(new Error('INVALID_ACTIVITY'), { code: 'INVALID_ACTIVITY' });
+  out.status = st;
+  return out;
+}
 export const ACTIONS = ['swap', 'supply', 'withdraw', 'borrow', 'repay', 'stake', 'unstake', 'deposit', 'claim', 'notify', 'transfer',
   'spot_order', 'limit_order', 'market_order', 'cancel_order', 'setup_trading_account',
   'predict_mint', 'predict_redeem', 'predict_claim', 'predict_settlement'];

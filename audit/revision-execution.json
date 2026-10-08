@@ -1,0 +1,46 @@
+{
+  "at": "2026-10-07T10:37:10.438Z",
+  "mode": "Unsigned simulation only, no submission",
+  "results": [
+    {
+      "name": "cetus-fee",
+      "ok": true,
+      "fee": {
+        "amountMist": "20000",
+        "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+        "bps": 2,
+        "asset": "SUI",
+        "source": "server-default"
+      },
+      "recipientSuiCredit": "20000",
+      "error": null
+    },
+    {
+      "name": "kai-deposit",
+      "ok": true,
+      "fee": null,
+      "recipientSuiCredit": "0",
+      "error": null
+    },
+    {
+      "name": "kai-atomic-deposit-redeem",
+      "ok": true,
+      "fee": null,
+      "recipientSuiCredit": "0",
+      "error": null
+    }
+  ],
+  "revenueScan": {
+    "wallet": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
+    "balance": null,
+    "balanceAsset": "SUI",
+    "inboundTxs": 0,
+    "receivedSui": "0",
+    "lastActivity": null,
+    "source": "Sui",
+    "updatedAt": "2026-10-07T10:37:10.422Z",
+    "coverage": "partial-scan",
+    "verifiedCommission": null,
+    "observedNote": "Recipient-only inbound SUI transfers; not proven Noise commissions. Last 50 transactions, not all-time revenue."
+  }
+}
