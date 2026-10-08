@@ -27,3 +27,4 @@ Thumbs.db
 
 # Pre-change backups (tag/branch/bundle) — kept on disk, never committed
 backups/
+*.zip
