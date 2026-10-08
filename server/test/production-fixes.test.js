@@ -161,6 +161,19 @@ test('http: UNKNOWN_* → 500 INTERNAL without leak', async () => {
   assert.ok(!r.body.message.includes('E:\\'));
 });
 
+/* ---------- 5b. fee recipient: dashboard/CLI whitespace never breaks quotes --- */
+const { validateFeeConfig } = await import('../../api/_lib/fee-engine.js');
+
+test('fee: recipient with surrounding whitespace/quotes is trimmed, not INVALID_FEE_RECIPIENT', () => {
+  const addr = '0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1';
+  for (const dirty of ['  ' + addr + '\n', '"' + addr + '"', "'" + addr + "'"]) {
+    const r = validateFeeConfig({ bps: 2, recipient: dirty }, 'test');
+    assert.equal(r.enabled, true);
+    assert.equal(r.recipient, addr);
+  }
+  assert.throws(() => validateFeeConfig({ bps: 2, recipient: '0xZZZ' }, 'test'), /INVALID_FEE_RECIPIENT/);
+});
+
 /* ---------- 6. cron auth: header-only, closed when unconfigured ---------- */
 const { checkSecret, cronConfigured } = await import('../../api/_lib/pg.js');
 

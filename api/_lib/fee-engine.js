@@ -17,7 +17,9 @@ export function isValidSuiAddress(address) {
 export function validateFeeConfig(cfg, source) {
   const bps = Number(cfg.bps ?? 0);
   if (!Number.isInteger(bps) || bps < 0 || bps > 100) throw new Error('INVALID_FEE_BPS');
-  const recipient = cfg.recipient || '';
+  // Env-provided addresses often carry trailing newlines/quotes from dashboards
+  // and CLI pipes — trim before validating, never fail a quote on whitespace.
+  const recipient = String(cfg.recipient || '').trim().replace(/^["']|["']$/g, '');
   const enabled = cfg.enabled === true ? bps > 0 : cfg.enabled !== false && bps > 0 && !!recipient;
   if (enabled && !isValidSuiAddress(recipient)) throw new Error('INVALID_FEE_RECIPIENT');
   return { enabled, bps, recipient, source };
