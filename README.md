@@ -1,62 +1,55 @@
 # Noise Hub
 
-Non-custodial Sui interface: supported swaps, lending, staking, LP/vault operations and embedded official Wormhole bridge. Original black/blue visual language retained; mobile overflow and font inconsistencies repaired.
+Некастодиальный интерфейс для Sui: свопы, лендинг, ликвидный стейкинг, волты, ордербук-трейдинг DeepBook и официальный мост Wormhole.
 
-**Current release:** read `AUDIT_REPORT_RU.md`, `RUN_AND_DEPLOY_RU.md`, `PUBLIC_COVERAGE.json` and `PRODUCT_REVIEW_RU.md`. Public catalogue has 20 scoped entries (launchpad/perps removed), not full execution coverage for every original protocol. Unsupported public products were removed. Internal legacy records/code are not launch promises.
+Прод: https://noisesui.vercel.app
 
-## Run
+## Как это работает
 
-Node 24 recommended (>=22).
+- Хаб собирает полную транзакцию и симулирует её на текущем состоянии mainnet. Без одобрения в кошельке ничего не двигается.
+- Подписывает только ваш кошелёк. Приватные ключи и сид-фразы никогда не покидают кошелёк и никогда не запрашиваются — ни сайтом, ни «поддержкой», никогда.
+- Атомная операция либо выполняется целиком, либо откатывается полностью (газ сети при этом всё равно списывается).
+- Выходы и выводы средств — отдельные транзакции с отдельным ревью, никакой автоматики.
 
-```bash
-npm ci
-npm run build
-npm test
-npm run dev
-```
+## Что работает
 
-In another terminal:
+- **Place funds** — своп + депозит одной подписью: Suilend, NAVI, Kai vaults, Scallop, Haedal, SpringSui, Metastable mSUI, Volo.
+- **Swap** — маршруты Cetus, Aftermath, Turbos, FlowX, Momentum, Bluefin: котировка → сборка → симуляция → подпись.
+- **Orderbook** — DeepBook V3 Spot и Predict через ваш собственный BalanceManager.
+- **Staking & liquidity** — нативный стейкинг Sui, LST Aftermath / Haedal / Volo / SpringSui, Metastable mSUI, пулы ликвидности STEAMM, Bucket PSM.
+- **Bridge** — официальный self-hosted Wormhole Connect.
+- **Positions / exit** — живые долг и health, проверка чеков ончейн.
+- **Referrals** — только атрибуция приглашений; **Leaderboard** — рейтинг подтверждённых workflow. Выплат и наград не обещается.
 
-```bash
-python3 -m http.server 3000 --bind 127.0.0.1 --directory public
-```
+## Подключённые проекты (20)
 
-Open http://127.0.0.1:3000/app.html. Local API port 3001. Production: Vercel configuration plus your own PostgreSQL and server-side environment. No deployment to the original domain was performed.
+| Проект | Категория |
+|---|---|
+| Sui / Sui Native Staking | сеть, стейкинг |
+| Cetus, Aftermath, Turbos, FlowX, Momentum, Bluefin Spot | DEX / свопы |
+| NAVI, Suilend, Scallop, Bucket | лендинг |
+| Haedal, Volo, SpringSui | ликвидный стейкинг |
+| Metastable mSUI | LST-волт |
+| Kai, STEAMM | волты / доходность |
+| DeepBook, DeepBook Predict | ордербук-трейдинг |
+| Wormhole / Portal | мост |
 
-## Validation
+Реестр возможностей — `shared/registry.js`. Не обещается исполнение по каждому продукту каждого протокола: что реально собирается и симулируется, то и доступно в интерфейсе.
 
-271 automated tests and 19 live integration tests passed. New evidence: 6 unsigned deposit/atomic-entry simulations, 3 primitive exit roundtrips, 18 chain metadata checks and 16 additional-token route quotes. Earlier 19 unsigned scenarios are separate historical evidence. This does not certify every advertised operation with a funded wallet or every bridge route. No transactions were signed/submitted. PostgreSQL production configuration was not tested.
+## Открытый код
 
-Evidence in `audit/`: execution reports, current fee recipient balance, build/test logs, UI checks and screenshots. Release file hashes in `RELEASE_SHA256.json` exclude that manifest itself.
+Исходники открыты: `app.html` — приложение, `api/` — сборщики транзакций, `shared/` — правила и реестр. Доверять всё равно нужно трём вещам: вашему кошельку, Sui RPC и ончейн-протоколам, которые вы одобряете подписью. Результат симуляции виден до подписи — проверяйте его.
 
-## Fees and custody
+## Кошелёк и приватность
 
-Default fee-bearing router swaps: 2 bps (0.02%) from input asset. Actual recipient and transfer leg are returned by builders; simulation confirmed 20,000 MIST to the project recipient for a 0.1 SUI Cetus swap. No historical revenue receipt was established. Earn/bridge/LP/DeepBook fees are not represented as collected Noise router fees. Only user wallets sign; never supply private keys to this server.
+- Доступа к вашим средствам у хаба нет и быть не может: транзакции подписывает только кошелёк.
+- Ключи и сид-фразы не собираются, не передаются и не запрашиваются. Никогда не вводите их нигде, кроме самого кошелька.
+- Используется только публичный адрес: чтение балансов и позиций, атрибуция рефералов, учёт workflow. В браузере хранится UX-состояние (адрес, журнал операций); серверный учёт хранит публичные адреса и дайджесты транзакций — ничего, чем можно двигать средства.
 
-Wormhole Connect 6.0.0 is self-hosted under assets/wormhole with its license. The widget handles cross-chain wallet review/signing/history; no signed cross-chain E2E was performed.
+## Комиссии
 
-## Public registry
+- Свопы через роутер: 2 bps (0.02%) от входа, получатель виден до подписи. Earn / мост / LP / DeepBook — только издержки самих протоколов, скрытых комиссий хаба нет.
 
-`shared/registry.js` separates original internal records from `PUBLIC_PROTOCOL_IDS`/`publicProtocols`. Regenerate UI mirror after changes:
+## Риски
 
-```bash
-node scripts/gen-ui-registry.mjs
-npm run build
-npm test
-```
-
-Do not advertise unimplemented capabilities. Supported scope and excluded entries are listed in PUBLIC_COVERAGE.json.
-
-## Task-first release
-
-`app.html#journey`: atomic swap → deposit into Suilend/NAVI/Kai, on-chain receipt recovery, real positions/risk, separately reviewed withdrawal. Never auto-signs. WAL/NS plus 16 other curated mainnet assets; not a market-cap ranking.
-
-AI Assistant, Referral and Leaderboard remain available in secondary/contextual tools. Launchpad/perps discovery is removed. AI actual model responses require server-side key + AI_MODEL (Gemini: AI_PROVIDER=gemini, GOOGLE_AI_API_KEY). Without configuration, live-tools responses are explicitly labelled, not simulated LLM chat. No real paid/model-key E2E was tested.
-
-Referral ownership and assignment require wallet personal-message proof. Stats reflect real invitation attribution and verified post-attribution Workflows, not earnings. Ranking uses successful receipts for prepared Noise digests. No payouts or rewards are promised. PostgreSQL required for production persistence; only local SQLite tested.
-
-## Current task-first interface
-Start → Swap a token / Place funds / Positions & exit. More contains advanced services; Community contains invitations and confirmed activity. SuiPump and Perpsplexity are not public products.
-Core placement now supports Suilend, NAVI, Kai, Scallop liquid lending shares and Haedal liquid staking. Comparison separates reported APR/APY, base rates, known incentives, unknown rewards, fees and exit conditions. Review shows input, minimum swap output, receipt coin, estimated gas, Noise fee and provider-specific exit rules. Technical details are collapsible. Inline assistant is explicitly rules-based when no server model is configured.
-New evidence: `audit/tasks-execution.json`, `tasks-exits.json`, `tasks-ui.json`, `tasks-edge-ui.json`. Scallop direct/atomic entries and share redemption; Haedal stake, instant exit and delayed-ticket request were simulated without signing. An existing matured-ticket claim was NOT tested. No independent security audit or funded-wallet end-to-end run occurred.
-`app.html` is the real application source, not a standalone offline artifact: use the assets and API in the ZIP and the local launch instructions.
+Ставки переменные и не гарантированы. Остаются риски смарт-контрактов, оракулов и ликвидности. Независимого аудита безопасности не проводилось; симуляция — не гарантия исполнения.

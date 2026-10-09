@@ -1,5 +1,5 @@
 // Exact, dependency-free workflow state and amount rules, shared by API and UI.
-export const JOURNEY_PROVIDERS=['suilend','navi','kai','scallop','haedal'];
+export const JOURNEY_PROVIDERS=['suilend','navi','kai','scallop','haedal','springsui','metastable','volo'];
 export function fail(code,message){throw Object.assign(new Error(message||code),{code});}
 export function rawHuman(raw,decimals){const n=BigInt(raw),scale=10n**BigInt(decimals);return String(n/scale)+(n%scale?'.'+String(n%scale).padStart(decimals,'0').replace(/0+$/,''):'');}
 export function humanRaw(value,decimals){if(!Number.isInteger(decimals)||decimals<0||decimals>18||!/^\d+(\.\d+)?$/.test(String(value)))fail('INVALID_AMOUNT');const[a,b='']=String(value).split('.');if(b.length>decimals)fail('INVALID_AMOUNT','Too many decimal places');return String(BigInt(a)*10n**BigInt(decimals)+BigInt(b.padEnd(decimals,'0')||'0'));}

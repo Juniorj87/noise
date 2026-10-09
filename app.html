@@ -343,7 +343,7 @@
             .sidebar-nav { gap:2px; padding-bottom:2px; }
             .sidebar-nav .nav-group-label { display:none; }
             .sidebar-nav .nav-item { padding:8px 11px; font-size:12px; background:transparent; }
-            .sidebar-nav .nav-item[data-page="ai"], .sidebar-nav .nav-item[data-page="skills"], .sidebar-nav .nav-item[data-page="referral"], .sidebar-nav .nav-item[data-page="leaderboard"], .sidebar-nav .nav-item[data-page="security"], .sidebar-nav .nav-item[data-page="settings"] { display:none; }
+            .sidebar-nav .nav-item[data-page="ai"], .sidebar-nav .nav-item[data-page="skills"], .sidebar-nav .nav-item[data-page="security"], .sidebar-nav .nav-item[data-page="settings"] { display:none; }
             .main { padding:18px 16px 48px; }
             .page-title { font-size:30px; letter-spacing:-1px; }
             .page-header { margin-bottom:22px; }
@@ -1484,7 +1484,7 @@
     
         .topbar-utilities{display:flex;align-items:center;gap:16px;margin-left:auto;white-space:nowrap}.topbar-utilities a{color:var(--text-dim);text-decoration:none;font-size:11px;letter-spacing:.4px}.topbar-utilities a:hover{color:var(--text)}
         .earn-provider-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:18px 20px;margin-bottom:10px}.earn-provider-bar .select-input{min-width:220px}
-        @media(max-width:768px){.topbar{position:sticky;top:0;z-index:20;background:rgba(10,10,10,.97);border-bottom:1px solid var(--line);padding:10px 0 12px;flex-wrap:wrap}.topbar .search-input{flex:1 1 100%;order:1;min-width:0}.topbar .net-badge,.topbar #freshBadge{display:none}.topbar-utilities{order:2;margin-left:0;gap:14px}.noise-mark{order:3;margin-left:auto}.sidebar{padding:10px 14px}.sidebar-logo{margin-bottom:8px}.sidebar-wallet,.sidebar-net{display:none}.sidebar-nav{gap:2px;padding-bottom:2px}.sidebar-nav .nav-group-label{display:none}.sidebar-nav .nav-item{padding:8px 11px;font-size:12px;background:transparent}.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="skills"],.sidebar-nav .nav-item[data-page="referral"],.sidebar-nav .nav-item[data-page="leaderboard"],.sidebar-nav .nav-item[data-page="security"],.sidebar-nav .nav-item[data-page="settings"]{display:none}.main{padding:18px 16px 48px}.page-title{font-size:30px;letter-spacing:-1px}.command-intro{padding:20px;margin-bottom:20px}.quick-actions{gap:1px;margin-bottom:28px}.quick-action{min-height:82px;padding:16px}.opportunity-grid{gap:12px;margin-bottom:28px}.opportunity-card{padding:20px}.opportunity-apy{font-size:30px}.panel,.available-capital{padding:18px;margin-bottom:20px}.earn-provider-bar{display:block}.earn-provider-bar .select-input{width:100%;margin-top:12px}.assets-grid{grid-template-columns:repeat(2,1fr);gap:1px}}
+        @media(max-width:768px){.topbar{position:sticky;top:0;z-index:20;background:rgba(10,10,10,.97);border-bottom:1px solid var(--line);padding:10px 0 12px;flex-wrap:wrap}.topbar .search-input{flex:1 1 100%;order:1;min-width:0}.topbar .net-badge,.topbar #freshBadge{display:none}.topbar-utilities{order:2;margin-left:0;gap:14px}.noise-mark{order:3;margin-left:auto}.sidebar{padding:10px 14px}.sidebar-logo{margin-bottom:8px}.sidebar-wallet,.sidebar-net{display:none}.sidebar-nav{gap:2px;padding-bottom:2px}.sidebar-nav .nav-group-label{display:none}.sidebar-nav .nav-item{padding:8px 11px;font-size:12px;background:transparent}.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="skills"],.sidebar-nav .nav-item[data-page="security"],.sidebar-nav .nav-item[data-page="settings"]{display:none}.main{padding:18px 16px 48px}.page-title{font-size:30px;letter-spacing:-1px}.command-intro{padding:20px;margin-bottom:20px}.quick-actions{gap:1px;margin-bottom:28px}.quick-action{min-height:82px;padding:16px}.opportunity-grid{gap:12px;margin-bottom:28px}.opportunity-card{padding:20px}.opportunity-apy{font-size:30px}.panel,.available-capital{padding:18px;margin-bottom:20px}.earn-provider-bar{display:block}.earn-provider-bar .select-input{width:100%;margin-top:12px}.assets-grid{grid-template-columns:repeat(2,1fr);gap:1px}}
 
         /* Noise Hub clarity pass — reduce cognitive load without changing the execution engine. */
         .topbar-utilities{display:flex;align-items:center;gap:18px;margin-left:auto;font-size:11px;letter-spacing:.2px}
@@ -1582,12 +1582,15 @@ display:none!important}
         <aside class="sidebar">
             <div class="sidebar-logo"><a href="index.html"><span>noise</span><b> hub</b></a></div>
             <nav class="sidebar-nav" aria-label="Main tasks">
+                <a class="nav-item" data-page="leaderboard">Leaderboard</a>
                 <div class="nav-group-label">YOUR TASKS</div>
                 <a class="nav-item active" data-page="home">Start</a>
                 <a class="nav-item" data-page="swap">Swap</a>
                 <a class="nav-item" data-page="deposit">Place funds</a>
                 <a class="nav-item" data-page="manage">Positions / exit</a>
+                <a class="nav-item" data-page="trade">Orderbook · DeepBook / Predict</a>
                 <div class="nav-group-label">SECONDARY</div>
+                <a class="nav-item" data-page="referral">Referrals</a>
                 <a class="nav-item" data-page="more">More</a>
             </nav>
             <div class="sidebar-wallet" id="walletBox">
@@ -1620,20 +1623,18 @@ display:none!important}
   <button class="ux-task" onclick="navigateTo('manage')"><span class="section-label">03 · MANAGE / EXIT</span><h2>See positions &amp; withdraw</h2><p>See where your funds are, check debt and protocol-specific risk, then review an exit. No invented earnings.</p><span class="ux-task-link">Open your positions →</span></button>
  </div>
  <div class="ux-home-strip"><div><div class="section-label">WALLET CONTROLLED</div><p id="uxWalletState">Connect when you are ready. Browsing requires no wallet.</p></div><button class="btn-ghost" onclick="NoiseTasks.wallet()" id="uxWalletButton">Connect wallet</button></div>
- <div class="ux-home-strip"><p>Need bridging, staking alternatives, liquidity pools or order-book trading?</p><button class="btn-ghost" onclick="navigateTo('more')">Advanced services →</button></div>
+ <div class="ux-home-strip"><p>Need bridging, staking alternatives or liquidity pools? Order-book trading (DeepBook Spot / Predict) lives in the left column.</p><button class="btn-ghost" onclick="navigateTo('more')">Advanced services →</button></div>
  <details class="how"><summary>Service status — read checks, not security guarantees</summary><div><div id="uxMonitor">No probe result assumed. Check current provider reads.</div><button class="btn-ghost" onclick="NoiseTasks.monitor(true)">Check providers</button><p class="fresh">A successful read does not prove a trade will execute. Unsigned simulations are not funded-wallet E2E tests or an independent security audit.</p></div></details>
 </div>
 <div class="page" id="more"><div class="page-header"><h1 class="page-title">MORE SERVICES</h1><p class="page-subtitle">Advanced tools when you need them. The three main tasks stay simple.</p></div><div class="ux-more-grid">
  <button class="ux-task" onclick="navigateTo('capital')"><h2>Wallet overview</h2><p>Available coins and the broader protocol portfolio.</p></button>
  <button class="ux-task" onclick="navigateTo('earn')"><h2>Staking &amp; liquidity</h2><p>Native staking, Aftermath, Volo, SpringSui and liquidity pools. Use each service's own conditions.</p></button>
  <button class="ux-task" onclick="navigateTo('actions')"><h2>Advanced actions</h2><p>Collateral, borrowing, repayments, claims, transfers and specialized execution controls.</p></button>
- <button class="ux-task" onclick="navigateTo('actions');openBridge()"><h2>Bridge</h2><p>Official Wormhole Connect. Separate source/destination wallets and recovery.</p></button>
- <button class="ux-task" onclick="navigateTo('trade')"><h2>Order-book trading</h2><p>DeepBook Spot and Predict. Not the simple token swap.</p></button>
- <button class="ux-task" onclick="navigateTo('discover');setDiscoverSource('ecosystem')"><h2>Supported services</h2><p>Scoped protocol capabilities. No launchpad or unconnected perps listings.</p></button>
+  <button class="ux-task" onclick="navigateTo('actions');openBridge()"><h2>Bridge</h2><p>Official Wormhole Connect. Separate source/destination wallets and recovery.</p></button>
+  <button class="ux-task" onclick="navigateTo('discover');setDiscoverSource('ecosystem')"><h2>Supported services</h2><p>Scoped protocol capabilities. No launchpad or unconnected perps listings.</p></button>
  <button class="ux-task" onclick="navigateTo('activity')"><h2>Activity</h2><p>Transaction status and recorded activity.</p></button>
- <button class="ux-task" onclick="navigateTo('community')"><h2>Community</h2><p>Invitation attribution and confirmed-workflow rankings. No reward or payout is promised.</p></button>
 </div><div class="j-buttons"><button class="btn-ghost" onclick="navigateTo('security')">Security &amp; provider checks</button><button class="btn-ghost" onclick="navigateTo('settings')">Settings</button><button class="btn-ghost" onclick="navigateTo('ai')">Full assistant</button></div></div>
-<div class="page" id="community"><div class="page-header"><h1 class="page-title">COMMUNITY</h1><p class="page-subtitle">Secondary tools, not the reason to make a financial transaction.</p></div><div class="ux-more-grid"><button class="ux-task" data-page="referral" onclick="navigateTo('referral')"><h2>Invitations</h2><p>Signed wallet attribution and real post-attribution workflow counts. No earnings balance or payouts.</p></button><button class="ux-task" data-page="leaderboard" onclick="navigateTo('leaderboard')"><h2>Confirmed activity</h2><p>Non-monetary ranking of confirmed Noise workflows, not trading skill or investment results.</p></button></div></div>
+<div class="page" id="community"><div class="page-header"><h1 class="page-title">COMMUNITY</h1><p class="page-subtitle">Secondary tools, not the reason to make a financial transaction.</p></div><div class="ux-more-grid"><button class="ux-task" onclick="navigateTo('referral')"><h2>Invitations →</h2><p>Moved to the left column: Referrals.</p></button><button class="ux-task" onclick="navigateTo('leaderboard')"><h2>Confirmed activity →</h2><p>Moved to the top of the left column: Leaderboard.</p></button></div></div>
             <!-- Portfolio Page -->
             <div class="page" id="capital">
                 <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end;">
@@ -1728,7 +1729,7 @@ display:none!important}
   <div>
    <div class="j-box" id="jForm"><div class="section-label" id="jMode">SWAP → DEPOSIT</div><p class="fresh">Noise builds and checks the complete action. Nothing moves without your wallet approval. Entry swap and placement are atomic; exits are separately reviewed.</p>
     <div id="jFromField"><label for="jFrom">Asset you hold</label><select class="select-input" id="jFrom"><option>Loading verified assets…</option></select><p class="fresh" id="jBalance">Connect wallet for balances.</p></div>
-    <div id="jProviderField"><label for="jProvider">Destination protocol</label><select class="select-input" id="jProvider"><option value="suilend">Suilend</option><option value="navi">NAVI</option><option value="kai">Kai vaults</option><option value="scallop">Scallop lending</option><option value="haedal">Haedal liquid staking</option></select></div>
+    <div id="jProviderField"><label for="jProvider">Destination protocol</label><select class="select-input" id="jProvider"><option value="suilend">Suilend</option><option value="navi">NAVI</option><option value="kai">Kai vaults</option><option value="scallop">Scallop lending</option><option value="haedal">Haedal liquid staking</option><option value="springsui">SpringSui liquid staking</option><option value="metastable">Metastable mSUI</option><option value="volo">Volo liquid staking</option></select></div>
     <div id="jMarketField"><label for="jMarket">Deposit asset / market</label><select class="select-input" id="jMarket"><option>Load a provider to see markets</option></select></div>
     <div id="jToField" hidden><label for="jTo">Receive token</label><select class="select-input" id="jTo"></select></div>
     <p class="fresh" id="jWithdrawInfo" hidden></p><p class="fresh" id="jRate">Live provider rate; not a promised return.</p>
@@ -1743,7 +1744,7 @@ display:none!important}
  </div>
 </div>
 
-<div class="page" id="manage"><div class="page-header"><h1 class="page-title">YOUR POSITIONS</h1><p class="page-subtitle">Where your funds are, what can be reviewed for withdrawal, and the risk that remains.</p></div><div class="j-buttons"><button class="btn-solid" onclick="NoiseTasks.wallet()">Connect / view wallet</button><button class="btn-ghost" onclick="NoiseJourney.positions()">Refresh positions</button></div><div id="uxPositionJob" class="ux-assistant" hidden></div><div id="uxPositionAssistant" class="ux-assistant" hidden></div><p class="fresh">Core view: Suilend, NAVI, Kai, free Scallop lending shares and Haedal balances/tickets. Other supported positions and advanced collateral/spool controls remain in More.</p>  <div class="j-box"><div class="section-label">YOUR POSITIONS · LIVE SOURCES</div><p class="fresh" id="jPositionsFresh">No invented positions or total yield.</p><div id="jPositions"><p class="fresh">Connect wallet for supplied assets, current debt, health and withdrawal controls.</p></div><p class="fresh">Health = provider-specific liquidation measure, not a universal risk score. A deposit without borrowing still carries contract, liquidity and strategy risk. Kai withdrawal amounts use vault shares.</p></div><div class="j-buttons"><button class="btn-ghost" onclick="navigateTo('capital')">Broader portfolio</button><button class="btn-ghost" onclick="navigateTo('more')">Advanced position tools</button></div></div>
+<div class="page" id="manage"><div class="page-header"><h1 class="page-title">YOUR POSITIONS</h1><p class="page-subtitle">Where your funds are, what can be reviewed for withdrawal, and the risk that remains.</p></div><div class="j-buttons"><button class="btn-solid" onclick="NoiseTasks.wallet()">Connect / view wallet</button><button class="btn-ghost" onclick="NoiseJourney.positions()">Refresh positions</button></div><div id="uxPositionJob" class="ux-assistant" hidden></div><div id="uxPositionAssistant" class="ux-assistant" hidden></div><p class="fresh">Core view: Suilend, NAVI, Kai, free Scallop lending shares, Haedal balances/tickets and SpringSui / Metastable / Volo liquid-staking receipts. Advanced collateral/spool controls remain in More.</p>  <div class="j-box"><div class="section-label">YOUR POSITIONS · LIVE SOURCES</div><p class="fresh" id="jPositionsFresh">No invented positions or total yield.</p><div id="jPositions"><p class="fresh">Connect wallet for supplied assets, current debt, health and withdrawal controls.</p></div><p class="fresh">Health = provider-specific liquidation measure, not a universal risk score. A deposit without borrowing still carries contract, liquidity and strategy risk. Kai withdrawal amounts use vault shares.</p></div><div class="j-buttons"><button class="btn-ghost" onclick="navigateTo('capital')">Broader portfolio</button><button class="btn-ghost" onclick="navigateTo('more')">Advanced position tools</button></div></div>
 <!-- Discover Page -->
             <div class="page" id="discover">
                 <div class="page-header">
@@ -1789,7 +1790,7 @@ display:none!important}
 
             <!-- Earn Page -->
             <div class="page" id="earn">
-<div class="j-box"><div class="section-label">PUT AN ASSET TO WORK</div><p>Swap and deposit into Suilend, NAVI or Kai in one atomic transaction.</p><button class="btn-solid" onclick="NoiseJourney.open()">Start workflow</button></div>
+<div class="j-box"><div class="section-label">PUT AN ASSET TO WORK</div><p>Swap and deposit into Suilend, NAVI, Kai, Scallop, Haedal, SpringSui, Metastable mSUI or Volo in one atomic transaction.</p><button class="btn-solid" onclick="NoiseJourney.open()">Start workflow</button></div>
                 <div class="page-header">
                     <h1 class="page-title">EARN</h1>
                     <div class="page-subtitle">Put your capital to work.</div>
@@ -3118,11 +3119,35 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             ];
             el.textContent = 'WALLET DIAGNOSTICS\n' + rows.map((r) => r[0].padEnd(11) + ' ' + r[1]).join('\n');
         }
-        async function connectWallet() {
+        function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        function closeWalletPicker() { const m = $('walletPickerModal'); if (m) m.remove(); }
+        function showWalletPicker(wallets) {
+            closeWalletPicker();
+            const m = document.createElement('div');
+            m.id = 'walletPickerModal';
+            m.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;';
+            const items = wallets.map((w, i) =>
+                '<button class="claim-btn" data-wallet-pick="' + i + '" style="width:100%;display:flex;align-items:center;gap:10px;margin-bottom:8px;background:transparent;border:1px solid var(--line);text-align:left;">' +
+                (w.icon && String(w.icon).indexOf('"') < 0 ? '<img src="' + w.icon + '" alt="" style="width:22px;height:22px;border-radius:6px;">' : '') +
+                '<span>' + escHtml(w.name) + '</span></button>').join('');
+            m.innerHTML = '<div style="width:100%;max-width:340px;background:#0a0a0a;border:1px solid var(--line);padding:20px;">' +
+                '<div style="font-size:13px;margin-bottom:4px;">Connect a Sui wallet</div>' +
+                '<div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">Any Wallet Standard Sui wallet works — Slush, Suiet, Phantom, OKX. Keys never leave the wallet.</div>' +
+                items +
+                '<button class="claim-btn" id="walletPickerCancel" style="width:100%;background:transparent;border:none;color:var(--text-dim);">Cancel</button></div>';
+            m.addEventListener('click', (e) => {
+                if (e.target === m) { closeWalletPicker(); return; }
+                const pick = e.target.closest ? e.target.closest('[data-wallet-pick]') : null;
+                if (pick) { const w = wallets[Number(pick.getAttribute('data-wallet-pick'))]; closeWalletPicker(); if (w) connectNamedWallet(w.name); return; }
+                if (e.target.closest && e.target.closest('#walletPickerCancel')) closeWalletPicker();
+            });
+            document.body.appendChild(m);
+        }
+        async function connectNamedWallet(name) {
             // 1) Real wallet-standard flow (signing enabled, keys never leave wallet).
             if (window.HubWallet) {
                 try {
-                    const r = await window.HubWallet.connect();
+                    const r = await window.HubWallet.connect(name);
                     wallet = r.address; walletName = r.name; walletChain = r.chain;
                     store.set('wallet', wallet); store.set('walletName', walletName); store.set('walletChain', walletChain);
                     window.HubWallet.onAccountsChange((addr) => {
@@ -3136,16 +3161,17 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                     return;
                 } catch (e) {
                     const code = e && e.code;
+                    const attempted = (e && e.wallet) || name || 'The wallet';
                     const d = (window.HubWallet.diagnostics && window.HubWallet.diagnostics()) || {};
                     console.warn('[wallet] connect failed', code, e, d);
                     if (code === 'NO_WALLET') {
-                        toast('No Sui wallet detected (Wallet Standard). Install Slush, or paste a read-only address below.');
+                        toast('No Sui wallet detected (Wallet Standard). Install a Sui wallet — Slush, Suiet, Phantom or OKX — or paste a read-only address below.');
                     } else if (code === 'NO_ACCOUNT') {
-                        toast('Wallet exposed no account — read-only mode. Unlock the wallet to sign.');
+                        toast(attempted + ' exposed no account — read-only mode. Unlock the wallet to sign.');
                     } else {
                         const declined = /reject|denied|cancel/i.test(String((e && (e.cause || e.message)) || ''));
                         toast(declined ? 'Connection request was declined in the wallet.'
-                            : (d.slushDetected ? 'Slush' : 'The wallet') + ' could not connect. Check: installed/open · Sui mainnet · approved Noise Hub.');
+                            : attempted + ' could not connect. Check: installed/open · Sui mainnet · approved Noise Hub.');
                         if (new URLSearchParams(location.search).has('diag') && typeof showWalletDiagnostics === 'function') showWalletDiagnostics(d);
                         return;
                     }
@@ -3159,6 +3185,18 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             wallet = addr.trim(); walletName = null; store.set('wallet', wallet); store.set('walletName', null); paintWallet();
             secEvent('wallet-connected'); logActivity('Wallet connected (read-only)', shortWallet(wallet), '—', 'sui rpc');
             await loadCapital();
+        }
+        async function connectWallet() {
+            // Route through a picker when several Sui wallets are installed
+            // (Phantom, OKX, Slush, Suiet, …) so the user chooses the signer.
+            if (window.HubWallet) {
+                let list = [];
+                try { list = window.HubWallet.list() || []; } catch (e) { list = []; }
+                // Always show the picker when a wallet is detected, so Phantom,
+                // OKX, Slush or Suiet is visibly selectable — never a blind default.
+                if (list.length >= 1) { showWalletPicker(list); return; }
+            }
+            await connectNamedWallet(null);
         }
         async function disconnect() {
             try {
