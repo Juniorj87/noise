@@ -75,14 +75,14 @@
             <a href="#faq">FAQ</a>
         </aside>
         <main>
-<h1 id="intro">noise docs</h1><p>Connected, non-custodial Sui operations. Updated 2026-10-07. Unconnected projects and trading modes are not offered in the public app.</p>
+<h1 id="intro">noise docs</h1><p>Connected, non-custodial Sui operations. Updated 2026-10-09. Unconnected projects and trading modes are not offered in the public app.</p>
 <div class="warn">Unsigned builders and simulations are tested. This is not an independent security audit; no funded wallet signatures or live cross-chain transfers were performed during the audit.</div>
 <h2 id="how">How it works</h2><pre>Choose → Review → Build → Simulate → Wallet signs → Track</pre><p>Your wallet is the signing authority. Ordinary hub Sui transactions require a fresh successful simulation and matching account/network before the wallet prompt. The official Wormhole widget handles its own cross-chain routing, signing and recovery.</p>
 <h2 id="capital">Portfolio</h2><p>Live coin balances, protocol positions and native staking. Missing price or position valuations show unavailable; they are not invented or inferred from a coin count. Deposited tokens must not also be counted as spendable wallet coins.</p>
 <h2 id="discover">Discover</h2><p>Public catalogue contains only connected operations, not the entire ecosystem. Market data includes source and update time. A failed API shows unavailable, not a fabricated APR/APY.</p>
 <h2 id="swap">Swap</h2><p>Cetus Aggregator, Aftermath, Turbos, FlowX, Momentum and Bluefin Spot. Selected DEX routes are restricted and checked against the requested venue. The hub fee is carved from the input amount, not charged on top. Both the quote and build use the net route input. Builds refresh quotes.</p>
 <h2 id="earn">Earn and Kai</h2><p>Kai SUI/USDC single-asset vault deposits and y-token redemptions use the official SDK and current vault state. No leveraged Kai position UI is offered. SDK APR/APY ratios are multiplied by 100 for percentage display. Yield is variable; performance fees and available withdrawal liquidity apply.</p>
-<h2 id="staking">Staking</h2><p>Native SUI stake/unstake, Aftermath afSUI, Haedal, Volo and SpringSui supported operations. Minimum deposits, redemption delays and provider fees depend on the live protocol. No fixed returns are promised.</p>
+<h2 id="staking">Staking</h2><p>Native SUI stake/unstake, Aftermath afSUI, Haedal, Volo, SpringSui and Metastable mSUI supported operations. Minimum deposits, redemption delays and provider fees depend on the live protocol. No fixed returns are promised.</p>
 <h2 id="lending">Lending</h2><p>NAVI, Suilend and Scallop supply/withdraw/borrow/repay; NAVI/Suilend reward claims. Health and liquidity constraints are checked when relevant; on-chain simulation is mandatory. Bucket PSM stable swaps are separate from a savings-vault deposit.</p>
 <h2 id="liquidity">Liquidity</h2><p>Aftermath and STEAMM pool deposit/withdraw. Live pool IDs and coin metadata, exact base units and quoted slippage minima are used. Cetus concentrated-liquidity deposits are not offered. Impermanent loss, protocol fees and withdrawal liquidity risk apply.</p>
 <h2 id="trading">Trading</h2><p>DeepBook spot market/limit orders, order cancellation and BalanceManager setup. DeepBook Predict is available only for active protocol markets. Leveraged margin and other perps/options platforms are removed from the public trading interface.</p>
@@ -103,7 +103,7 @@ POST /api/sui</pre>
 </main>
     </div>
     <footer>
-        <div>noise — docs · 2026-09-30</div>
+        <div>noise — docs · 2026-10-09</div>
         <div><a href="index.html">Landing</a><a href="app.html">Open App</a></div>
     </footer>
     <script>
@@ -160,5 +160,5 @@ POST /api/sui</pre>
             }
         })();
     </script>
-<script>fetch('registry.json').then(r=>r.json()).then(r=>{document.getElementById('docsCatalogue').textContent=r.protocols.map(p=>p.name+' — '+p.actions.join(', ')).join(' · ')}).catch(()=>{document.getElementById('docsCatalogue').textContent='Catalogue unavailable; see the app.'})</script><section style="max-width:900px;margin:40px auto;padding:24px"><h2>Workflows</h2><p>Atomic swap + deposit for Suilend, NAVI and Kai. Receipt verification and position refresh follow signing. Withdrawal is separately reviewed and signed. No universal atomic exit or automatic spending is promised.</p><h2>Invitations and AI</h2><p>Referral requires personal-message ownership proof and counts confirmed workflows after attribution, not earnings. Leaderboard counts receipts for Noise-prepared workflow digests, not all Sui activity. No payout is implied.</p><p>AI live tools are read-only. Language-model answers require a server-side key and model; otherwise tools-only responses are clearly labelled. SuiPump is indexer discovery and optional DEX-route checking, not native bonding-curve trading.</p></section></body>
+<script>fetch('registry.json').then(r=>r.json()).then(r=>{document.getElementById('docsCatalogue').textContent=r.protocols.map(p=>p.name+' — '+p.actions.join(', ')).join(' · ')}).catch(()=>{document.getElementById('docsCatalogue').textContent='Catalogue unavailable; see the app.'})</script><section style="max-width:900px;margin:40px auto;padding:24px"><h2>Workflows</h2><p>Atomic swap + deposit for Suilend, NAVI, Kai, Scallop, Haedal, SpringSui, Metastable mSUI and Volo. Receipt verification and position refresh follow signing. Withdrawal is separately reviewed and signed. No universal atomic exit or automatic spending is promised.</p><h2>Invitations and AI</h2><p>Referral requires personal-message ownership proof and counts confirmed workflows after attribution, not earnings. Leaderboard counts receipts for Noise-prepared workflow digests, not all Sui activity. No payout is implied.</p><p>AI live tools are read-only. Language-model answers require a server-side key and model; otherwise tools-only responses are clearly labelled. SuiPump is indexer discovery and optional DEX-route checking, not native bonding-curve trading.</p></section></body>
 </html>
