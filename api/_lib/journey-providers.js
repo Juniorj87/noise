@@ -6,7 +6,7 @@
 import { normalizeStructTag } from '@mysten/sui/utils';
 import { MetastableSDK, M_SUI } from 'metastable-ts-sdk';
 import { fetchLiquidStakingInfo, LstClient } from '@suilend/springsui-sdk';
-import { grpcClient, jsonClient } from './lending.js';
+import { grpcClient, jsonClient, voloStats } from './lending.js';
 import { fail, rawHuman } from '../../shared/journey-model.js';
 
 const SUI = normalizeStructTag('0x2::sui::SUI');
@@ -27,6 +27,25 @@ const MSUI = M_SUI.coin;
 const nowIso = () => new Date().toISOString();
 const canon = (t) => { try { return normalizeStructTag(String(t)); } catch { return String(t); } };
 
+// Trailing staking APY from the official NAVI open API (same family as the
+// in-app Volo stats; Haedal methodology = 48h conversion-rate growth).
+// Fail-soft: a dead stats endpoint must not kill the mint path.
+export async function lstApy(kind) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    if (kind === 'volo') {
+      const r = await voloStats();
+      const apy = Number(r.apy);
+      return Number.isFinite(apy) && apy >= 0 ? apy * 100 : null;
+    }
+    const r = await fetch(`https://open-api.naviprotocol.io/api/${kind}/stats`, { signal: ctrl.signal, headers: { Accept: 'application/json' } });
+    if (!r.ok) return null;
+    const apy = Number((await r.json())?.data?.apy);
+    return Number.isFinite(apy) && apy >= 0 ? apy * 100 : null;
+  } catch { return null; } finally { clearTimeout(t); }
+}
+
 async function lstBalance(wallet, coinType) {
   const c = jsonClient();
   const page = await c.getCoins({ owner: wallet, coinType }).catch(() => null);
@@ -44,7 +63,7 @@ export async function jpMarkets(provider) {
     const totalLst = Number(info.lstTreasuryCap.totalSupply.value) / 1e9;
     const rate = totalSui > 0 ? totalLst / totalSui : 0;
     return [{ provider, id: 'SUI', coinType: SUI, symbol: 'SUI', decimals: 9, rate: null, rateKind: 'APY',
-      rateBasis: 'Exchange rate is NOT an annual yield; no verified APY provided here',
+      rateBasis: 'No protocol-published sSUI APY exists; yield accrues in the exchange rate below',
       baseRate: null, baseRateKind: 'APR', rewardRate: null, rewardNote: 'Yield accrues in the sSUI exchange rate; annual rate not quantified here',
       exchangeRate: rate, receiptType: SSUI, receiptSymbol: 'sSUI', minimumRaw: '1',
       availableLiquidity: null, withdrawTerms: 'Instant redemption via SIP-33; fresh simulation required.',
@@ -52,15 +71,16 @@ export async function jpMarkets(provider) {
   }
   if (provider === 'metastable') {
     return [{ provider, id: 'SUI', coinType: SUI, symbol: 'SUI', decimals: 9, rate: null, rateKind: 'APY',
-      rateBasis: 'Exchange rate is NOT an annual yield; no verified APY provided here',
+      rateBasis: 'No protocol-published mSUI APY exists; value accrues in the vault exchange rate',
       baseRate: null, baseRateKind: 'APR', rewardRate: null, rewardNote: 'Yield accrues in the mSUI exchange rate; annual rate not quantified here',
       exchangeRate: null, receiptType: MSUI, receiptSymbol: 'mSUI', minimumRaw: '1',
       availableLiquidity: null, withdrawTerms: 'Burn mSUI for SUI minus the dynamic 0.01–1% fee; fresh simulation required.',
       source: 'Metastable SDK registry path (SUI as deposit asset)', updatedAt: nowIso() }];
   }
   if (provider === 'volo') {
-    return [{ provider, id: 'SUI', coinType: SUI, symbol: 'SUI', decimals: 9, rate: null, rateKind: 'APY',
-      rateBasis: 'Exchange rate is NOT an annual yield; no verified APY provided here',
+    const apy = await lstApy('volo');
+    return [{ provider, id: 'SUI', coinType: SUI, symbol: 'SUI', decimals: 9, rate: apy, rateKind: 'APY',
+      rateBasis: apy == null ? 'Exchange rate is NOT an annual yield; no verified APY provided here' : 'NAVI open API vSUI stats — trailing staking APY, variable',
       baseRate: null, baseRateKind: 'APR', rewardRate: null, rewardNote: 'Yield accrues in the vSUI exchange rate; annual rate not quantified here',
       exchangeRate: null, receiptType: CERT, receiptSymbol: 'vSUI', minimumRaw: '100000000',
       availableLiquidity: null, withdrawTerms: 'Instant redemption via Volo pool; fresh simulation required.',

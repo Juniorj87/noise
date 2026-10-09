@@ -9,6 +9,8 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
+    { "source": "/", "destination": "/app.html", "has": [{ "type": "host", "value": "app.noisehub.xyz" }] },
+    { "source": "/app/:rest*", "destination": "/app.html", "has": [{ "type": "host", "value": "app.noisehub.xyz" }] },
     { "source": "/health", "destination": "/api/health" },
     { "source": "/app", "destination": "/app.html" },
     { "source": "/app/leaderboard", "destination": "/app.html" },
