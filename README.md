@@ -53,7 +53,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Liquid staking (Haedal, SpringSui, Volo, Aftermath afSUI, Sui native) | LIVE | Instant and ticket-based exits where the protocol defines them. |
 | DeepBook V3 spot | LIVE | Live book, order placement through your BalanceManager. |
 | DeepBook Predict | LIVE | Market discovery, mint / redeem / claim builds with simulation. |
-| DeepBook margin | COMING SOON | Builders exist; UI hidden. |
+| DeepBook margin | COMING SOON | Builders exist but are unwired (no API route); UI hidden. |
 | STEAMM liquidity pools | LIVE | Dual-asset LP in the liquidity UI; excluded from single-asset flows by design. |
 | Bucket PSM swaps | LIVE | Low-fee stable swaps. Broader Bucket lending: PARTIAL. |
 | Wormhole bridge (self-hosted Connect widget) | PARTIAL | Widget integrated; no signed end-to-end transfer performed by the team. |
@@ -68,7 +68,7 @@ Verified matrix: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)
 
 ## Current implementation status and limitations
 
-- Unsigned builds and simulations are verified continuously (see `audit/`), but they are not funded-wallet end-to-end tests.
+- `LIVE` means unsigned builds plus `devInspect` simulations verified against mainnet; the team has not performed funded-wallet execution for these paths. Unsigned evidence lives under `audit/` — it is engineering verification, not a security audit.
 - A review is valid for 60 seconds; expired or changed selections must be rebuilt.
 - No independent security audit has been performed. Nothing here is a safety guarantee or investment advice.
 - Production persistence requires PostgreSQL; only local SQLite is covered by automated tests.

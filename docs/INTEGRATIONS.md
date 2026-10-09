@@ -25,7 +25,7 @@ Verified against `shared/registry.js`, `api/_lib/*` builders, and the UI on 2026
 | STEAMM | Dual-asset liquidity pools | Pools, events | LP deposit / withdraw PTBs (advanced UI; excluded from single-asset flows by design) | LIVE |
 | DeepBook V3 spot | Order-book trading | Markets, L2 book, open orders | Spot orders via user BalanceManager + simulation | LIVE |
 | DeepBook Predict | Prediction markets | Market discovery, status | Mint / redeem / claim + simulation | LIVE |
-| DeepBook margin | Margin trading | Preflight reads | Builders exist; UI tab hidden | COMING SOON |
+| DeepBook margin | Margin trading | Preflight reads | Builders exist but are unwired (no API route); UI tab hidden | COMING SOON |
 | Wormhole Connect (self-hosted widget) | Bridging | Widget routes | In-widget (provider-side); no signed end-to-end transfer performed by the team | PARTIAL |
 | Prices (Aftermath, CoinGecko) | USD.basename views | Prices, 24h change | — | LIVE (data) |
 | SuiNS | Address names | Name resolution | — (display only, falls back to short address) | PARTIAL |

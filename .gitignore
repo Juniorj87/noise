@@ -23,7 +23,8 @@ public/
 .DS_Store
 Thumbs.db
 .vercel
-.env*
+# .env* would also swallow the template — real secrets are listed above; keep the template tracked.
+!.env.example
 
 # Pre-change backups (tag/branch/bundle) — kept on disk, never committed
 backups/
