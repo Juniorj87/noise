@@ -995,13 +995,15 @@ section{padding-top:var(--space-section) !important;padding-bottom:var(--space-s
 .hero{padding-top:170px !important;padding-bottom:90px !important;max-width:1296px}
 /* Kill gray wash: panels are ink, not smoke. Borders carry the structure. */
 .hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface,
-.discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,
+.discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,.sec-item,
 .noise-live-panel,.flow-icon,.generated-action{
   background:rgba(10,10,10,.55) !important;
   border-radius:var(--radius) !important;
 }
 .capital-item,.eco-node,.command-step{background:#0a0a0a !important;border-radius:var(--radius) !important}
-.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+/* Touch screens: no stuck hover highlight after tap */
+@media(hover:none){.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:rgba(10,10,10,.55) !important;border-color:var(--line) !important}}
 .asset-item:hover,.action-item:hover{padding-left:0 !important}
 /* One label / title language everywhere */
 .section-label,.noise-eyebrow{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
@@ -1029,6 +1031,7 @@ section{padding-top:var(--space-section) !important;padding-bottom:var(--space-s
 .discover-grid{background:var(--line)}
 .protocol-mark{background:transparent !important}
 .sui-mark{border-color:rgba(255,255,255,.16) !important;color:var(--text) !important}
+.deep-mark,.infra-mark{background:transparent !important;border-color:rgba(255,255,255,.16) !important;color:var(--text) !important}
 /* Security: 4 cards = 4 columns, no orphan gray cell */
 .sec-grid{grid-template-columns:repeat(4,1fr) !important}
 footer{max-width:1296px;margin:0 auto}
@@ -1243,7 +1246,7 @@ footer{max-width:1296px;margin:0 auto}
     <div class="noise-cap"><div class="noise-cap-num">05</div><h3>Capital</h3><p>Balances, staking, liquidity, orders and supported positions in one view.</p><span class="noise-cap-tag">Portfolio</span></div>
     
     
-    <div class="noise-cap"><div class="noise-cap-num">08</div><h3>Activity</h3><p>Follow transaction state from build and simulation through wallet authorization and confirmation.</p><span class="noise-cap-tag">Tracking</span></div>
+    <div class="noise-cap"><div class="noise-cap-num">06</div><h3>Activity</h3><p>Follow transaction state from build and simulation through wallet authorization and confirmation.</p><span class="noise-cap-tag">Tracking</span></div>
   </div>
 </section>
 
