@@ -41,6 +41,7 @@ Verified against `shared/registry.js`, `api/_lib/*` builders, and the UI on 2026
 Notes:
 
 - A protocol appearing in price lists or search results is **not** evidence of execution support — only the Transaction-build column counts.
+- Aggregator quote legs (Cetus SDK, Turbos) can degrade depending on source network; the quote endpoint then discloses per-venue failures and serves best-of-available (one retry on transient lookup errors, never on deterministic illiquidity).
 - LST exchange rates are **not** annual yields; the UI labels them as such and never sums rates into a total.
 - mSUI cross-asset (swap + mint in one transaction) is unsupported by the Metastable SDK's coin selection; the UI routes users through swap-then-mint instead of failing silently.
 - Evidence for builds and reads is stored under `audit/` (JSON + screenshots). It documents engineering checks, not a security audit.
