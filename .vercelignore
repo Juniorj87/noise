@@ -24,5 +24,9 @@ server/test/
 *.tmp.mjs
 vercel.json.bak
 
+# Local-only bulk: release zips and git-bundle backups (never deployed)
+backups/
+*.zip
+
 # Markdown documentation
 *.md
