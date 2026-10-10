@@ -98,11 +98,18 @@ function send(res, code, body, req) {
   res.end(data);
 }
 
+function invalidJson() {
+  return Object.assign(new Error('Request body is not valid JSON'), { code: 'INVALID_JSON' });
+}
 async function readJson(req) {
   const chunks = [];
   for await (const c of req) chunks.push(c);
   if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return {}; }
+  let v;
+  try { v = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw invalidJson(); }
+  if (!v || typeof v !== 'object') throw invalidJson();
+  return v;
 }
 
 const routes = {

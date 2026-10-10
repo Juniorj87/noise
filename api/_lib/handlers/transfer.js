@@ -25,7 +25,7 @@ export default handler(async (req, res, url) => {
   if (req.method !== 'POST' || action !== 'build') {
     return { error: 'NOT_FOUND', message: 'Known: POST /api/transfer/build.', status: 404 };
   }
-  const b = await readJson(req).catch(() => ({}));
+  const b = await readJson(req);
   try {
     const type = resolveCoinType(b.coinType || b.asset);
     if (!type) return { error: 'UNSUPPORTED_ASSET', message: 'Supported: SUI, USDC, DEEP, CETUS, NAVX.', status: 400 };

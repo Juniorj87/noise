@@ -77,12 +77,29 @@ export function envelope(value, source, sourceUrl, confidence = 'high') {
   return { value, source, sourceUrl, updatedAt: new Date().toISOString(), freshness: 'live', confidence };
 }
 
+/* Aggregator route lookup with ONE retry on transient failures only.
+ * findRouters is a pure read, so retrying is safe; deterministic outcomes
+ * (insufficient liquidity, invalid/unsupported input, venue substitution)
+ * are never retried. */
+const TRANSIENT_ROUTE = /timeout|timed out|econn|enotfound|eai_again|socket|fetch failed|network|429|502|503|504|unavailable|abort|rate.limit/i;
+export async function findRoutersResilient(args) {
+  try {
+    return await cetusClient.findRouters(args);
+  } catch (e) {
+    const code = String(e?.code || '');
+    if (/INSUFFICIENT_LIQUIDITY|INVALID_|UNSUPPORTED_|NO_ROUTE/.test(code)) throw e;
+    if (!TRANSIENT_ROUTE.test(String(e?.message || '') + ' ' + code)) throw e;
+    await new Promise((r) => setTimeout(r, 500));
+    return cetusClient.findRouters(args);
+  }
+}
+
 export const cetusAdapter = {
   id: 'cetus',
   async getQuote({ from, to, amountMist, venue }) {
     const venueCfg = venueConfig(venue);
     const { net, fee } = await swapFeeInput(amountMist, venue || 'cetus', from, `${from}_${to}`);
-    const router = await cetusClient.findRouters({
+    const router = await findRoutersResilient({
       from: coinType(from), target: coinType(to), amount: net, byAmountIn: true,
       ...(venueCfg ? { providers: venueCfg.providers } : {}),
     });
@@ -100,7 +117,7 @@ export const cetusAdapter = {
   async buildSwap({ from, to, amountMist, sender, slippage, venue }) {
     const venueCfg = venueConfig(venue);
     const { net, fee } = await swapFeeInput(amountMist, venue || 'cetus', from, `${from}_${to}`);
-    const router = await cetusClient.findRouters({
+    const router = await findRoutersResilient({
       from: coinType(from), target: coinType(to), amount: net, byAmountIn: true,
       ...(venueCfg ? { providers: venueCfg.providers } : {}),
     });
@@ -274,7 +291,7 @@ export function deepLink(providerId, ctx = {}) {
 export async function cetusSwapCoin({txb,inputCoin,fromType,toType,amountMist,fromSymbol,toSymbol,slippageBps}){
   if(!Number.isInteger(slippageBps)||slippageBps<1||slippageBps>300)throw Object.assign(new Error('INVALID_SLIPPAGE'),{code:'INVALID_SLIPPAGE'});
   const{net,fee}=await swapFeeInput(amountMist,'cetus',fromSymbol,`${fromSymbol}_${toSymbol}`);
-  const router=await cetusClient.findRouters({from:fromType,target:toType,amount:net,byAmountIn:true});
+  const router=await findRoutersResilient({from:fromType,target:toType,amount:net,byAmountIn:true});
   if(!router||router.insufficientLiquidity||!router.paths?.length||BigInt(router.amountOut||0)<=0n)throw Object.assign(new Error('No executable DEX route for this asset and amount'),{code:'NO_ROUTE'});
   if(fee){const[f]=txb.splitCoins(inputCoin,[txb.pure.u64(BigInt(fee.amountMist))]);txb.transferObjects([f],txb.pure.address(fee.recipient));}
   const outputCoin=await cetusClient.routerSwap({router,inputCoin,txb,slippage:slippageBps/10000});

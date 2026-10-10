@@ -67,6 +67,12 @@ const READ_JSON = Symbol('noiseReadJson');
  * promise — re-attaching stream listeners to an already-consumed request would
  * hang forever (no further 'end' event).
  *
+ * Fail-closed contract (financial endpoints depend on it):
+ * - empty body (no bytes) → {} — handlers validate required fields themselves;
+ * - malformed JSON → throws INVALID_JSON (400), never a silent {};
+ * - over-limit body → throws BODY_TOO_LARGE (413), connection destroyed;
+ * - a truncated stream is parsed if possible, else INVALID_JSON.
+ *
  * Two production facts shape this function:
  * 1. The platform may pre-parse the body (req.body). Prefer it when present.
  * 2. req.complete means fully RECEIVED, not consumed — buffered data must still
@@ -76,33 +82,45 @@ const READ_JSON = Symbol('noiseReadJson');
  */
 export function readJson(req, limitBytes = 256 * 1024) {
   if (req[READ_JSON]) return req[READ_JSON];
-  const p = new Promise((resolve) => {
+  const invalid = () => Object.assign(new Error('Request body is not valid JSON'), { code: 'INVALID_JSON' });
+  const tooLarge = () => Object.assign(new Error('Request body exceeds 256KB limit'), { code: 'BODY_TOO_LARGE', status: 413 });
+  const p = new Promise((resolve, reject) => {
     const pre = req.body;
     if (pre !== undefined && pre !== null) {
       if (typeof pre === 'string') {
         if (!pre.trim()) return resolve({});
-        try { return resolve(JSON.parse(pre)); } catch { return resolve({}); }
+        try {
+          const v = JSON.parse(pre);
+          return (v && typeof v === 'object') ? resolve(v) : reject(invalid());
+        } catch { return reject(invalid()); }
       }
       if (typeof pre === 'object') return resolve(pre);
-      return resolve({});
+      return reject(invalid());
     }
     if (req.readableEnded) return resolve({});
     const chunks = [];
     let size = 0, done = false;
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const fail = (e) => { if (!done) { done = true; reject(e); } };
+    const parseChunks = () => {
+      if (!chunks.length) return finish({});
+      try {
+        const v = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        return (v && typeof v === 'object') ? finish(v) : fail(invalid());
+      } catch { return fail(invalid()); }
+    };
     req.on('data', (c) => {
       size += c.length;
-      if (size > limitBytes) { finish({}); req.destroy(); return; }
+      if (size > limitBytes) { fail(tooLarge()); req.destroy(); return; }
       chunks.push(c);
     });
-    req.on('end', () => {
-      if (!chunks.length) return finish({});
-      try { finish(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch { finish({}); }
-    });
-    req.on('error', () => finish({}));
+    req.on('end', parseChunks);
+    req.on('error', parseChunks);
   });
   req[READ_JSON] = p;
+  // A rejection must never become an unhandled rejection for callers that
+  // attached .catch themselves — the cached promise carries it normally.
+  p.catch(() => {});
   return p;
 }
 
@@ -125,6 +143,7 @@ export function handler(fn, { limit = 120 } = {}) {
     } catch (e) {
       const code = e.code || 'INTERNAL';
       const safe = ['INVALID_WALLET', 'INVALID_AMOUNT', 'INVALID_BPS', 'INVALID_DIGEST', 'INVALID_CODE', 'INVALID_TX', 'INVALID_OBJECT_ID',
+        'INVALID_JSON', 'BODY_TOO_LARGE',
         'UNSUPPORTED_ACTION', 'UNSUPPORTED_PROVIDER', 'UNSUPPORTED_ASSET', 'UNSUPPORTED_SUI_METHOD', 'INVALID_REQUEST',
         'MISSING_WALLET', 'MISSING_ID', 'MISSING_DIGEST', 'MISSING_MESSAGE', 'MISSING_PROVIDER', 'MISSING_CODE',
         'TX_NOT_FOUND', 'TX_NOT_FOUND_ON_CHAIN', 'TX_FINAL', 'TX_BAD_TRANSITION', 'TX_TRANSITION_FAILED', 'INVALID_STATUS', 'AUTOMATION_NOT_FOUND',

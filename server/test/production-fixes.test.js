@@ -229,12 +229,34 @@ test('readJson: already-ended stream resolves {} instead of hanging', async () =
   assert.deepEqual(r, {});
 });
 
-test('readJson: oversize body resolves {} and destroys the stream', async () => {
+test('readJson: oversize body rejects BODY_TOO_LARGE (413) and destroys the stream', async () => {
   let destroyed = false;
   const req = mockReq({ chunks: ['x'.repeat(300 * 1024)] });
   req.destroy = () => { destroyed = true; };
-  assert.deepEqual(await readJson(req, 1024), {});
+  await assert.rejects(readJson(req, 1024), (e) => e.code === 'BODY_TOO_LARGE' && e.status === 413);
   assert.equal(destroyed, true);
+});
+
+test('readJson: malformed stream JSON rejects INVALID_JSON, never silent {}', async () => {
+  await assert.rejects(readJson(mockReq({ chunks: ['{"a":'] })), (e) => e.code === 'INVALID_JSON');
+});
+
+test('readJson: malformed pre-parsed string rejects INVALID_JSON', async () => {
+  await assert.rejects(readJson(mockReq({ body: '{nope' })), (e) => e.code === 'INVALID_JSON');
+  await assert.rejects(readJson(mockReq({ body: 42 })), (e) => e.code === 'INVALID_JSON');
+  assert.deepEqual(await readJson(mockReq({ body: '' })), {});
+});
+
+test('readJson: truncated stream (error after partial chunks) rejects INVALID_JSON', async () => {
+  const req = mockReq();
+  queueMicrotask(() => { req.emit('data', Buffer.from('{"a":')); req.emit('error', new Error('reset')); });
+  await assert.rejects(readJson(req), (e) => e.code === 'INVALID_JSON');
+});
+
+test('readJson: stream error with zero chunks resolves {} (empty body)', async () => {
+  const req = mockReq();
+  queueMicrotask(() => req.emit('error', new Error('reset')));
+  assert.deepEqual(await readJson(req), {});
 });
 
 test('readJson: second call returns the first promise (parse at most once)', async () => {

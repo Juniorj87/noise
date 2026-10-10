@@ -61,7 +61,7 @@ export default handler(async (req, res, url) => {
   // { provider, action, ... }. Single frontend code path for both backends.
   let preBody = null;
   if (provider === 'build' && req.method === 'POST') {
-    preBody = await readJson(req).catch(() => ({}));
+    preBody = await readJson(req);
     provider = String(preBody.provider || '');
     action = String(preBody.action || '');
   }
@@ -128,7 +128,7 @@ export default handler(async (req, res, url) => {
 
   /* ------------------------------- builds ------------------------------ */
   if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required for builds.', status: 400 };
-  const b = preBody || await readJson(req).catch(() => ({}));
+  const b = preBody || await readJson(req);
   try {
     if (provider === 'volo') {
       const r = await voloBuild({wallet:b.wallet,amountMist:b.amountMist,action});
