@@ -1809,6 +1809,10 @@ display:none!important}
                     <select id="earnProviderSelect" class="select-input" onchange="selectEarnProvider(this.value)">
                         <option value="aftermath">Aftermath · afSUI</option>
                         <option value="native">Sui native staking</option>
+                        <option value="haedal">Haedal · haSUI</option>
+                        <option value="springsui">SpringSui · sSUI</option>
+                        <option value="volo">Volo · vSUI</option>
+                        <option value="metastable">Metastable · mSUI</option>
                     </select>
                 </div>
                 <div class="fresh" id="earnProviderNote" style="margin:-4px 0 16px;">Live APY below is the provider's rate, not a Noise Hub return. It can change on-chain.</div>
@@ -6468,7 +6472,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             if(id==='steamm'||id==='aftermath'){openLiquidity(id==='steamm'?'steamm':'aftermath');return;}
             if(id==='bucket'){navigateTo('actions');bucketPsmComposer();return;}
             if(['navi','suilend','scallop'].includes(id)){navigateTo('actions');showAction('supply');$('lcProvider').value=id;lcLoadMarkets();lcPreflight('supply');return;}
-            navigateTo('earn');const fields={'haedal':'haedalAmount','volo':'voloAmount','springsui':'springAmount'};const field=$(fields[id]);if(field){field.closest('.panel').scrollIntoView({behavior:'smooth',block:'start'});return;}if(id==='sui-native'){$('earnStaking').scrollIntoView({behavior:'smooth',block:'start'});return;}openProto(id);
+            navigateTo('earn');const fields={'haedal':'haedalAmount','volo':'voloAmount','springsui':'springAmount','metastable':'mstableVault'};const field=$(fields[id]);if(field){field.closest('.panel').scrollIntoView({behavior:'smooth',block:'start'});return;}if(id==='sui-native'){$('earnStaking').scrollIntoView({behavior:'smooth',block:'start'});return;}openProto(id);
         }
         function renderEarnDir() {
             const grid = $('earnDir'); if (!grid) return;
@@ -6593,7 +6597,8 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
         async function loadSpringPanel() {
             try {
                 const r = await apiGet('/api/discover/springsui/rate', 25000);
-                if (r && !r.error && r.rate != null && Number.isFinite(Number(r.rate))) $('springRateLine').innerHTML = 'Live rate: <b>1 sSUI = ' + Number(r.rate).toFixed(6) + ' SUI</b> · TVL <b>' + (r.totalSui / 1e6).toFixed(1) + 'M SUI</b> · <span class="status-pill live">CHAIN READ</span>';
+                const rate = r ? Number(r.rate) : NaN, tvl = r ? Number(r.totalSui) : NaN;
+                if (r && !r.error && Number.isFinite(rate) && Number.isFinite(tvl)) $('springRateLine').innerHTML = 'Live rate: <b>1 sSUI = ' + rate.toFixed(6) + ' SUI</b> · TVL <b>' + (tvl / 1e6).toFixed(1) + 'M SUI</b> · <span class="status-pill live">CHAIN READ</span>';
                 else $('springRateLine').textContent = 'Rate unavailable — nothing estimated.';
             } catch (e) { $('springRateLine').textContent = 'Rate unavailable — nothing estimated.'; }
         }
@@ -6629,19 +6634,29 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
         async function loadVoloPanel() {
             try {
                 const r = await apiGet('/api/discover/volo/stats', 25000);
-                if (r && !r.error) $('voloStatsLine').innerHTML = 'Staked: <b>' + (Number(r.totalStaked) / 1e6).toFixed(1) + 'M SUI</b> · APY: <b>' + (Number(r.apy) * 100).toFixed(2) + '%</b> · validators <b>' + (r.validators || []).length + '</b> · <span class="status-pill live">LIVE STATS</span>';
+                const staked = r ? Number(r.totalStaked) : NaN, apy = r ? Number(r.apy) : NaN;
+                if (r && !r.error && Number.isFinite(staked) && Number.isFinite(apy)) $('voloStatsLine').innerHTML = 'Staked: <b>' + (staked / 1e6).toFixed(1) + 'M SUI</b> · APY: <b>' + (apy * 100).toFixed(2) + '%</b> · validators <b>' + (r.validators || []).length + '</b> · <span class="status-pill live">LIVE STATS</span>';
                 else $('voloStatsLine').textContent = 'Stats unavailable.';
             } catch (e) { $('voloStatsLine').textContent = 'Stats unavailable.'; }
         }
+        function scrollToEarnPanel(id) { const f = $(id); if (f && f.closest('.panel')) f.closest('.panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        const EARN_PANELS = { haedal: ['haedalAmount', 'Haedal · haSUI'], springsui: ['springAmount', 'SpringSui · sSUI'], volo: ['voloAmount', 'Volo · vSUI'], metastable: ['mstableVault', 'Metastable · mSUI'] };
         function selectEarnProvider(provider) {
             const note = $('earnProviderNote');
             const grid = $('earnStaking');
             if (provider === 'native') {
                 grid.innerHTML = '<div class="opportunity-card"><div class="opportunity-asset">SUI native staking</div><div class="opportunity-protocol">Sui validators</div><div class="opportunity-metrics">Validator commission and reward rate vary by validator. Noise shows the route, but does not invent a universal APY.</div><div class="fresh">Live validator/stake data is available in Portfolio. Execution is shown only when a supported build path is available.</div><div class="opportunity-action" onclick="navigateTo(\'capital\')">View validators →</div></div>';
                 note.textContent = 'Native staking has no single universal APY: validator reward rate and commission determine the result. Choose a validator in the supported flow.';
-            } else {
-                loadEarn();
+                return;
             }
+            if (EARN_PANELS[provider]) {
+                const field = EARN_PANELS[provider][0], label = EARN_PANELS[provider][1];
+                grid.innerHTML = '<div class="opportunity-card"><div class="opportunity-asset">' + label + '</div><div class="opportunity-protocol">Live panel below</div><div class="opportunity-metrics">Live rate, review and signing in the dedicated panel on this page.</div><div class="opportunity-action" onclick="scrollToEarnPanel(\'' + field + '\')">Open live panel →</div></div>';
+                note.textContent = label + ': live rate and execution in the panel below. No invented APY.';
+                scrollToEarnPanel(field);
+                return;
+            }
+            loadEarn();
         }
         function openPoolFromEarn(name) {
             const pool=(window._earnPools||[]).find(p=>p.name===name);
@@ -6690,7 +6705,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             } catch (e) { if (fr) fr.textContent = 'Earn data Unavailable.'; }
             try { renderEarnDir(); } catch (e) {}
             try { loadHaedalPanel(); } catch (e) {}
-            // Unconnected Metastable actions are not loaded in the public UI.
+            try { loadMstablePanel(); } catch (e) {}
             try { loadSpringPanel(); } catch (e) {}
             try { loadVoloPanel(); } catch (e) {}
             const ec = $('earnCapital');

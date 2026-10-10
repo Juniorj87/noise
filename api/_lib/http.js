@@ -65,25 +65,42 @@ const READ_JSON = Symbol('noiseReadJson');
 /**
  * Parse a JSON body AT MOST ONCE per request. A second call returns the first
  * promise — re-attaching stream listeners to an already-consumed request would
- * hang forever (no further 'end' event). Already-ended requests resolve {}.
+ * hang forever (no further 'end' event).
+ *
+ * Two production facts shape this function:
+ * 1. The platform may pre-parse the body (req.body). Prefer it when present.
+ * 2. req.complete means fully RECEIVED, not consumed — buffered data must still
+ *    be read. Only req.readableEnded means there is nothing left to read.
+ *    Short-circuiting on `complete` silently drops every POST body whose bytes
+ *    arrived before the function ran (production cold starts).
  */
 export function readJson(req, limitBytes = 256 * 1024) {
   if (req[READ_JSON]) return req[READ_JSON];
   const p = new Promise((resolve) => {
-    if (req.readableEnded || req.complete) return resolve({});
+    const pre = req.body;
+    if (pre !== undefined && pre !== null) {
+      if (typeof pre === 'string') {
+        if (!pre.trim()) return resolve({});
+        try { return resolve(JSON.parse(pre)); } catch { return resolve({}); }
+      }
+      if (typeof pre === 'object') return resolve(pre);
+      return resolve({});
+    }
+    if (req.readableEnded) return resolve({});
     const chunks = [];
-    let size = 0;
+    let size = 0, done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
     req.on('data', (c) => {
       size += c.length;
-      if (size > limitBytes) { resolve({}); req.destroy(); return; }
+      if (size > limitBytes) { finish({}); req.destroy(); return; }
       chunks.push(c);
     });
     req.on('end', () => {
-      if (!chunks.length) return resolve({});
-      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-      catch { resolve({}); }
+      if (!chunks.length) return finish({});
+      try { finish(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+      catch { finish({}); }
     });
-    req.on('error', () => resolve({}));
+    req.on('error', () => finish({}));
   });
   req[READ_JSON] = p;
   return p;

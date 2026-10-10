@@ -191,3 +191,55 @@ test('cron: closed without CRON_SECRET; ?secret= never accepted', () => {
   assert.equal(checkSecret({ headers: { 'x-cron-secret': 'wrong' }, url: 'http://localhost/x' }), false);
   if (saved === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = saved;
 });
+
+/* ---------- 7. readJson: production POST bodies must never be dropped ---------- */
+const { readJson } = await import('../../api/_lib/http.js');
+import { EventEmitter } from 'node:events';
+function mockReq({ body = undefined, complete = false, readableEnded = false, chunks = [] } = {}) {
+  const req = new EventEmitter();
+  req.body = body;
+  req.complete = complete;
+  req.readableEnded = readableEnded;
+  req.destroy = () => {};
+  if (chunks.length && !readableEnded) {
+    queueMicrotask(() => {
+      for (const c of chunks) req.emit('data', Buffer.from(c));
+      req.emit('end');
+    });
+  }
+  return req;
+}
+
+test('readJson: platform pre-parsed body object is used as-is', async () => {
+  assert.deepEqual(await readJson(mockReq({ body: { wallet: '0x1' }, complete: true })), { wallet: '0x1' });
+});
+
+test('readJson: fully buffered body (complete=true, not ended) still parses', async () => {
+  const r = await readJson(mockReq({ complete: true, chunks: ['{"a":1}'] }));
+  assert.deepEqual(r, { a: 1 });
+});
+
+test('readJson: normal stream parses', async () => {
+  const r = await readJson(mockReq({ chunks: ['{"a":', '2}'] }));
+  assert.deepEqual(r, { a: 2 });
+});
+
+test('readJson: already-ended stream resolves {} instead of hanging', async () => {
+  const r = await Promise.race([readJson(mockReq({ readableEnded: true, complete: true })), new Promise((_, rej) => setTimeout(() => rej(new Error('hang')), 2000))]);
+  assert.deepEqual(r, {});
+});
+
+test('readJson: oversize body resolves {} and destroys the stream', async () => {
+  let destroyed = false;
+  const req = mockReq({ chunks: ['x'.repeat(300 * 1024)] });
+  req.destroy = () => { destroyed = true; };
+  assert.deepEqual(await readJson(req, 1024), {});
+  assert.equal(destroyed, true);
+});
+
+test('readJson: second call returns the first promise (parse at most once)', async () => {
+  const req = mockReq({ chunks: ['{"a":3}'] });
+  const [a, b] = await Promise.all([readJson(req), readJson(req)]);
+  assert.deepEqual(a, { a: 3 });
+  assert.deepEqual(b, { a: 3 });
+});
