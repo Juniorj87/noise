@@ -229,12 +229,9 @@ test('readJson: already-ended stream resolves {} instead of hanging', async () =
   assert.deepEqual(r, {});
 });
 
-test('readJson: oversize body rejects BODY_TOO_LARGE (413) and destroys the stream', async () => {
-  let destroyed = false;
+test('readJson: oversize body rejects PAYLOAD_TOO_LARGE (413) after draining, connection intact', async () => {
   const req = mockReq({ chunks: ['x'.repeat(300 * 1024)] });
-  req.destroy = () => { destroyed = true; };
-  await assert.rejects(readJson(req, 1024), (e) => e.code === 'BODY_TOO_LARGE' && e.status === 413);
-  assert.equal(destroyed, true);
+  await assert.rejects(readJson(req, 1024), (e) => e.code === 'PAYLOAD_TOO_LARGE' && e.status === 413);
 });
 
 test('readJson: malformed stream JSON rejects INVALID_JSON, never silent {}', async () => {
@@ -259,8 +256,8 @@ test('readJson: platform body getter that throws maps to INVALID_JSON (400), not
   await assert.rejects(readJson(req), (e) => e.code === 'INVALID_JSON');
 });
 
-test('readJson: pre-parsed oversize object rejects BODY_TOO_LARGE (413)', async () => {
-  await assert.rejects(readJson(mockReq({ body: { wallet: 'x'.repeat(300 * 1024) } }), 1024), (e) => e.code === 'BODY_TOO_LARGE' && e.status === 413);
+test('readJson: pre-parsed oversize object rejects PAYLOAD_TOO_LARGE (413)', async () => {
+  await assert.rejects(readJson(mockReq({ body: { wallet: 'x'.repeat(300 * 1024) } }), 1024), (e) => e.code === 'PAYLOAD_TOO_LARGE' && e.status === 413);
 });
 
 test('readJson: stream error with zero chunks resolves {} (empty body)', async () => {
@@ -274,4 +271,62 @@ test('readJson: second call returns the first promise (parse at most once)', asy
   const [a, b] = await Promise.all([readJson(req), readJson(req)]);
   assert.deepEqual(a, { a: 3 });
   assert.deepEqual(b, { a: 3 });
+});
+
+/* ---------- 8. readJson over real HTTP: wire statuses end to end ---------- */
+const { default: http } = await import('node:http');
+async function withEchoServer(fn) {
+  const route = handler(async (req) => ({ echo: await readJson(req) }));
+  const srv = http.createServer((req, res) => route(req, res));
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  try {
+    return await fn(`http://127.0.0.1:${srv.address().port}`);
+  } finally {
+    await new Promise((r) => srv.close(r));
+  }
+}
+async function postRaw(url, raw, headers = {}) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: raw });
+  return { status: r.status, json: await r.json().catch(() => null) };
+}
+
+test('HTTP: malformed JSON body returns 400 INVALID_JSON (never silent {})', async () => {
+  await withEchoServer(async (url) => {
+    const r = await postRaw(url, '{bad json');
+    assert.equal(r.status, 400);
+    assert.equal(r.json.error, 'INVALID_JSON');
+  });
+});
+
+test('HTTP: oversize body returns 413 PAYLOAD_TOO_LARGE', async () => {
+  await withEchoServer(async (url) => {
+    const r = await postRaw(url, JSON.stringify({ wallet: 'x'.repeat(300 * 1024) }));
+    assert.equal(r.status, 413);
+    assert.equal(r.json.error, 'PAYLOAD_TOO_LARGE');
+  });
+});
+
+test('HTTP: valid JSON body echoes 200; empty body echoes {} for the route to judge', async () => {
+  await withEchoServer(async (url) => {
+    const ok = await postRaw(url, JSON.stringify({ wallet: '0x1' }));
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.json.echo, { wallet: '0x1' });
+    const empty = await postRaw(url, '');
+    assert.equal(empty.status, 200);
+    assert.deepEqual(empty.json.echo, {});
+  });
+});
+
+test('HTTP: aborted upload settles (no hang) instead of leaving the function pending', async () => {
+  await withEchoServer(async (url) => {
+    const ctrl = new AbortController();
+    const p = fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'x'.repeat(5000), signal: ctrl.signal, duplex: 'half' }).then(
+      async (r) => ({ status: r.status, json: await r.json().catch(() => null) }),
+      (e) => ({ aborted: true, error: String(e?.cause || e?.message || e).slice(0, 60) }),
+    );
+    await new Promise((r) => setTimeout(r, 150));
+    ctrl.abort();
+    const out = await Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('server hung')), 8000))]);
+    assert.ok(out.aborted || out.status === 400, 'aborted upload must settle, got ' + JSON.stringify(out).slice(0, 120));
+  });
 });

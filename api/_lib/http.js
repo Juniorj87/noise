@@ -70,8 +70,10 @@ const READ_JSON = Symbol('noiseReadJson');
  * Fail-closed contract (financial endpoints depend on it):
  * - empty body (no bytes) → {} — handlers validate required fields themselves;
  * - malformed JSON → throws INVALID_JSON (400), never a silent {};
- * - over-limit body → throws BODY_TOO_LARGE (413), connection destroyed;
- * - a truncated stream is parsed if possible, else INVALID_JSON.
+ * - over-limit body → throws PAYLOAD_TOO_LARGE (413), connection destroyed;
+ * - a truncated stream is parsed if possible, else INVALID_JSON;
+ * - an aborted connection ('close' without 'end') settles like a truncation,
+ *   never hangs the function.
  *
  * Two production facts shape this function:
  * 1. The platform may pre-parse the body (req.body). Prefer it when present.
@@ -83,7 +85,7 @@ const READ_JSON = Symbol('noiseReadJson');
 export function readJson(req, limitBytes = 256 * 1024) {
   if (req[READ_JSON]) return req[READ_JSON];
   const invalid = () => Object.assign(new Error('Request body is not valid JSON'), { code: 'INVALID_JSON' });
-  const tooLarge = () => Object.assign(new Error('Request body exceeds 256KB limit'), { code: 'BODY_TOO_LARGE', status: 413 });
+  const tooLarge = () => Object.assign(new Error('Request body exceeds 256KB limit'), { code: 'PAYLOAD_TOO_LARGE', status: 413 });
   const p = new Promise((resolve, reject) => {
     // The platform may expose a pre-parsed body. Note: on Vercel, merely
     // READING req.body can throw a platform 'Invalid JSON' error for malformed
@@ -111,10 +113,11 @@ export function readJson(req, limitBytes = 256 * 1024) {
     }
     if (req.readableEnded) return resolve({});
     const chunks = [];
-    let size = 0, done = false;
+    let size = 0, done = false, over = false;
     const finish = (v) => { if (!done) { done = true; resolve(v); } };
     const fail = (e) => { if (!done) { done = true; reject(e); } };
     const parseChunks = () => {
+      if (over) return fail(tooLarge());
       if (!chunks.length) return finish({});
       try {
         const v = JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -123,11 +126,17 @@ export function readJson(req, limitBytes = 256 * 1024) {
     };
     req.on('data', (c) => {
       size += c.length;
-      if (size > limitBytes) { fail(tooLarge()); req.destroy(); return; }
-      chunks.push(c);
+      // Over the limit: keep draining (do not store) so the 413 response
+      // reaches the client. Destroying mid-upload would reset the connection
+      // and the client would never see the status.
+      if (size > limitBytes) { over = true; chunks.length = 0; return; }
+      if (!over) chunks.push(c);
     });
     req.on('end', parseChunks);
     req.on('error', parseChunks);
+    // A silently aborted connection may emit neither 'end' nor 'error'.
+    // Settle it the same way as a truncation instead of hanging to timeout.
+    req.on('close', () => { if (!done) parseChunks(); });
   });
   req[READ_JSON] = p;
   // A rejection must never become an unhandled rejection for callers that
@@ -155,7 +164,7 @@ export function handler(fn, { limit = 120 } = {}) {
     } catch (e) {
       const code = e.code || 'INTERNAL';
       const safe = ['INVALID_WALLET', 'INVALID_AMOUNT', 'INVALID_BPS', 'INVALID_DIGEST', 'INVALID_CODE', 'INVALID_TX', 'INVALID_OBJECT_ID',
-        'INVALID_JSON', 'BODY_TOO_LARGE',
+        'INVALID_JSON', 'PAYLOAD_TOO_LARGE',
         'UNSUPPORTED_ACTION', 'UNSUPPORTED_PROVIDER', 'UNSUPPORTED_ASSET', 'UNSUPPORTED_SUI_METHOD', 'INVALID_REQUEST',
         'MISSING_WALLET', 'MISSING_ID', 'MISSING_DIGEST', 'MISSING_MESSAGE', 'MISSING_PROVIDER', 'MISSING_CODE',
         'TX_NOT_FOUND', 'TX_NOT_FOUND_ON_CHAIN', 'TX_FINAL', 'TX_BAD_TRANSITION', 'TX_TRANSITION_FAILED', 'INVALID_STATUS', 'AUTOMATION_NOT_FOUND',

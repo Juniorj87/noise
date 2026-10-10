@@ -14,7 +14,11 @@ let schemaReady = null;
 
 export function getPool() {
   if (!pool) {
-    const url = process.env.DATABASE_URL;
+    // Separate test profile: TEST_DATABASE_URL is honored ONLY when the
+    // runner explicitly opts into test mode. Production traffic can never be
+    // redirected by a stray variable — NODE_ENV is 'production' on Vercel.
+    const testUrl = process.env.NODE_ENV === 'test' ? (process.env.TEST_DATABASE_URL || null) : null;
+    const url = testUrl || process.env.DATABASE_URL;
     if (!url) throw Object.assign(new Error('DATABASE_URL_NOT_CONFIGURED'), { code: 'DB_NOT_CONFIGURED', status: 503 });
     pool = new pg.Pool({
       connectionString: url,

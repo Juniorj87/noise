@@ -1,12 +1,17 @@
 // PostgreSQL adapter tests (API-mode business services).
-// Run with: DATABASE_URL=postgres://… node --test test/pg.test.js
-// Without DATABASE_URL the suite reports an honest skip — it never fakes a pass.
+// Run with: TEST_DATABASE_URL=postgres://… NODE_ENV=test node --test test/pg.test.js
+// The suite NEVER touches production data: it requires an explicit test
+// database (or PG_ALLOW_DATABASE_URL_TESTS=1 as a conscious override).
+// Without either, it reports an honest skip — it never fakes a pass.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-if (!process.env.DATABASE_URL) {
-  test('pg adapter: skipped — DATABASE_URL not set (set it to run real Postgres tests)', { skip: true }, () => {});
+if (!process.env.TEST_DATABASE_URL && process.env.PG_ALLOW_DATABASE_URL_TESTS !== '1') {
+  test('pg adapter: skipped — set TEST_DATABASE_URL (separate test database, never production)', { skip: true }, () => {});
 } else {
+  // Route pg.js at the test database even if a production DATABASE_URL leaks
+  // into this shell. Platform-safe (no shell-specific env prefix needed).
+  if (process.env.TEST_DATABASE_URL) process.env.NODE_ENV = 'test';
   const S = await import('../../api/_lib/services.js');
   const { ensureSchema, getPool } = await import('../../api/_lib/pg.js');
   const RUN = 'pg' + Date.now().toString(36);
