@@ -85,7 +85,13 @@ export function readJson(req, limitBytes = 256 * 1024) {
   const invalid = () => Object.assign(new Error('Request body is not valid JSON'), { code: 'INVALID_JSON' });
   const tooLarge = () => Object.assign(new Error('Request body exceeds 256KB limit'), { code: 'BODY_TOO_LARGE', status: 413 });
   const p = new Promise((resolve, reject) => {
-    const pre = req.body;
+    // The platform may expose a pre-parsed body. Note: on Vercel, merely
+    // READING req.body can throw a platform 'Invalid JSON' error for malformed
+    // payloads — map it to our INVALID_JSON instead of leaking a 500.
+    let pre;
+    try {
+      pre = req.body;
+    } catch { return reject(invalid()); }
     if (pre !== undefined && pre !== null) {
       if (typeof pre === 'string') {
         if (!pre.trim()) return resolve({});
@@ -94,7 +100,13 @@ export function readJson(req, limitBytes = 256 * 1024) {
           return (v && typeof v === 'object') ? resolve(v) : reject(invalid());
         } catch { return reject(invalid()); }
       }
-      if (typeof pre === 'object') return resolve(pre);
+      if (typeof pre === 'object') {
+        // The app-level size limit applies to pre-parsed bodies too.
+        let size = -1;
+        try { size = Buffer.byteLength(JSON.stringify(pre), 'utf8'); } catch { return reject(invalid()); }
+        if (size >= 0 && size > limitBytes) return reject(tooLarge());
+        return resolve(pre);
+      }
       return reject(invalid());
     }
     if (req.readableEnded) return resolve({});

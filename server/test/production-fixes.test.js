@@ -253,6 +253,16 @@ test('readJson: truncated stream (error after partial chunks) rejects INVALID_JS
   await assert.rejects(readJson(req), (e) => e.code === 'INVALID_JSON');
 });
 
+test('readJson: platform body getter that throws maps to INVALID_JSON (400), not 500', async () => {
+  const req = mockReq();
+  Object.defineProperty(req, 'body', { get() { throw new Error('Invalid JSON'); } });
+  await assert.rejects(readJson(req), (e) => e.code === 'INVALID_JSON');
+});
+
+test('readJson: pre-parsed oversize object rejects BODY_TOO_LARGE (413)', async () => {
+  await assert.rejects(readJson(mockReq({ body: { wallet: 'x'.repeat(300 * 1024) } }), 1024), (e) => e.code === 'BODY_TOO_LARGE' && e.status === 413);
+});
+
 test('readJson: stream error with zero chunks resolves {} (empty body)', async () => {
   const req = mockReq();
   queueMicrotask(() => req.emit('error', new Error('reset')));
