@@ -1657,9 +1657,17 @@ footer{max-width:1296px;margin:0 auto}
             })();
 
             var P = [];
+            // Spatial frequencies, relative to viewport width: ~2 large waves
+            // and ~5 small ripples across any screen. (Old fixed 0.008/0.021
+            // matched 1536px exactly and turned into one giant blob on mobile.)
+            var K1 = 0.008, K2 = 0.021, K3 = 0.008, K4 = 0.02;
+            function rescale() {
+                var w = Math.max(320, W);
+                K1 = 12.0 / w; K2 = 32.0 / w; K3 = 12.0 / w; K4 = 30.0 / w;
+            }
             function seed() {
                 P = [];
-                var n = Math.floor(W * H / 4300), i;
+                var n = Math.max(120, Math.min(2200, Math.floor(W * H / 4300))), i;
                 for (i = 0; i < n; i++) {
                     P.push({
                         x: Math.random() * W,
@@ -1681,6 +1689,7 @@ footer{max-width:1296px;margin:0 auto}
                 W = Math.max(320, window.innerWidth); H = Math.max(420, window.innerHeight);
                 cv.width = W * DPR; cv.height = H * DPR;
                 ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                rescale();
                 seed();
             }
 
@@ -1707,12 +1716,12 @@ footer{max-width:1296px;margin:0 auto}
                     }
                     var o = order(p.x);
                     var noiseY = p.baseY
-                        + Math.sin(t * p.f1 + p.ph1 + p.x * 0.008) * H * 0.07
-                        + Math.sin(t * p.f2 + p.ph2 + p.x * 0.021) * H * 0.035;
+                        + Math.sin(t * p.f1 + p.ph1 + p.x * K1) * H * 0.07
+                        + Math.sin(t * p.f2 + p.ph2 + p.x * K2) * H * 0.035;
                     var ribbonOff = [-0.11, 0.01, 0.12][p.ribbon] * H;
                     var sigY = cy + ribbonOff
-                        + Math.sin(p.x * 0.008 + t * 1.1 + p.ribbon * 2.1) * H * 0.045
-                        + Math.sin(p.x * 0.02 - t * 0.6) * H * 0.012;
+                        + Math.sin(p.x * K3 + t * 1.1 + p.ribbon * 2.1) * H * 0.045
+                        + Math.sin(p.x * K4 - t * 0.6) * H * 0.012;
                     var y = noiseY + (sigY - noiseY) * o;
                     var a = (0.05 + Math.random() * 0.02) * (1 - o) + (0.18 + 0.34 * o) + 0.07 * Math.sin(t * 2 + p.tw);
                     if (a < 0.03) a = 0.03;
