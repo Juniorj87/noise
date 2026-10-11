@@ -293,11 +293,16 @@ export async function recordDigest(data, opts = {}) {
   };
   const existing = await getTransactionByDigest(data.digest);
   if (existing) {
-    if (claimed && String(existing.wallet).toLowerCase() !== claimed.toLowerCase()) {
-      const v = await proveSender();
-      if (v.sender && v.sender.toLowerCase() !== claimed.toLowerCase()) {
-        throw Object.assign(new Error('Digest signer does not match the claimed wallet'), { code: 'SENDER_MISMATCH', status: 403 });
-      }
+    const own = claimed && existing.wallet
+      && String(existing.wallet).toLowerCase() === claimed.toLowerCase();
+    // Single chain lookup decides both checks: a proven foreign signer fails
+    // closed even when wallets nominally match (stale binding), and a proven
+    // match never silently rebinds another wallet's record.
+    const v = claimed ? await proveSender() : { unknown: true };
+    if (v.sender && v.sender.toLowerCase() !== String(claimed || '').toLowerCase()) {
+      throw Object.assign(new Error('Digest signer does not match the claimed wallet'), { code: 'SENDER_MISMATCH', status: 403 });
+    }
+    if (!own) {
       throw Object.assign(new Error('Digest already bound to another wallet record'), { code: 'NOT_TX_OWNER', status: 403 });
     }
     return { ...existing, duplicate: true };

@@ -126,6 +126,10 @@ test('pg: recordDigest rejects proven sender mismatch, allows unknown as pending
   await assert.rejects(
     () => S.recordDigest({ digest: d, wallet: W2 }, { fetchSender: async () => ({ sender: W2 }) }),
     /NOT_TX_OWNER/);
+  // A determinable third-party signer fails closed even on nominal match.
+  await assert.rejects(
+    () => S.recordDigest({ digest: d, wallet: W1 }, { fetchSender: async () => ({ sender: W2 }) }),
+    /SENDER_MISMATCH/);
 });
 
 test('pg: transition guard is status-conditional (final frozen, same-state idempotent)', async () => {
