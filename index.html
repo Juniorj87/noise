@@ -999,7 +999,7 @@ section{padding-top:var(--space-section) !important;padding-bottom:var(--space-s
 .hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface,
 .noise-live-panel,.flow-icon,.generated-action,
 .discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,.sec-item,
-.capital-item,.eco-node,.command-step{
+.capital-item,.eco-node,.eco-cell,.command-step{
   background:transparent !important;
   border-radius:var(--radius) !important;
 }
@@ -1709,10 +1709,10 @@ footer{max-width:1296px;margin:0 auto}
             var frameNo = 0;
             function frame() {
                 ctx.clearRect(0, 0, W, H);
-                // Document-space convergence: waves travel with the page.
+                // Pure scattered field: no ribbons, no convergence, no bright
+                // clusters — just flying dots with drift and twinkle.
                 var sy = window.scrollY || window.pageYOffset || 0;
                 if ((frameNo++ % 180) === 0) { DH = docHeight(); }
-                var cy = DH * 0.5;
                 var i, p;
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter';
@@ -1724,21 +1724,16 @@ footer{max-width:1296px;margin:0 auto}
                         p.baseY = Math.random() * DH;
                         p.ph1 = Math.random() * Math.PI * 2;
                     }
-                    var o = order(p.x);
-                    var noiseY = p.baseY
+                    var y = p.baseY
                         + Math.sin(t * p.f1 + p.ph1 + p.x * K1) * H * 0.07
-                        + Math.sin(t * p.f2 + p.ph2 + p.x * K2) * H * 0.035;
-                    var ribbonOff = [-0.11, 0.01, 0.12][p.ribbon] * H;
-                    var sigY = cy + ribbonOff
-                        + Math.sin(p.x * K3 + t * 1.1 + p.ribbon * 2.1) * H * 0.045
-                        + Math.sin(p.x * K4 - t * 0.6) * H * 0.012;
-                    var y = noiseY + (sigY - noiseY) * o - sy;
-                    var a = (0.05 + Math.random() * 0.02) * (1 - o) + (0.18 + 0.34 * o) + 0.07 * Math.sin(t * 2 + p.tw);
+                        + Math.sin(t * p.f2 + p.ph2 + p.x * K2) * H * 0.035
+                        - sy;
+                    var a = 0.05 + Math.random() * 0.02 + 0.05 * Math.sin(t * 2 + p.tw);
                     if (a < 0.03) a = 0.03;
-                    if (a > 0.66) a = 0.66;
+                    if (a > 0.24) a = 0.24;
                     if (y < -24 || y > H + 24) continue;
                     ctx.globalAlpha = a;
-                    var s = p.sz * (0.7 + o * 0.7);
+                    var s = p.sz;
                     ctx.drawImage(sprite, p.x - s, y - s, s * 2, s * 2);
                 }
                 ctx.globalAlpha = 1;
