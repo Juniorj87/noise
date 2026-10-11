@@ -1579,6 +1579,10 @@ display:none!important}
  .modal{max-width:calc(100vw - 24px)!important;max-height:90dvh;overflow:auto}.modal-overlay{padding:12px!important}
  .discover-tabs{max-width:100%;flex-wrap:wrap}.action-intents{grid-template-columns:minmax(0,1fr)!important}
 }
+/* Center-guard (last): the content column is symmetric on every tab.
+   Beats any stray width cap; fixed overlays are excluded. */
+.main>*:not(.modal-overlay):not(script):not(style){max-width:1180px !important;margin-left:auto !important;margin-right:auto !important}
+@media(max-width:768px){.main>*:not(.modal-overlay):not(script):not(style){max-width:100% !important}}
 </style>
 <link rel="stylesheet" href="assets/journey.css"><style>.sidebar-nav .nav-item[data-page="ai"],.sidebar-nav .nav-item[data-page="leaderboard"]{display:flex!important}</style>
 </head>
@@ -3703,7 +3707,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             try {
                 const dec = decimalsOf(from), outDec = decimalsOf(to);
                 const r = await apiGet('/api/quotes?from=' + from + '&to=' + to + '&amount=' + amount + '&decimals=' + dec + '&provider=' + encodeURIComponent(($('swapExec') || {}).value || 'best'));
-                if (r && r.routes) {
+                if (r && r.routes && r.routes.length) {
                     const fmtOut = (raw) => (Number(raw) / Math.pow(10, outDec)).toLocaleString(undefined, { maximumFractionDigits: 6 });
                     const best = r.routes[0];
                     window._composerQuote = { from, to, amount, dec, routes: r.routes, failed: r.failed || [], fees: r.fees || null };
@@ -3723,6 +3727,16 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                         return '<div class="detail-row"><span>'+escapeHtml(route.provider)+' · Noise fee</span><span>'+amount.toLocaleString(undefined,{maximumFractionDigits:dec})+' '+escapeHtml(from)+(f?' ('+f.bps+' bps, included in input)':' (no hub debit)')+'</span></div>';
                     }).join('')+'<div class="fresh">Pool fees are included in output. Gas is shown after simulation, in SUI. No mixed-asset total. Builds refresh the quote and fee configuration.</div>';
 
+                } else {
+                    // No executable route: say so explicitly, never leave a stale output.
+                    window._composerQuote = null;
+                    $('swapToAmount').value = '';
+                    $('swapFeeBreakdown').innerHTML = '';
+                    $('swapQuoteResult').style.display = 'block';
+                    const reasons = (r && r.failed || []).map((f) => (f.provider || 'venue') + ' unavailable (' + (f.error || 'no route') + ')').join(' · ');
+                    $('swapQuoteDetails').innerHTML = '<div class="fresh" style="color:#ff8844;">No executable route for this pair and amount'
+                        + (reasons ? ': ' + escapeHtml(reasons) : (r && r.error ? ': ' + escapeHtml(r.error) : '')) + '. Try a smaller amount, another pair, or Retry.</div>'
+                        + '<div><button class="btn-ghost" style="margin-top:10px;" onclick="getSwapQuote()">Retry</button></div>';
                 }
             } catch (e) {
                 $('swapQuoteDetails').innerHTML = '<div class="fresh" style="color:#ff6666;">Quote failed: ' + String(e.message || e) + '</div>';

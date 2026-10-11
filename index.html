@@ -923,7 +923,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
 .noise-product-map .noise-eyebrow,.noise-flow .noise-eyebrow,.noise-deepbook .noise-eyebrow,.noise-security .noise-eyebrow{font-size:10px;letter-spacing:2px;color:var(--text-dim);margin-bottom:18px}
 .noise-product-map h2,.noise-flow h2,.noise-deepbook h2,.noise-security h2{font-family:'Space Grotesk',Inter,sans-serif;font-weight:300;font-size:clamp(34px,5vw,58px);line-height:.98;letter-spacing:-2px;margin:0 0 18px}
 .noise-product-lead{max-width:650px;color:var(--text-dim);font-size:14px;line-height:1.8;margin-bottom:38px}
-.noise-cap-grid{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.noise-cap-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-left:1px solid var(--line)}
 .noise-cap{min-height:160px;padding:24px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);transition:border-color .2s,background .2s}
 .noise-cap:hover{border-color:var(--accent);background:var(--surface)}
 .noise-cap-num{font:11px 'Space Grotesk',monospace;color:var(--accent);margin-bottom:38px}
@@ -993,17 +993,22 @@ section,.hero,.ecosystem,.cta{
 }
 section{padding-top:var(--space-section) !important;padding-bottom:var(--space-section) !important}
 .hero{padding-top:170px !important;padding-bottom:90px !important;max-width:1296px}
-/* Kill gray wash: panels are ink, not smoke. Borders carry the structure. */
+/* Kill gray wash: cubes are transparent ink, not smoke. Borders carry the structure.
+   Exactly the noise-cap treatment everywhere — no fills that can read as gray. */
 .hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface,
-.discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,.sec-item,
 .noise-live-panel,.flow-icon,.generated-action{
   background:rgba(10,10,10,.55) !important;
   border-radius:var(--radius) !important;
 }
-.capital-item,.eco-node,.command-step{background:#0a0a0a !important;border-radius:var(--radius) !important}
-.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+.discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,.sec-item,
+.capital-item,.eco-node,.command-step{
+  background:transparent !important;
+  border-radius:var(--radius) !important;
+}
+.capital-item,.eco-node,.command-step{background:transparent !important;border-radius:var(--radius) !important}
+.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:rgba(0,102,255,.05) !important;border-color:rgba(0,102,255,.55) !important}
 /* Touch screens: no stuck hover highlight after tap */
-@media(hover:none){.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:rgba(10,10,10,.55) !important;border-color:var(--line) !important}}
+@media(hover:none){.discover-item:hover,.protocol-build-card:hover,.noise-cap:hover,.sec-item:hover{background:transparent !important;border-color:var(--line) !important}}
 .asset-item:hover,.action-item:hover{padding-left:0 !important}
 /* One label / title language everywhere */
 .section-label,.noise-eyebrow{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
