@@ -159,7 +159,12 @@
         if(checked.simulation?.effects?.status?.status !== 'success')throw Object.assign(new Error('SIMULATION_FAILED: signing blocked'),{code:'SIMULATION_FAILED'});
         if(state.address !== account.address)throw Object.assign(new Error('ACCOUNT_CHANGED'),{code:'ACCOUNT_CHANGED'});
         if(typeof opts?.onBeforeWallet === 'function')await opts.onBeforeWallet();
-        if(state.address !== account.address)throw Object.assign(new Error('ACCOUNT_CHANGED'),{code:'ACCOUNT_CHANGED'});
+        if(state.address !== account.address)throw Object.assign(new Error('ACCOUNT_CHANGED'), { code: 'ACCOUNT_CHANGED' });
+        // Digest binding: the wallet must return the digest of EXACTLY the
+        // reviewed bytes. A mismatch means the wallet executed something else —
+        // fail closed instead of tracking a foreign transaction as ours.
+        let expectedDigest = null;
+        try { expectedDigest = await tx.getDigest(); } catch (e) { expectedDigest = null; }
         let res;
         if (feat.signAndExecuteTransaction) {
           // Wallet Standard v2 requires a toJSON-capable Transaction + account,
@@ -171,7 +176,9 @@
           tx.serialize();
           res = await feat.signAndExecuteTransactionBlock({ transactionBlock: tx, account, chain, options: { showEffects: true, showEvents: false } });
         }
-        return (res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest))) || res;
+        const got = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+        if (expectedDigest && typeof got === 'string' && got !== expectedDigest) throw Object.assign(new Error('DIGEST_MISMATCH: wallet returned a digest for different bytes; inspect wallet history, do not resubmit'), { code: 'DIGEST_MISMATCH' });
+        return got || res;
       } catch (e) {
         state.lastTxError = { code: (e && e.code) || 'SIGN_FAILED', message: String((e && e.message) || e) };
         throw e;
@@ -3008,7 +3015,15 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             const ctrl = new AbortController();
             const t = setTimeout(() => ctrl.abort(), timeoutMs || 15000);
             try {
-                const r = await fetch(API_BASE + path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });
+                // All PATCH routes are owner-scoped workflow telemetry: attach the
+                // connected wallet centrally so all 30+ call sites prove ownership.
+                const payload = Object.assign({}, body);
+                if (payload && !payload.wallet) {
+                    try {
+                        payload.wallet = (typeof wallet !== 'undefined' && wallet) || (window.HubWallet && window.HubWallet.address) || null;
+                    } catch (e) { payload.wallet = null; }
+                }
+                const r = await fetch(API_BASE + path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: ctrl.signal });
                 return await r.json();
             } finally { clearTimeout(t); }
         }
@@ -5270,17 +5285,31 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             toast('Automation created: ' + a.when + ' → ' + a.task + ' (limits $' + a.max + '/$' + a.daily + ', ' + a.exp + 'd, revokable). Execution needs wallet approval at run time.');
             await paintAutos();
         }
+        async function autoStatusProof(id, to) {
+            // Ownership proof for automation writes: server challenge bound to
+            // (wallet, automation, target status), signed as a personal message
+            // (never a transaction). An address alone proves nothing.
+            if (!window.HubWallet || !window.HubWallet.address) throw new Error('Signing requires an installed wallet.');
+            const ch = await apiPost('/api/automation/challenge', { wallet, id, to: String(to).toLowerCase() }, 15000);
+            if (!ch || ch.error || !ch.nonce || !ch.message) throw new Error(ch && ch.error ? 'Challenge refused: ' + ch.error : 'Challenge unavailable.');
+            let signature;
+            try {
+                signature = await window.HubWallet.signPersonalMessage(ch.message);
+            } catch (e) {
+                const m = String((e && e.message) || e);
+                throw new Error(/reject|denied|cancel/i.test(m) ? 'Signature declined in wallet.' : 'Signing failed: ' + m.slice(0, 120));
+            }
+            return { id, wallet, to: String(to).toLowerCase(), nonce: ch.nonce, signature };
+        }
         async function setAutoStatus(id, status) {
             const list = store.get('autos', []);
             const a = list.find((x) => x.id === id || x.serverId === id);
             if (!a) return;
             if (wallet) {
-                const r = await apiPost('/api/automation-status', { id: a.serverId || id, wallet, status: status.toLowerCase() }, 15000).catch(() => ({}));
-                if (r && r.error) {
-                    toast('Status change rejected: ' + r.error);
-                    await paintAutos();
-                    return;
-                }
+                try {
+                    const r = await apiPost('/api/automation-status', await autoStatusProof(a.serverId || id, status), 15000);
+                    if (r && r.error) { toast('Status change rejected: ' + r.error); await paintAutos(); return; }
+                } catch (e) { toast('Ownership proof failed: ' + String((e && e.message) || e).slice(0, 140)); }
             }
             a.status = status; store.set('autos', list);
             secEvent(status === 'ACTIVE' ? 'automation-granted' : 'automation-revoked');
@@ -5291,8 +5320,10 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
             const list = store.get('autos', []);
             for (const a of list) {
                 if (wallet) {
-                    const r = await apiPost('/api/automation-status', { id: a.serverId || a.id, wallet, status: 'revoked' }, 15000).catch(() => ({}));
-                    if (r && r.error) { toast('Server refused revoke for one automation (' + r.error + ').'); continue; }
+                    try {
+                        const r = await apiPost('/api/automation-status', await autoStatusProof(a.serverId || a.id, 'revoked'), 15000);
+                        if (r && r.error) { toast('Server refused revoke for one automation (' + r.error + ').'); continue; }
+                    } catch (e) { toast('Ownership proof failed for one automation.'); continue; }
                 }
                 a.status = 'REVOKED';
             }
@@ -5330,7 +5361,7 @@ Or: When SUI reaches $5, prepare a SUI → USDC swap for review." id="automation
                         const newest = list.find((a) => a.serverId);
                         if (newest) {
                             try {
-                                const runs = await apiGet('/api/automation-runs?id=' + encodeURIComponent(newest.serverId), 15000);
+                                const runs = await apiGet('/api/automation-runs?id=' + encodeURIComponent(newest.serverId) + '&wallet=' + encodeURIComponent(wallet), 15000);
                                 if (runs && !runs.error && Array.isArray(runs.items)) {
                                     window._autoRuns = runs.items;
                                     window._autoRunsFor = newest.title;

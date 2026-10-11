@@ -173,18 +173,60 @@ const TX_MUTABLE = ['digest', 'failure_reason', 'actual_output', 'gas', 'expecte
   'provider', 'protocol_fee', 'provider_fee', 'platform_fee',
   'input_asset', 'input_amount', 'output_asset'];
 
+/* ---------- PATCH authorization (Round 1: transaction integrity) ----------
+ * A bare PATCH may only report pre-sign workflow telemetry. Authoritative
+ * states (submitted/pending/confirmed/failed) require the submit endpoint or
+ * chain-grounded tracker paths — never a client PATCH. Financial facts are
+ * never writable via PATCH; only display telemetry passes through. */
+export const TX_CLIENT_TARGETS = ['built', 'simulating', 'simulation_failed',
+  'ready_to_sign', 'awaiting_wallet', 'signed', 'rejected', 'expired'];
+const TX_PATCH_TELEMETRY = ['failure_reason', 'gas', 'expected_output'];
+const errTx = (code, message, status) => Object.assign(new Error(message || code), status ? { code, status } : { code });
+export function authorizeTxPatch(record, body) {
+  if (!body || !body.id || !body.to) throw errTx('MISSING_ID', 'Provide id and target state.');
+  const to = String(body.to).toLowerCase();
+  if (!TX_CLIENT_TARGETS.includes(to) && to !== String(record?.status || '').toLowerCase()) {
+    throw errTx('INVALID_TRANSITION_SOURCE', 'This state cannot be set by client report; it requires submit or chain evidence.', 400);
+  }
+  const wallet = body.wallet;
+  if (!isWalletAddress(wallet)) throw errTx('MISSING_WALLET', 'PATCH requires the record owner wallet.', 400);
+  if (!record) throw errTx('TX_NOT_FOUND', 'No transaction with this id.', 404);
+  if (String(record.wallet).toLowerCase() !== String(wallet).toLowerCase()) {
+    throw errTx('NOT_TX_OWNER', 'Only the record owner can update it.', 403);
+  }
+  const extra = {};
+  for (const k of TX_PATCH_TELEMETRY) {
+    if (body.extra && body.extra[k] !== undefined) extra[k] = body.extra[k];
+  }
+  return { to, extra };
+}
+
+/* Numeric money fields must be finite decimal strings when present.
+ * Anything else (units glued on, NaN, negatives, objects) is rejected —
+ * client-asserted financial facts never enter the ledger unchecked. */
+export function sanitizeMoney(value, field) {
+  if (value === null || value === undefined || value === '') return null;
+  const s = String(value).trim();
+  if (!/^\d+(\.\d+)?$/.test(s)) throw errTx('INVALID_AMOUNT', `${field} must be a non-negative decimal string.`);
+  return s;
+}
+
 export async function createTransaction(data) {
   if (!isWalletAddress(data.wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
   await ensureSchema();
   const id = uid('tx');
+  const money = {};
+  for (const f of ['input_amount', 'expected_output', 'protocol_fee', 'provider_fee', 'platform_fee', 'gas']) {
+    money[f] = sanitizeMoney(data[f], f);
+  }
   await getPool().query(
     `INSERT INTO transactions (id, wallet, action, provider, input_asset, input_amount, output_asset,
        expected_output, protocol_fee, provider_fee, platform_fee, gas, fees_json, status, source, origin, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'manual', now())`,
     [id, data.wallet, data.action || 'swap', data.provider || null, data.input_asset || null,
-      data.input_amount || null, data.output_asset || null, data.expected_output || null,
-      data.protocol_fee || null, data.provider_fee || null, data.platform_fee || null,
-      data.gas || null, data.fees_json ? JSON.stringify(data.fees_json) : null,
+      money.input_amount, data.output_asset || null, money.expected_output,
+      money.protocol_fee, money.provider_fee, money.platform_fee,
+      money.gas, data.fees_json ? JSON.stringify(data.fees_json) : null,
       TX.CREATED, data.source || 'manual']);
   return getTransaction(id);
 }
@@ -213,33 +255,90 @@ export async function transitionTransaction(id, to, extra = {}) {
   for (const k of TX_MUTABLE) {
     if (extra[k] !== undefined) { sets.push(`${k} = $${n}`); vals.push(extra[k]); n++; }
   }
-  vals.push(id);
-  await getPool().query(`UPDATE transactions SET ${sets.join(', ')} WHERE id = $${n}`, vals);
+  // Optimistic concurrency: two racers must not both rewrite the same state.
+  // Zero affected rows means someone else moved it first — re-read and report.
+  const upd = await getPool().query(
+    `UPDATE transactions SET ${sets.join(', ')} WHERE id = $${n} AND status = $${n + 1}`,
+    [...vals, id, tx.status]);
+  if ((upd.rowCount || 0) === 0) {
+    const cur = await getTransaction(id);
+    if (cur && FINAL_TX.includes(cur.status) && to !== cur.status) {
+      throw Object.assign(new Error('TX_FINAL'), { code: 'TX_FINAL' });
+    }
+    throw Object.assign(new Error('Concurrent update lost; re-read before retrying'), { code: 'TX_CONFLICT', status: 409 });
+  }
   return getTransaction(id);
 }
 
-/** Save digest immediately on submit. Same digest → same record (no duplicates). */
-export async function recordDigest(data) {
+/** Save digest immediately on submit. Same digest → same record (no duplicates).
+ *
+ * Digest↔wallet binding is verified against chain evidence when determinable:
+ * - chain sender known and ≠ claimed wallet → SENDER_MISMATCH (403), no record;
+ * - digest already bound to another wallet → NOT_TX_OWNER (403), no rewrite;
+ * - digest not yet indexed or provider unreachable → recorded as pending;
+ *   the tracker and the confirm path verify before CONFIRMED.
+ * opts.fetchSender: async () => { sender } | { unknown: true }. */
+export async function recordDigest(data, opts = {}) {
   if (!isValidDigest(data.digest)) throw Object.assign(new Error('INVALID_DIGEST'), { code: 'INVALID_DIGEST' });
+  const claimed = isWalletAddress(data.wallet) ? data.wallet : null;
+  const proveSender = async () => {
+    if (!claimed || typeof opts.fetchSender !== 'function') return { unknown: true };
+    try {
+      const v = await opts.fetchSender();
+      if (v && v.sender) return { sender: String(v.sender) };
+      return { unknown: true };
+    } catch (e) {
+      return { unknown: true };
+    }
+  };
   const existing = await getTransactionByDigest(data.digest);
-  if (existing) return { ...existing, duplicate: true };
+  if (existing) {
+    if (claimed && String(existing.wallet).toLowerCase() !== claimed.toLowerCase()) {
+      const v = await proveSender();
+      if (v.sender && v.sender.toLowerCase() !== claimed.toLowerCase()) {
+        throw Object.assign(new Error('Digest signer does not match the claimed wallet'), { code: 'SENDER_MISMATCH', status: 403 });
+      }
+      throw Object.assign(new Error('Digest already bound to another wallet record'), { code: 'NOT_TX_OWNER', status: 403 });
+    }
+    return { ...existing, duplicate: true };
+  }
   const tx = data.txId ? await getTransaction(data.txId) : null;
   if (tx) {
     // A confirmed/failed/rejected record is genuinely settled — never reopen it.
     if ([TX.CONFIRMED, TX.FAILED, TX.REJECTED].includes(tx.status)) return tx;
+    if (claimed && String(tx.wallet).toLowerCase() !== claimed.toLowerCase()) {
+      throw Object.assign(new Error('Only the record owner can bind a digest'), { code: 'NOT_TX_OWNER', status: 403 });
+    }
+    const owner = tx.wallet || claimed;
+    if (owner) {
+      const v = await proveSender();
+      if (v.sender && v.sender.toLowerCase() !== String(owner).toLowerCase()) {
+        throw Object.assign(new Error('Digest signer does not match the record wallet'), { code: 'SENDER_MISMATCH', status: 403 });
+      }
+    }
     try {
       return await transitionTransaction(tx.id, TX.SUBMITTED, { digest: data.digest });
     } catch (e) {
       if (e.code !== 'TX_BAD_TRANSITION' && e.code !== 'TX_FINAL') throw e;
+      if (e.code === 'TX_FINAL') return tx;
       // The wallet produced a digest but the record never reached a state that
       // allows `submitted` (e.g. the tab closed mid-flow, or the PATCH to
-      // `signed` was lost). Persist the digest directly so the background
-      // tracker still owns this transaction instead of losing it from view.
-      await getPool().query(
-        'UPDATE transactions SET status = $1, digest = $2, failure_reason = NULL, updated_at = now() WHERE id = $3',
-        [TX.SUBMITTED, data.digest, tx.id]);
-      return getTransaction(tx.id);
+      // `signed` was lost). Persist the digest (idempotent, status-neutral)
+      // and then move status through the machine so the background tracker
+      // still owns this transaction instead of losing it from view.
+      await getPool().query('UPDATE transactions SET digest = $1, failure_reason = NULL, updated_at = now() WHERE id = $2', [data.digest, tx.id]);
+      try {
+        return await transitionTransaction(tx.id, TX.SUBMITTED, {});
+      } catch (e2) {
+        if (e2.code !== 'TX_BAD_TRANSITION' && e2.code !== 'TX_FINAL' && e2.code !== 'TX_CONFLICT') throw e2;
+        return getTransaction(tx.id);
+      }
     }
+  }
+  if (!claimed) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  const v = await proveSender();
+  if (v.sender && v.sender.toLowerCase() !== claimed.toLowerCase()) {
+    throw Object.assign(new Error('Digest signer does not match the claimed wallet'), { code: 'SENDER_MISMATCH', status: 403 });
   }
   const created = await createTransaction({ ...data, source: data.source || 'manual' });
   return transitionTransaction(created.id, TX.SUBMITTED, { digest: data.digest });
@@ -398,14 +497,82 @@ export async function setAutomationStatus(id, status, wallet = null) {
   const norm = String(status || '').toLowerCase();
   const allowed = ['active', 'paused', 'revoked', 'expired', 'failed'];
   if (!allowed.includes(norm)) throw Object.assign(new Error('INVALID_STATUS'), { code: 'INVALID_STATUS' });
+  // Ownership is mandatory: an omitted or malformed wallet fails closed.
+  // (Knowledge of an automation id is not authorization.)
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
   await ensureSchema();
   const pool = getPool();
   const row = (await pool.query('SELECT * FROM automations WHERE id = $1', [id])).rows[0];
   if (!row) throw Object.assign(new Error('AUTOMATION_NOT_FOUND'), { code: 'AUTOMATION_NOT_FOUND' });
-  if (wallet && isWalletAddress(wallet) && row.wallet !== wallet) {
-    throw Object.assign(new Error('NOT_AUTOMATION_OWNER'), { code: 'NOT_AUTOMATION_OWNER' });
+  if (String(row.wallet).toLowerCase() !== String(wallet).toLowerCase()) {
+    throw Object.assign(new Error('NOT_AUTOMATION_OWNER'), { code: 'NOT_AUTOMATION_OWNER', status: 403 });
   }
-  await pool.query("UPDATE automations SET status = $1, updated_at = now() WHERE id = $2", [norm, id]);
+  // Terminal states are final: revoked/expired/failed records stay put.
+  if (['revoked', 'expired', 'failed'].includes(String(row.status).toLowerCase()) && norm !== String(row.status).toLowerCase()) {
+    throw Object.assign(new Error('Terminal automation status cannot be reopened'), { code: 'INVALID_TRANSITION' });
+  }
+  await pool.query("UPDATE automations SET status = $1, updated_at = now() WHERE id = $2 AND status = $3", [norm, id, row.status]);
+  return (await pool.query('SELECT * FROM automations WHERE id = $1', [id])).rows[0];
+}
+
+/* ---------- automation ownership proof (signed challenge) ----------
+ * Status changes require a fresh personal-message signature over a
+ * server-issued challenge bound to (wallet, automation id, target status).
+ * No bearer tokens: a public address alone proves nothing. Pattern mirrors
+ * the referral ownership proof (referrals-live.js). */
+import { verifyPersonalMessageSignature as _verifySig } from '@mysten/sui/verify';
+const AUTO_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+async function autoChallengeTable() {
+  await ensureSchema();
+  await getPool().query(`CREATE TABLE IF NOT EXISTS noise_auto_challenges
+    (nonce TEXT PRIMARY KEY, wallet TEXT NOT NULL, auto_id TEXT NOT NULL,
+     to_status TEXT NOT NULL, message TEXT NOT NULL, expires_at TEXT NOT NULL)`);
+}
+export function buildAutoChallengeMessage(wallet, id, to, nonce, expiresAt) {
+  return `Noise Hub automation ownership proof\nNetwork: sui:mainnet\nWallet: ${wallet}\nAutomation: ${id}\nNew status: ${to}\nNonce: ${nonce}\nExpires: ${expiresAt}\nThis message does not authorize a transaction, transfer, payout or spending.`;
+}
+export async function issueAutomationChallenge({ wallet, id, to }) {
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  const norm = String(to || '').toLowerCase();
+  if (!['active', 'paused', 'revoked'].includes(norm)) throw Object.assign(new Error('INVALID_STATUS'), { code: 'INVALID_STATUS' });
+  await autoChallengeTable();
+  const pool = getPool();
+  const row = (await pool.query('SELECT wallet, status FROM automations WHERE id = $1', [id])).rows[0];
+  if (!row) throw Object.assign(new Error('AUTOMATION_NOT_FOUND'), { code: 'AUTOMATION_NOT_FOUND' });
+  if (String(row.wallet).toLowerCase() !== String(wallet).toLowerCase()) {
+    throw Object.assign(new Error('NOT_AUTOMATION_OWNER'), { code: 'NOT_AUTOMATION_OWNER', status: 403 });
+  }
+  const nonce = randomBytes(24).toString('hex');
+  const expiresAt = new Date(Date.now() + AUTO_CHALLENGE_TTL_MS).toISOString();
+  const message = buildAutoChallengeMessage(wallet, id, norm, nonce, expiresAt);
+  await pool.query('DELETE FROM noise_auto_challenges WHERE expires_at < $1', [new Date().toISOString()]);
+  await pool.query(
+    'INSERT INTO noise_auto_challenges (nonce, wallet, auto_id, to_status, message, expires_at) VALUES ($1,$2,$3,$4,$5,$6)',
+    [nonce, wallet, id, norm, message, expiresAt]);
+  return { nonce, message, expiresAt };
+}
+export async function verifyAutomationChallenge({ wallet, id, to, nonce, signature }) {
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  const norm = String(to || '').toLowerCase();
+  await autoChallengeTable();
+  const pool = getPool();
+  const row = (await pool.query('SELECT * FROM noise_auto_challenges WHERE nonce = $1', [String(nonce || '')])).rows[0];
+  if (!row || String(row.wallet).toLowerCase() !== String(wallet).toLowerCase()
+    || String(row.auto_id) !== String(id) || String(row.to_status) !== norm
+    || Date.parse(row.expires_at) < Date.now()) {
+    throw Object.assign(new Error('INVALID_CHALLENGE'), { code: 'INVALID_CHALLENGE' });
+  }
+  if (typeof signature !== 'string' || signature.length > 2048) {
+    throw Object.assign(new Error('INVALID_SIGNATURE'), { code: 'INVALID_SIGNATURE' });
+  }
+  try {
+    await _verifySig(new TextEncoder().encode(row.message), signature, { address: wallet });
+  } catch {
+    throw Object.assign(new Error('BAD_SIGNATURE'), { code: 'BAD_SIGNATURE' });
+  }
+  const consumed = await pool.query('DELETE FROM noise_auto_challenges WHERE nonce = $1 RETURNING nonce', [String(nonce)]);
+  if (!consumed.rows.length) throw Object.assign(new Error('PROOF_USED'), { code: 'PROOF_USED' });
+  return { wallet, id, to: norm };
 }
 
 /** One scheduler pass over active automations (called by cron, not setInterval). */

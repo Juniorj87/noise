@@ -44,3 +44,11 @@ are owner-side work.
 ## DNS — OWNER ACTION REQUIRED
 
 - [ ] `CNAME app → cname.vercel-dns.com` at the `noisehub.xyz` registrar, then `vercel domains verify app.noisehub.xyz`. Until then the hub subdomain does not resolve.
+
+## Automated evidence (2026-10-10, verified — not manual claims)
+
+- [x] `npm run build` green (62 serverless modules + inline scripts parse).
+- [x] `npm test` (server/) 284/284; `test:integration` 19/19 (must run from `server/`); `test:data` 60/60; `test:api` 14/14. `test:pg` skips honestly without `TEST_DATABASE_URL`.
+- [x] Production probes: malformed POST → `400 INVALID_JSON`; 300 KB POST → `413 PAYLOAD_TOO_LARGE`; 8/8 journey builds unsigned+simulated; 15+ read endpoints return content-checked payloads.
+- [x] No secrets in tree or history (`git log --all -- .env` empty; only vendor constant + own blocklist match `PRIVATE_KEY` in history).
+- [x] External contract pins inventoried in `docs/EXTERNAL-CONTRACTS.md`; Haedal/Volo/SpringSui IDs cross-checked against official docs. Full bytecode audit: NOT done.

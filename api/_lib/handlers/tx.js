@@ -2,9 +2,14 @@
 // POST /api/tx/submit — save digest immediately, dedupe by digest.
 // /api/tx/<action> — status | tracker-tick (PATCH /api/tx handled via method).
 import { handler, readJson, requireQuery } from '../http.js';
-import { ACTIONS, PROVIDERS, createTransaction, getTransaction, getTransactionByDigest, transitionTransaction, isWalletAddress, isValidDigest, trackPendingOnce, settleReferralForTx, recordDigest, TX } from '../services.js';
-import { NETWORK, suiAdapter } from '../adapters.js';
+import { ACTIONS, PROVIDERS, createTransaction, getTransaction, getTransactionByDigest, transitionTransaction, isWalletAddress, isValidDigest, trackPendingOnce, settleReferralForTx, recordDigest, authorizeTxPatch, TX } from '../services.js';
+import { NETWORK, suiAdapter, sui } from '../adapters.js';
+import { fetchTxSender } from '../txstatus.js';
 import { getPool } from '../pg.js';
+
+// On-chain sender lookup for digest↔wallet binding. Unknown (not indexed or
+// field absent) is never proof — callers treat it as pending, not as failure.
+const senderOf = (digest) => fetchTxSender((d, o) => sui.getTransaction(d, o), digest).catch(() => ({ unknown: true }));
 
 function explorerUrl(digest) {
   if (!digest) return null;
@@ -30,7 +35,7 @@ export default handler(async (req, res, url) => {
     const b = await readJson(req);
     if (!isValidDigest(b.digest)) throw Object.assign(new Error('INVALID_DIGEST'), { code: 'INVALID_DIGEST' });
     if (!isWalletAddress(b.wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
-    return { tx: await recordDigest(b) };
+    return { tx: await recordDigest(b, { fetchSender: () => senderOf(b.digest) }) };
   }
 
   if (action === 'status') {
@@ -45,7 +50,7 @@ export default handler(async (req, res, url) => {
             digest, wallet,
             action: url.searchParams.get('action') || 'swap',
             provider: url.searchParams.get('provider') || null,
-          });
+          }, { fetchSender: () => senderOf(digest) });
         } catch (e) { tx = null; }
       }
     }
@@ -53,6 +58,16 @@ export default handler(async (req, res, url) => {
       const res2 = await suiAdapter.getTransactionStatus(digest);
       if (tx && ['submitted', 'pending'].includes(tx.status)) {
         if (res2.status === 'confirmed') {
+          // Hard gate: never confirm a record against a digest signed by
+          // someone else. A mismatch fails the RECORD (not the chain tx) and
+          // settles nothing.
+          const v = await senderOf(digest);
+          if (v.sender && tx.wallet && v.sender.toLowerCase() !== String(tx.wallet).toLowerCase()) {
+            const bad = await transitionTransaction(tx.id, TX.FAILED, {
+              failure_reason: 'SENDER_MISMATCH: on-chain sender differs from record wallet',
+            }).catch(() => tx);
+            return { ...res2, association: 'SENDER_MISMATCH', tx: bad, explorerUrl: explorerUrl(digest) };
+          }
           if (tx.status === TX.SUBMITTED) await transitionTransaction(tx.id, TX.PENDING, {});
           const fin = await transitionTransaction(tx.id, TX.CONFIRMED, {
             gas: res2.gas || tx.gas,
@@ -92,12 +107,17 @@ export default handler(async (req, res, url) => {
 
   if (req.method === 'PATCH') {
     const b = await readJson(req);
-    if (!b.id || !b.to) return { error: 'MISSING_ID', message: 'Provide id and target state.', status: 400 };
-    const extra = b.extra || {};
-    if (extra.digest !== undefined && (await getTransaction(b.id))?.digest !== extra.digest) {
-      delete extra.digest;
+    // Client reports are workflow telemetry only. Authoritative states
+    // (submitted/pending/confirmed/failed) require the submit endpoint or
+    // chain-grounded tracker paths; financial extras never pass via PATCH.
+    const record = b.id ? await getTransaction(b.id).catch(() => null) : null;
+    let auth;
+    try {
+      auth = authorizeTxPatch(record, b);
+    } catch (e) {
+      return { error: e.code || 'INVALID_REQUEST', message: String(e.message || e.code || 'Invalid patch').slice(0, 200), status: e.status || (e.code === 'TX_NOT_FOUND' ? 404 : 400) };
     }
-    return { tx: await transitionTransaction(b.id, String(b.to).toLowerCase(), extra) };
+    return { tx: await transitionTransaction(b.id, auth.to, auth.extra) };
   }
 
   const id = url.searchParams.get('id');

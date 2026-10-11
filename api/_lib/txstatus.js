@@ -10,6 +10,25 @@
 // Throws PROVIDER_UNAVAILABLE / NOT_FOUND variants for transport problems so the
 // caller (trackPendingOnce) can decide retry vs expire. Absence of confirmation
 // is NEVER reported as failure here.
+
+/* On-chain sender lookup for digest↔wallet binding checks.
+ * getTx: async (digest, options) => envelope-or-block (must accept options).
+ * Returns { sender } when determinable, { unknown: true } when the digest is
+ * not yet indexed or the sender field is absent. Transport failures throw for
+ * the caller to treat as unknown — never as proof of anything. */
+export async function fetchTxSender(getTx, digest) {
+  let out;
+  try {
+    out = await getTx(digest, { showInput: true });
+  } catch (e) {
+    if (isNotFound(e)) return { unknown: true };
+    throw e;
+  }
+  const tx = out && out.value !== undefined ? out.value : out;
+  const sender = tx?.transaction?.data?.sender || null;
+  if (!sender) return { unknown: true };
+  return { sender: String(sender) };
+}
 export async function fetchTxBlockStatus(providerOrClient, digest) {
   let tx;
   try {

@@ -120,12 +120,19 @@ const TX_COLS = ['wallet', 'action', 'provider', 'input_asset', 'input_amount', 
 
 export function createTransaction(data) {
   if (!isWalletAddress(data.wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
+  // Numeric money fields must be finite decimal strings (parity with api/_lib/services.js).
+  const money = {};
+  for (const f of ['input_amount', 'expected_output', 'protocol_fee', 'provider_fee', 'platform_fee', 'gas']) {
+    const v = data[f];
+    money[f] = (v === null || v === undefined || v === '') ? null : String(v).trim();
+    if (money[f] !== null && !/^\d+(\.\d+)?$/.test(money[f])) throw Object.assign(new Error(`${f} must be a non-negative decimal string.`), { code: 'INVALID_AMOUNT' });
+  }
   const id = uid('tx');
   const cols = ['id', ...TX_COLS];
   const vals = [id, data.wallet, data.action || 'swap', data.provider || null,
-    data.input_asset || null, data.input_amount || null, data.output_asset || null,
-    data.expected_output || null, null, data.protocol_fee || null, data.provider_fee || null,
-    data.platform_fee || null, data.gas || null, data.fees_json ? JSON.stringify(data.fees_json) : null,
+    data.input_asset || null, money.input_amount, data.output_asset || null,
+    money.expected_output, null, money.protocol_fee, money.provider_fee,
+    money.platform_fee, money.gas, data.fees_json ? JSON.stringify(data.fees_json) : null,
     null, TX.CREATED, null, data.source || 'manual'];
   db.prepare(`INSERT INTO transactions (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...vals);
   return getTransaction(id);
@@ -149,8 +156,14 @@ export function transitionTransaction(id, to, extra = {}) {
   for (const k of TX_MUTABLE) {
     if (extra[k] !== undefined) { sets.push(`${k} = ?`); vals.push(extra[k]); }
   }
-  vals.push(id);
-  db.prepare(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+  // Optimistic concurrency (parity with api/_lib/services.js): racers must not
+  // both rewrite the same state.
+  const upd = db.prepare(`UPDATE transactions SET ${sets.join(', ')} WHERE id = ? AND status = ?`).run(...vals, id, tx.status);
+  if (!upd.changes) {
+    const cur = getTransaction(id);
+    if (cur && FINAL_TX.includes(cur.status) && to !== cur.status) throw Object.assign(new Error('TX_FINAL'), { code: 'TX_FINAL' });
+    throw Object.assign(new Error('Concurrent update lost; re-read before retrying'), { code: 'TX_CONFLICT' });
+  }
   return getTransaction(id);
 }
 
@@ -343,13 +356,18 @@ export function setAutomationStatus(id, status, wallet = null) {
   const norm = String(status || '').toLowerCase();
   const allowed = ['active', 'paused', 'revoked', 'expired', 'failed'];
   if (!allowed.includes(norm)) throw Object.assign(new Error('INVALID_STATUS'), { code: 'INVALID_STATUS' });
+  // Ownership is mandatory (parity with api/_lib/services.js).
+  if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
   const row = db.prepare('SELECT * FROM automations WHERE id = ?').get(id);
   if (!row) throw Object.assign(new Error('AUTOMATION_NOT_FOUND'), { code: 'AUTOMATION_NOT_FOUND' });
   // Owner check: a request carrying a wallet must own the automation.
-  if (wallet && isWalletAddress(wallet) && row.wallet !== wallet) {
+  if (String(row.wallet).toLowerCase() !== String(wallet).toLowerCase()) {
     throw Object.assign(new Error('NOT_AUTOMATION_OWNER'), { code: 'NOT_AUTOMATION_OWNER' });
   }
-  db.prepare(`UPDATE automations SET status = ?, updated_at = datetime('now') WHERE id = ?`).run(norm, id);
+  if (['revoked', 'expired', 'failed'].includes(String(row.status).toLowerCase()) && norm !== String(row.status).toLowerCase()) {
+    throw Object.assign(new Error('Terminal automation status cannot be reopened'), { code: 'INVALID_TRANSITION' });
+  }
+  db.prepare(`UPDATE automations SET status = ?, updated_at = datetime('now') WHERE id = ? AND status = ?`).run(norm, id, row.status);
 }
 
 /** In-process scheduler tick: evaluates triggers, enforces limits, writes audit runs. */

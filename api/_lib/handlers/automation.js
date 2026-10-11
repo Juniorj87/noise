@@ -1,7 +1,7 @@
 // /api/automation — GET list (wallet required), POST create with validation.
-// /api/automation/<action> — status (owner-checked) | runs | tick (POST).
+// /api/automation/<action> — challenge | status (signed proof required) | runs (owner-scoped) | tick (POST).
 import { handler, readJson, requireQuery } from '../http.js';
-import { createAutomation, parseAutomationNL, isWalletAddress, setAutomationStatus, automationTick } from '../services.js';
+import { createAutomation, parseAutomationNL, isWalletAddress, setAutomationStatus, automationTick, issueAutomationChallenge, verifyAutomationChallenge } from '../services.js';
 import { getPool, ensureSchema } from '../pg.js';
 
 const ALLOWED_TRIGGERS = ['SCHEDULE', 'PRICE_ABOVE', 'PRICE_BELOW', 'ORDER_FILLED',
@@ -11,22 +11,48 @@ const ALLOWED_TRIGGERS = ['SCHEDULE', 'PRICE_ABOVE', 'PRICE_BELOW', 'ORDER_FILLE
 export default handler(async (req, res, url) => {
   const action = url.pathname.split('/').pop();
 
+  if (action === 'challenge') {
+    if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required.', status: 400 };
+    const b = await readJson(req);
+    try {
+      return await issueAutomationChallenge({ wallet: b.wallet, id: b.id, to: b.to || b.status });
+    } catch (e) {
+      if (e.code === 'NOT_AUTOMATION_OWNER') return { error: e.code, message: 'Only the automation owner can request a challenge.', status: 403 };
+      if (e.code === 'AUTOMATION_NOT_FOUND') return { error: e.code, message: 'Automation not found.', status: 404 };
+      return { error: e.code || 'INVALID_CHALLENGE', message: String(e.message || 'Invalid challenge request').slice(0, 200), status: 400 };
+    }
+  }
+
   if (action === 'status') {
     if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required.', status: 400 };
     const b = await readJson(req);
     try {
-      await setAutomationStatus(b.id, b.status, b.wallet || null);
+      // Ownership proof: fresh personal-message signature over a challenge
+      // bound to (wallet, automation, target status). Address alone is not proof.
+      const proof = await verifyAutomationChallenge({
+        wallet: b.wallet, id: b.id, to: b.to || b.status, nonce: b.nonce, signature: b.signature,
+      });
+      await setAutomationStatus(proof.id, proof.to, proof.wallet);
       return { ok: true };
     } catch (e) {
       if (e.code === 'NOT_AUTOMATION_OWNER') return { error: e.code, message: 'Only the automation owner can change its status.', status: 403 };
       if (e.code === 'AUTOMATION_NOT_FOUND') return { error: e.code, message: 'Automation not found.', status: 404 };
-      return { error: e.code || 'INVALID_STATUS', message: 'Invalid status transition.', status: 400 };
+      return { error: e.code || 'INVALID_STATUS', message: String(e.message || 'Invalid status transition.').slice(0, 200), status: e.status || 400 };
     }
   }
 
   if (action === 'runs') {
     const id = requireQuery(url, 'id');
+    const wallet = url.searchParams.get('wallet');
+    // Run history is scoped to the owner: knowledge of an automation id alone
+    // authorizes nothing.
+    if (!isWalletAddress(wallet)) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET' });
     await ensureSchema();
+    const own = (await getPool().query('SELECT wallet FROM automations WHERE id = $1', [id])).rows[0];
+    if (!own) return { error: 'AUTOMATION_NOT_FOUND', message: 'Automation not found.', status: 404 };
+    if (String(own.wallet).toLowerCase() !== String(wallet).toLowerCase()) {
+      return { error: 'NOT_AUTOMATION_OWNER', message: 'Only the automation owner can read its runs.', status: 403 };
+    }
     const rows = (await getPool().query('SELECT * FROM automation_runs WHERE automation_id = $1 ORDER BY created_at DESC LIMIT 50', [id])).rows;
     return { items: rows };
   }

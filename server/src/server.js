@@ -1094,13 +1094,22 @@ const routes = {
   'PATCH /api/tx': async (req) => {
     const b = await readJson(req);
     if (!b.id || !b.to) return { error: 'MISSING_ID', code: 400 };
-    const extra = b.extra || {};
+    // Client reports are workflow telemetry only (parity with api PATCH).
+    // Authoritative states require submit/chain paths; financial extras never pass.
+    const to = String(b.to).toLowerCase();
+    const allowed = ['built', 'simulating', 'simulation_failed', 'ready_to_sign', 'awaiting_wallet', 'signed', 'rejected', 'expired'];
+    if (!allowed.includes(to)) return { error: 'INVALID_TRANSITION_SOURCE', message: 'This state cannot be set by client report.', code: 400 };
+    if (!isWalletAddress(b.wallet)) return { error: 'MISSING_WALLET', message: 'PATCH requires the record owner wallet.', code: 400 };
+    const record = getTransaction(b.id);
+    if (!record) return { error: 'TX_NOT_FOUND', code: 404 };
+    if (String(record.wallet).toLowerCase() !== String(b.wallet).toLowerCase()) return { error: 'NOT_TX_OWNER', message: 'Only the record owner can update it.', code: 403 };
+    const extra = {};
+    for (const k of ['failure_reason', 'gas', 'expected_output']) {
+      if (b.extra && b.extra[k] !== undefined) extra[k] = b.extra[k];
+    }
     // Digest changes are only allowed via /api/tx/submit (validates + dedupes).
     // Caller may attach identity/fee detail to its own record, never a digest.
-    if (extra.digest !== undefined && getTransaction(b.id)?.digest !== extra.digest) {
-      delete extra.digest;
-    }
-    try { return { tx: transitionTransaction(b.id, String(b.to).toLowerCase(), extra) }; }
+    try { return { tx: transitionTransaction(b.id, to, extra) }; }
     catch (e) {
       const code = e.code === 'TX_FINAL' ? 409 : (e.code === 'TX_NOT_FOUND' ? 404 : 400);
       return { error: e.code || 'TX_TRANSITION_FAILED', code };

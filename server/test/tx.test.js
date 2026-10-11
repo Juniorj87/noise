@@ -177,8 +177,10 @@ test('automation: persistence, restart recovery, expiry, revoke', async () => {
   assert.equal(checkAutomationPermission(a, 'notify'), null);
   assert.equal(checkAutomationPermission(a, 'swap'), 'ACTION_NOT_ALLOWED');
 
-  // Revoke status
-  setAutomationStatus(a.id, 'revoked');
+  // Revoke status (ownership proof required: omitted wallet fails closed)
+  assert.throws(() => setAutomationStatus(a.id, 'revoked'), /INVALID_WALLET/);
+  assert.throws(() => setAutomationStatus(a.id, 'revoked', W2), /NOT_AUTOMATION_OWNER/);
+  setAutomationStatus(a.id, 'revoked', W1);
   const revoked = db.prepare('SELECT * FROM automations WHERE id = ?').get(a.id);
   assert.equal(revoked.status, 'revoked');
   assert.equal(checkAutomationPermission(revoked, 'notify'), 'AUTOMATION_NOT_ACTIVE');

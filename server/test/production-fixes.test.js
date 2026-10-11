@@ -330,3 +330,39 @@ test('HTTP: aborted upload settles (no hang) instead of leaving the function pen
     assert.ok(out.aborted || out.status === 400, 'aborted upload must settle, got ' + JSON.stringify(out).slice(0, 120));
   });
 });
+
+/* ---------- 9. tx PATCH authorization (pure, no DB) ---------- */
+const SVC = await import('../../api/_lib/services.js');
+const REC = { id: 'tx_1', wallet: '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', status: 'awaiting_wallet' };
+
+test('PATCH: workflow telemetry with owner wallet passes, extras sanitized', () => {
+  const r = SVC.authorizeTxPatch(REC, { id: 'tx_1', to: 'signed', wallet: REC.wallet, extra: { failure_reason: 'x', gas: '100', platform_fee: '999', digest: 'D', provider: 'evil' } });
+  assert.equal(r.to, 'signed');
+  assert.deepEqual(r.extra, { failure_reason: 'x', gas: '100' });
+});
+
+test('PATCH: authoritative targets rejected even for the owner', () => {
+  for (const to of ['submitted', 'pending', 'confirmed', 'failed']) {
+    assert.throws(() => SVC.authorizeTxPatch(REC, { id: 'tx_1', to, wallet: REC.wallet }), (e) => e.code === 'INVALID_TRANSITION_SOURCE');
+  }
+});
+
+test('PATCH: missing id/to/wallet and foreign wallet rejected', () => {
+  assert.throws(() => SVC.authorizeTxPatch(REC, { to: 'signed', wallet: REC.wallet }), (e) => e.code === 'MISSING_ID');
+  assert.throws(() => SVC.authorizeTxPatch(REC, { id: 'tx_1', to: 'signed' }), (e) => e.code === 'MISSING_WALLET');
+  assert.throws(() => SVC.authorizeTxPatch(REC, { id: 'tx_1', to: 'signed', wallet: '0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB' }), (e) => e.code === 'NOT_TX_OWNER');
+  assert.throws(() => SVC.authorizeTxPatch(null, { id: 'tx_1', to: 'signed', wallet: REC.wallet }), (e) => e.code === 'TX_NOT_FOUND');
+});
+
+test('sanitizeMoney: finite decimals pass, units/negatives/objects rejected', () => {
+  assert.equal(SVC.sanitizeMoney('1.16', 'platform_fee'), '1.16');
+  assert.equal(SVC.sanitizeMoney(null, 'gas'), null);
+  for (const bad of ['1.15 USDC', '-5', 'NaN', '1e3', {}, []]) {
+    assert.throws(() => SVC.sanitizeMoney(bad, 'platform_fee'), (e) => e.code === 'INVALID_AMOUNT');
+  }
+});
+
+test('auto-challenge message binds wallet, id, status, nonce, expiry', () => {
+  const m = SVC.buildAutoChallengeMessage('0xAAA', 'auto_1', 'revoked', 'n'.repeat(48), '2026-01-01T00:00:00.000Z');
+  assert.ok(m.includes('0xAAA') && m.includes('auto_1') && m.includes('revoked') && m.includes('not authorize a transaction'));
+});

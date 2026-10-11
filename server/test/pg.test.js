@@ -90,9 +90,50 @@ if (!process.env.TEST_DATABASE_URL && process.env.PG_ALLOW_DATABASE_URL_TESTS !=
     assert.ok(res.checked >= 0 && res.at);
   });
 
-  test('pg: memory forbidden content rejected', async () => {
-    await assert.rejects(() => S.saveMemory({ wallet: W1, category: 'preference', content: 'my private key is xyz' }), /FORBIDDEN_CONTENT/);
-    const ok = await S.saveMemory({ wallet: W1, category: 'preference', content: 'prefers Cetus' });
-    assert.ok(ok.id);
-  });
+test('pg: memory forbidden content rejected', async () => {
+  await assert.rejects(() => S.saveMemory({ wallet: W1, category: 'preference', content: 'my private key is xyz' }), /FORBIDDEN_CONTENT/);
+  const ok = await S.saveMemory({ wallet: W1, category: 'preference', content: 'prefers Cetus' });
+  assert.ok(ok.id);
+});
+
+test('pg: automation status requires owner wallet and freezes terminal states', async () => {
+  const a = await S.createAutomation({ wallet: W1, title: 'PG Sec', trigger: { type: 'MANUAL' }, action: { type: 'NOTIFY', allowedActions: ['notify'] }, maxPerExecutionUsd: 5, maxDailyUsd: 20 });
+  await assert.rejects(() => S.setAutomationStatus(a.id, 'paused', null), /INVALID_WALLET/);
+  await assert.rejects(() => S.setAutomationStatus(a.id, 'paused', W2), /NOT_AUTOMATION_OWNER/);
+  await S.setAutomationStatus(a.id, 'paused', W1);
+  await S.setAutomationStatus(a.id, 'revoked', W1);
+  await assert.rejects(() => S.setAutomationStatus(a.id, 'active', W1), /INVALID_TRANSITION/);
+});
+
+test('pg: automation challenge issues, verifies once, rejects replay and wrong signer', async () => {
+  const a = await S.createAutomation({ wallet: W1, title: 'PG Chal', trigger: { type: 'MANUAL' }, action: { type: 'NOTIFY', allowedActions: ['notify'] }, maxPerExecutionUsd: 5, maxDailyUsd: 20 });
+  await assert.rejects(() => S.issueAutomationChallenge({ wallet: W2, id: a.id, to: 'paused' }), /NOT_AUTOMATION_OWNER/);
+  const ch = await S.issueAutomationChallenge({ wallet: W1, id: a.id, to: 'paused' });
+  assert.ok(ch.nonce && ch.message.includes(W1) && ch.message.includes(a.id));
+  // Wrong binding must fail before any signature is even checked.
+  await assert.rejects(() => S.verifyAutomationChallenge({ wallet: W2, id: a.id, to: 'paused', nonce: ch.nonce, signature: '00' }), /INVALID_CHALLENGE/);
+  await assert.rejects(() => S.verifyAutomationChallenge({ wallet: W1, id: a.id, to: 'revoked', nonce: ch.nonce, signature: '00' }), /INVALID_CHALLENGE/);
+});
+
+test('pg: recordDigest rejects proven sender mismatch, allows unknown as pending', async () => {
+  const d = 'PgSnd' + RUN + 'DigestAbCdEf12345678';
+  await assert.rejects(
+    () => S.recordDigest({ digest: d, wallet: W1 }, { fetchSender: async () => ({ sender: W2 }) }),
+    /SENDER_MISMATCH/);
+  const pending = await S.recordDigest({ digest: d, wallet: W1 }, { fetchSender: async () => ({ unknown: true }) });
+  assert.equal(pending.status, 'submitted');
+  // Same digest claimed by another wallet afterwards is rejected, not rebound.
+  await assert.rejects(
+    () => S.recordDigest({ digest: d, wallet: W2 }, { fetchSender: async () => ({ sender: W2 }) }),
+    /NOT_TX_OWNER/);
+});
+
+test('pg: transition guard is status-conditional (final frozen, same-state idempotent)', async () => {
+  const tx = await S.createTransaction({ wallet: W1, action: 'swap', provider: 'Cetus' });
+  await S.transitionTransaction(tx.id, 'quoted');
+  const same = await S.transitionTransaction(tx.id, 'quoted');
+  assert.equal(same.status, 'quoted');
+  await S.transitionTransaction(tx.id, 'expired');
+  await assert.rejects(() => S.transitionTransaction(tx.id, 'built'), /TX_FINAL/);
+});
 }

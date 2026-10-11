@@ -1,6 +1,6 @@
 # Security model
 
-Non-custodial transaction authorization for Noise Hub, verified against the implementation (`app.html` wallet layer, `api/_lib/*` builders, `api/_lib/handlers/*`). Last verified against code: 2026-10-09.
+Non-custodial transaction authorization for Noise Hub, verified against the implementation (`app.html` wallet layer, `api/_lib/*` builders, `api/_lib/handlers/*`). Last verified against code: 2026-10-10.
 
 ## Principles
 
@@ -34,5 +34,16 @@ Non-custodial transaction authorization for Noise Hub, verified against the impl
 - 60-second review expiry; rebuild on selection or account change.
 - Failed simulations block signing; rejections stop tracking; digest mismatches are never auto-resubmitted.
 - Referral attribution requires an explicit personal-message signature (consent), not a silent cookie.
+
+## Transaction integrity — Round 1 (implemented 2026-10-10)
+
+- **Client PATCH is telemetry-only.** `PATCH /api/tx` accepts pre-sign workflow states (`built` … `signed`, `rejected`, `expired`) from the record owner only (wallet injected centrally, matched server-side). Authoritative states (`submitted`/`pending`/`confirmed`/`failed`) are rejected over PATCH; financial extras (fees, outputs, amounts, digests) are stripped. State machine + optimistic-concurrency guard (`TX_CONFLICT` on lost races) enforced in `transitionTransaction`.
+- **Digest↔wallet binding is chain-verified.** `recordDigest` and the confirm path compare the on-chain sender against the claimed/record wallet. Proven mismatches fail closed (`SENDER_MISMATCH`, no confirmation, no settlement). Not-yet-indexed digests stay pending; the tracker verifies before any confirmation.
+- **Money fields are sanitized at insert.** Fee/amount/gas values must be finite decimal strings; anything else is rejected, never stored.
+- **Automation writes require a signed challenge.** Status changes need a fresh personal-message signature over a server-issued nonce bound to (wallet, automation, target status); nonces are single-use with 5-minute expiry. Run history is owner-scoped. Terminal automation states cannot be reopened.
+- **Signing wrapper binds the digest.** Before invoking the wallet, the wrapper hashes the exact reviewed bytes; a wallet response for different bytes throws `DIGEST_MISMATCH` instead of being tracked.
+- **No server signing.** No code path constructs signatures or submits on the user's behalf; the submission boundary is the wallet's `signAndExecute` call.
+
+Residual risks: wallet-address + record/automation-ID knowledge remains visible to anyone (addresses and digests are public on-chain data); signature challenges mitigate writes, reads rely on owner-match. External contract bytecode is unaudited — see [EXTERNAL-CONTRACTS.md](EXTERNAL-CONTRACTS.md).
 
 See [SECURITY.md](../SECURITY.md) for reporting vulnerabilities.
