@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
     <style>
         :root {
+            color-scheme: dark;
             --bg: #0a0a0a;
             --text: #ffffff;
             --text-dim: rgba(255, 255, 255, 0.4);
@@ -982,7 +983,7 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
   --space-card:28px;
   --radius:0;
 }
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:#0a0a0a;color-scheme:dark}
 section{scroll-margin-top:84px}
 section,.hero,.ecosystem,.cta{
   padding-left:48px !important;
@@ -996,10 +997,7 @@ section{padding-top:var(--space-section) !important;padding-bottom:var(--space-s
 /* Kill gray wash: cubes are transparent ink, not smoke. Borders carry the structure.
    Exactly the noise-cap treatment everywhere — no fills that can read as gray. */
 .hero-interface,.capital-interface,.action-flow,.action-result,.one-action-interface,
-.noise-live-panel,.flow-icon,.generated-action{
-  background:rgba(10,10,10,.55) !important;
-  border-radius:var(--radius) !important;
-}
+.noise-live-panel,.flow-icon,.generated-action,
 .discover-item,.protocol-build-card,.noise-cap,.noise-security-card,.noise-book,.sec-item,
 .capital-item,.eco-node,.command-step{
   background:transparent !important;

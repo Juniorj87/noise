@@ -208,6 +208,7 @@
     </script>
     <style>
         :root {
+            color-scheme: dark;
             --bg: #0a0a0a;
             --text: #ffffff;
             --text-dim: rgba(255, 255, 255, 0.42);
@@ -1518,16 +1519,16 @@
 .page-title{font-size:clamp(40px,4vw,60px) !important;letter-spacing:-2.8px !important;line-height:.98 !important;font-weight:300 !important}
 .page-subtitle{max-width:680px !important;line-height:1.7 !important}
 .section-label{font-size:10px !important;letter-spacing:2.5px !important;margin-bottom:18px !important}
-/* Panels: ink, not smoke */
+/* Panels: transparent ink, not smoke — same treatment as the landing */
 .panel,.available-capital,.action-composer,.generated-automation,.rewards-block,.nft-preview,
 .chart-container,.opportunity-card,.automation-item,.command-intro,.how,.noise-live-panel{
-  background:rgba(10,10,10,.55) !important;
+  background:transparent !important;
   border:1px solid var(--line) !important;
 }
-.opportunity-card:hover,.quick-action:hover,.intent-item:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
-.asset-item,.token-metric,.command-step,.eco-node{background:#0a0a0a !important}
-.ai-prompt{background:rgba(10,10,10,.55) !important}
-.ai-prompt:hover{background:rgba(10,10,10,.8) !important;border-color:rgba(0,102,255,.55) !important}
+.opportunity-card:hover,.quick-action:hover,.intent-item:hover{background:rgba(0,102,255,.05) !important;border-color:rgba(0,102,255,.55) !important}
+.asset-item,.token-metric,.command-step,.eco-node{background:transparent !important}
+.ai-prompt{background:transparent !important}
+.ai-prompt:hover{background:rgba(0,102,255,.05) !important;border-color:rgba(0,102,255,.55) !important}
 /* Breathing room: no stuck grids, no gray voids in half-filled rows */
 .opportunity-grid,.token-grid{gap:16px !important;margin-bottom:40px !important}
 .assets-grid,.token-metrics{background:transparent !important;border:none !important;gap:12px !important}
