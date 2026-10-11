@@ -760,11 +760,12 @@ export function shouldExpireTx(tx, err, nowMs = Date.now()) {
  *   - transient provider error → retry, never failed
  *   - expired            → ONLY when the digest is still unknown after the
  *                          tracking window (30 min) — never for live txs. */
-export async function trackPendingOnce(fetchTxStatus) {
+export async function trackPendingOnce(fetchTxStatus, opts = {}) {
   await ensureSchema();
   const pool = getPool();
   const pending = (await pool.query("SELECT * FROM transactions WHERE status IN ('submitted','pending') AND digest IS NOT NULL")).rows;
   const out = [];
+  const senderOf = typeof opts.fetchSender === 'function' ? opts.fetchSender : null;
   for (const tx of pending) {
     let r;
     try {
@@ -782,6 +783,22 @@ export async function trackPendingOnce(fetchTxStatus) {
     }
     const cls = classifyTrackingResult(r);
     if (cls === 'confirmed') {
+      // Hard gate (mirrors the status endpoint): a digest signed by someone
+      // else never confirms this record and settles nothing.
+      if (senderOf && tx.wallet) {
+        let mismatch = false;
+        try {
+          const v = await senderOf(tx.digest);
+          if (v && v.sender && String(v.sender).toLowerCase() !== String(tx.wallet).toLowerCase()) mismatch = true;
+        } catch { /* unknown → proceed; a later pass re-verifies */ }
+        if (mismatch) {
+          const bad = await transitionTransaction(tx.id, TX.FAILED, {
+            failure_reason: 'SENDER_MISMATCH: on-chain sender differs from record wallet',
+          }).catch(() => tx);
+          out.push({ id: tx.id, status: 'failed', association: 'SENDER_MISMATCH' });
+          continue;
+        }
+      }
       if (tx.status === TX.SUBMITTED) await transitionTransaction(tx.id, TX.PENDING, {});
       const fin = await transitionTransaction(tx.id, TX.CONFIRMED, {
         gas: (r && r.gas) || tx.gas,

@@ -286,9 +286,10 @@ export const suiAdapter = {
   },
   /** REAL transaction status — never assume success. */
   async getTransactionStatus(digest) {
-    const tx = await sui.client.getTransactionBlock({ digest, options: { showEffects: true, showBalanceChanges: true } });
+    const tx = await sui.client.getTransactionBlock({ digest, options: { showEffects: true, showBalanceChanges: true, showInput: true } });
     const status = tx.effects?.status?.status === 'success' ? 'confirmed' : 'failed';
     const failureReason = tx.effects?.status?.error || null;
+    const sender = tx?.transaction?.data?.sender || null;
     const gu = tx.effects?.gasUsed;
     const gas = gu ? String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0))) : null;
     let actualOutput = null;
@@ -304,6 +305,7 @@ export const suiAdapter = {
       failureReason,
       gas,
       actualOutput,
+      sender,
     };
   },
 };

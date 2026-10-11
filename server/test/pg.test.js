@@ -136,4 +136,27 @@ test('pg: transition guard is status-conditional (final frozen, same-state idemp
   await S.transitionTransaction(tx.id, 'expired');
   await assert.rejects(() => S.transitionTransaction(tx.id, 'built'), /TX_FINAL/);
 });
+
+test('pg: tracker refuses to confirm a foreign-signed digest (no settle)', async () => {
+  const t = await S.createTransaction({ wallet: W1, action: 'swap', provider: 'Cetus' });
+  const d = 'PgFor' + RUN + 'DigestAbCdEf12345678';
+  await S.transitionTransaction(t.id, 'submitted', { digest: d });
+  const out = await S.trackPendingOnce(
+    async () => ({ status: 'confirmed', gas: '10', actualOutput: null }),
+    { fetchSender: async () => ({ sender: W2 }) });
+  const row = out.find((x) => x.id === t.id);
+  assert.equal(row.association, 'SENDER_MISMATCH');
+  assert.equal((await S.getTransaction(t.id)).status, 'failed');
+});
+
+test('pg: tracker confirms on matching sender (unknown sender defers to later pass)', async () => {
+  const t = await S.createTransaction({ wallet: W1, action: 'swap', provider: 'Cetus', platform_fee: '0' });
+  const d = 'PgOk' + RUN + 'DigestAbCdEf123456789';
+  await S.transitionTransaction(t.id, 'submitted', { digest: d });
+  const out = await S.trackPendingOnce(
+    async () => ({ status: 'confirmed', gas: '10', actualOutput: null }),
+    { fetchSender: async () => ({ sender: W1 }) });
+  assert.equal(out.find((x) => x.id === t.id).status, 'confirmed');
+  assert.equal((await S.getTransaction(t.id)).status, 'confirmed');
+});
 }

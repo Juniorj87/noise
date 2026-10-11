@@ -1035,6 +1035,10 @@ const routes = {
       const tx = getTransactionByDigest(digest);
       if (tx && ['submitted', 'pending'].includes(tx.status)) {
         if (res.status === 'confirmed') {
+          if (res.sender && tx.wallet && String(res.sender).toLowerCase() !== String(tx.wallet).toLowerCase()) {
+            const bad = transitionTransaction(tx.id, TX.FAILED, { failure_reason: 'SENDER_MISMATCH: on-chain sender differs from record wallet' });
+            return { ...res, association: 'SENDER_MISMATCH', tx: bad, explorerUrl: explorerUrl(digest) };
+          }
           if (tx.status === TX.SUBMITTED) transitionTransaction(tx.id, TX.PENDING, {});
           const fin = transitionTransaction(tx.id, TX.CONFIRMED, {
             gas: res.gas || tx.gas,

@@ -91,7 +91,7 @@ export default handler(async (req, res, url) => {
 
   if (action === 'tracker-tick') {
     if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required.', status: 400 };
-    const tracked = await trackPendingOnce((digest) => suiAdapter.getTransactionStatus(digest));
+    const tracked = await trackPendingOnce((digest) => suiAdapter.getTransactionStatus(digest), { fetchSender: senderOf });
     return { tracked };
   }
 

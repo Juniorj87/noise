@@ -182,20 +182,21 @@ export function recordDigest(data) {
 import { sui as _sui } from './sui.js';
 
 async function fetchTxStatus(digest) {
-  const tx = await _sui.client.getTransactionBlock({ digest, options: { showEffects: true, showBalanceChanges: true } });
+  const tx = await _sui.client.getTransactionBlock({ digest, options: { showEffects: true, showBalanceChanges: true, showInput: true } });
   const st = tx.effects?.status?.status;
   const gu = tx.effects?.gasUsed;
   const gas = gu ? String(Math.max(0, Number(gu.computationCost || 0) + Number(gu.storageCost || 0) - Number(gu.storageRebate || 0))) : null;
+  const sender = tx?.transaction?.data?.sender || null;
   let actualOutput = null;
   if (Array.isArray(tx.balanceChanges)) {
     const pos = tx.balanceChanges.filter((bc) => Number(bc.amount) > 0);
     if (pos.length > 0) actualOutput = pos.map((p) => `${p.amount} (${p.coinType})`).join(', ');
   }
   if (st === 'success') {
-    return { status: TX.CONFIRMED, checkpoint: tx.checkpoint ?? null, gas, actualOutput };
+    return { status: TX.CONFIRMED, checkpoint: tx.checkpoint ?? null, gas, actualOutput, sender };
   }
   const err = tx.effects?.status?.error || 'unknown';
-  return { status: TX.FAILED, failureReason: String(err).slice(0, 300), gas };
+  return { status: TX.FAILED, failureReason: String(err).slice(0, 300), gas, sender };
 }
 
 export async function trackPendingOnce() {
@@ -205,6 +206,13 @@ export async function trackPendingOnce() {
     try {
       const r = await fetchTxStatus(tx.digest);
       if (r.status === TX.CONFIRMED) {
+        // Hard gate (parity with api tracker): a foreign-signed digest never
+        // confirms this record and settles nothing.
+        if (r.sender && tx.wallet && String(r.sender).toLowerCase() !== String(tx.wallet).toLowerCase()) {
+          const bad = transitionTransaction(tx.id, TX.FAILED, { failure_reason: 'SENDER_MISMATCH: on-chain sender differs from record wallet' });
+          out.push({ id: tx.id, status: 'failed', association: 'SENDER_MISMATCH' });
+          continue;
+        }
         if (tx.status === TX.SUBMITTED) transitionTransaction(tx.id, TX.PENDING, {});
         const fin = transitionTransaction(tx.id, TX.CONFIRMED, {
           gas: r.gas || tx.gas,

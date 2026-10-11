@@ -52,3 +52,4 @@ are owner-side work.
 - [x] Production probes: malformed POST → `400 INVALID_JSON`; 300 KB POST → `413 PAYLOAD_TOO_LARGE`; 8/8 journey builds unsigned+simulated; 15+ read endpoints return content-checked payloads.
 - [x] No secrets in tree or history (`git log --all -- .env` empty; only vendor constant + own blocklist match `PRIVATE_KEY` in history).
 - [x] External contract pins inventoried in `docs/EXTERNAL-CONTRACTS.md`; Haedal/Volo/SpringSui IDs cross-checked against official docs. Full bytecode audit: NOT done.
+- [x] Round 1 integrity (2026-10-10, code-complete, unit-tested; DB-backed paths covered by `test:pg` on owner DB): PATCH allowlist + owner match, digest-sender binding on submit/confirm/tracker, automation signed challenges, signing digest check. Awaiting owner review before push/deploy.
