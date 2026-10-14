@@ -179,7 +179,11 @@ export function estimateExecutionFromBook({ side, quantity, bids, asks, midPrice
   };
 }
 
-/** Client order id: deterministic-ish unique u64-ish string (for clientOrderId param). */
+let _clientOrderSeq = 0n;
+
+/** Client order id: monotonic unique u64-safe numeric string (for clientOrderId param). */
 export function makeClientOrderId() {
-  return String((Date.now() % 4294967295) * 1000 + Math.floor(Math.random() * 1000));
+  _clientOrderSeq = (_clientOrderSeq + 1n) % 1000000n;
+  const ts = BigInt(Date.now() % 4294967295);
+  return String(ts * 1000000n + _clientOrderSeq);
 }

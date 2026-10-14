@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-07T11:49:17.243Z",
+  "at": "2026-10-13T07:19:26.456Z",
   "mode": "Unsigned build and simulation only. No wallet signatures or submissions.",
   "assets": {
     "assets": [
@@ -132,14 +132,14 @@
     ],
     "unavailable": [],
     "source": "Curated ecosystem list; chain metadata verified; not a ranking",
-    "updatedAt": "2026-10-07T11:49:08.845Z"
+    "updatedAt": "2026-10-13T07:19:08.502Z"
   },
   "results": [
     {
       "provider": "suilend",
       "symbol": "SUI",
       "ok": true,
-      "digest": "J2m9wrSGwFH2nb2j5UGPSWtFhpaamnYtcKkRJUR3sMKb",
+      "digest": "37cE1gFAat5tkUfNgjq7csV8n39ZPhDuJccKwMJVMbCH",
       "simulation": {
         "status": "success",
         "error": null
@@ -154,7 +154,7 @@
       "provider": "suilend",
       "symbol": "USDC",
       "ok": true,
-      "digest": "BdnHG1PVd5k6secshpZ8nx4caPv5dg1DuUrnNUuKit8Q",
+      "digest": "qjvRYHQp8X5rAynjyJFmNacsjXHjtAwEXAN4YHY1akf",
       "simulation": {
         "status": "success",
         "error": null
@@ -172,11 +172,11 @@
       },
       "quote": {
         "provider": "Cetus Aggregator",
-        "quoteId": "399f488d-5d47-40df-b2c0-28c6d4e44311",
+        "quoteId": "02220add-1958-455f-9bc8-b29953e00cac",
         "amountIn": "100000000",
         "routeAmountIn": "99980000",
-        "expectedOutput": "112646",
-        "minOutput": "112082",
+        "expectedOutput": "106911",
+        "minOutput": "106376",
         "feeCollected": {
           "amountMist": "20000",
           "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
@@ -185,8 +185,7 @@
           "source": "server-default"
         },
         "routeProviders": [
-          "FLOWXV3",
-          "TURBOS",
+          "BLUEFIN",
           "CETUS"
         ]
       }
@@ -195,7 +194,7 @@
       "provider": "navi",
       "symbol": "SUI",
       "ok": true,
-      "digest": "9L6Ra9r8MKZ4zqbD6aQ4YTzWzMZ64DreUerHoe6Kw3Uz",
+      "digest": "EDt8WzPZ77rLThgtXvdF6HNBaAzPojCZ1VdBBinaJ4EA",
       "simulation": {
         "status": "success",
         "error": null
@@ -210,7 +209,7 @@
       "provider": "navi",
       "symbol": "USDC",
       "ok": true,
-      "digest": "2nsWFCeJrvWJsru2K4s2CX7FDNafTGhCqv1PnNwDfXCh",
+      "digest": "2xENNeprYix9SPkER16rvq6HYy2XjvTJmn5AGwoGZJK1",
       "simulation": {
         "status": "success",
         "error": null
@@ -228,11 +227,11 @@
       },
       "quote": {
         "provider": "Cetus Aggregator",
-        "quoteId": "c61cff83-4bb7-4af2-96e3-e2a81c1277bf",
+        "quoteId": "eb74d69b-8836-4556-a0d4-5922851d9df9",
         "amountIn": "100000000",
         "routeAmountIn": "99980000",
-        "expectedOutput": "112646",
-        "minOutput": "112082",
+        "expectedOutput": "106931",
+        "minOutput": "106396",
         "feeCollected": {
           "amountMist": "20000",
           "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
@@ -241,8 +240,7 @@
           "source": "server-default"
         },
         "routeProviders": [
-          "FLOWXV3",
-          "TURBOS",
+          "BLUEFIN",
           "CETUS"
         ]
       }
@@ -251,7 +249,7 @@
       "provider": "kai",
       "symbol": "SUI",
       "ok": true,
-      "digest": "AWeMBdT2qyAq5jmgmPC67etNTZQyGrFFBuuJREPfvoCf",
+      "digest": "DF9qwD2WQ3DWwEyVxZxt9PXoWKGbkQSvYeDZuseETtXP",
       "simulation": {
         "status": "success",
         "error": null
@@ -266,7 +264,7 @@
       "provider": "kai",
       "symbol": "USDC",
       "ok": true,
-      "digest": "Cx6t6qNShdethy1VZ2X4ea7tkBN9bqxPFTFPUANBQE9j",
+      "digest": "HPmY8923Eek4Hz8rct7PZJwjQfb1auThQK29LCYUps17",
       "simulation": {
         "status": "success",
         "error": null
@@ -284,11 +282,11 @@
       },
       "quote": {
         "provider": "Cetus Aggregator",
-        "quoteId": "626d6ba8-deae-402f-b0a8-c62a456ba5a2",
+        "quoteId": "c1030cad-8bfa-42c2-b0ac-9a8434860770",
         "amountIn": "100000000",
         "routeAmountIn": "99980000",
-        "expectedOutput": "112646",
-        "minOutput": "112082",
+        "expectedOutput": "106931",
+        "minOutput": "106396",
         "feeCollected": {
           "amountMist": "20000",
           "recipient": "0xa29a8f72981c5644c348a51cd4aded6dbb47ad4361f7a825e19d377e9c4373a1",
@@ -297,8 +295,7 @@
           "source": "server-default"
         },
         "routeProviders": [
-          "FLOWXV3",
-          "TURBOS",
+          "BLUEFIN",
           "CETUS"
         ]
       }
@@ -328,82 +325,82 @@
     {
       "to": "WAL",
       "ok": true,
-      "amountOut": "3161576932"
+      "amountOut": "2756570546"
     },
     {
       "to": "NS",
       "ok": true,
-      "amountOut": "7579311"
+      "amountOut": "7779113"
     },
     {
       "to": "IKA",
       "ok": true,
-      "amountOut": "58712498634"
+      "amountOut": "62992679723"
     },
     {
       "to": "SEND",
       "ok": true,
-      "amountOut": "1826285"
+      "amountOut": "2018225"
     },
     {
       "to": "AUSD",
       "ok": true,
-      "amountOut": "81944"
+      "amountOut": "79673"
     },
     {
       "to": "USDSUI",
       "ok": true,
-      "amountOut": "112321"
+      "amountOut": "106911"
     },
     {
       "to": "SUIUSDE",
       "ok": true,
-      "amountOut": "112331"
+      "amountOut": "106926"
     },
     {
       "to": "XBTC",
       "ok": true,
-      "amountOut": "134"
+      "amountOut": "127"
     },
     {
       "to": "USDT",
       "ok": true,
-      "amountOut": "112346"
+      "amountOut": "107047"
     },
     {
       "to": "WUSDC",
       "ok": true,
-      "amountOut": "112778"
+      "amountOut": "106932"
     },
     {
       "to": "WUSDT",
       "ok": true,
-      "amountOut": "113128"
+      "amountOut": "106987"
     },
     {
       "to": "WETH",
       "ok": true,
-      "amountOut": "4351"
+      "amountOut": "4271"
     },
     {
       "to": "WBTC",
       "ok": true,
-      "amountOut": "134"
+      "amountOut": "128"
     },
     {
       "to": "DEEP",
       "ok": true,
-      "amountOut": "5157041"
+      "amountOut": "4931715"
     },
     {
       "to": "CETUS",
       "ok": true,
-      "amountOut": "4293333861"
+      "amountOut": "4266013961"
     },
     {
       "to": "NAVX",
       "ok": true,
-      "amountOut": "8604494264"
+      "amountOut": "8785533395"
     }
   ]
 }
