@@ -1174,6 +1174,10 @@
                                         <option value="SUI">SUI</option>
                                         <option value="USDC">USDC</option>
                                         <option value="USDT">USDT</option>
+                                        <option value="WAL">WAL</option>
+                                        <option value="DEEP">DEEP</option>
+                                        <option value="NS">NS</option>
+                                        <option value="CETUS">CETUS</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1190,7 +1194,7 @@
 
                         <!-- Flip Button -->
                         <div class="swap-divider">
-                            <button class="flip-btn" onclick="flipSwapTokens()" title="Invert Pair">⇅</button>
+                            <button class="flip-btn" onclick="flipSwapTokens()" title="Invert Pair"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13"/><path d="M4 14l3 3 3-3"/><path d="M17 20V7"/><path d="M20 10l-3-3-3 3"/></svg></button>
                         </div>
 
                         <!-- Receive Input Box -->
@@ -1206,6 +1210,10 @@
                                         <option value="USDC">USDC</option>
                                         <option value="SUI">SUI</option>
                                         <option value="USDT">USDT</option>
+                                        <option value="WAL">WAL</option>
+                                        <option value="DEEP">DEEP</option>
+                                        <option value="NS">NS</option>
+                                        <option value="CETUS">CETUS</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1308,7 +1316,7 @@
                         </div>
 
                         <div class="swap-divider">
-                            <button class="flip-btn" onclick="flipBridgeChains()" title="Flip Chains">⇅</button>
+                            <button class="flip-btn" onclick="flipBridgeChains()" title="Flip Chains"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13"/><path d="M4 14l3 3 3-3"/><path d="M17 20V7"/><path d="M20 10l-3-3-3 3"/></svg></button>
                         </div>
 
                         <!-- Destination Chain -->
@@ -1342,6 +1350,10 @@
                                     <select id="bridgeTokenSelect" onchange="updateBridgeQuotes()">
                                         <option value="USDC">USDC</option>
                                         <option value="USDT">USDT</option>
+                                        <option value="WAL">WAL</option>
+                                        <option value="DEEP">DEEP</option>
+                                        <option value="NS">NS</option>
+                                        <option value="CETUS">CETUS</option>
                                         <option value="WETH">WETH</option>
                                         <option value="WBTC">WBTC</option>
                                         <option value="SUI">SUI</option>
@@ -1426,36 +1438,13 @@
                     <!-- Markets List -->
                     <div class="panel">
                         <div class="panel-label" style="margin-bottom:12px;">ACTIVE MARKETS</div>
-                        <div style="display:flex; flex-direction:column; gap:6px;">
-                            <div class="route-card selected" id="mktCardSUI" onclick="selectSpotPool('SUI_USDC')">
+                        <div style="display:flex; flex-direction:column; gap:6px; max-height:520px; overflow-y:auto;" id="spotMarketsList">
+                            <div class="route-card selected" data-pool="SUI_USDC">
                                 <div class="route-card-left">
                                     <div class="route-card-name">SUI / USDC</div>
-                                    <div class="route-card-desc">DeepBook v3 Core</div>
+                                    <div class="route-card-desc">DeepBook v3</div>
                                 </div>
-                                <div class="route-card-right">
-                                    <div class="route-card-val" id="mktPriceSUI">$1.047</div>
-                                    <div class="route-card-sub" style="color:var(--green);" id="mktSrcSUI">LIVE</div>
-                                </div>
-                            </div>
-                            <div class="route-card" id="mktCardDEEP" onclick="selectSpotPool('DEEP_USDC')">
-                                <div class="route-card-left">
-                                    <div class="route-card-name">DEEP / USDC</div>
-                                    <div class="route-card-desc">DeepBook Governance</div>
-                                </div>
-                                <div class="route-card-right">
-                                    <div class="route-card-val" id="mktPriceDEEP">$0.089</div>
-                                    <div class="route-card-sub" style="color:var(--green);" id="mktSrcDEEP">LIVE</div>
-                                </div>
-                            </div>
-                            <div class="route-card" onclick="toast('WETH has no DeepBook pool — displaying reference price')">
-                                <div class="route-card-left">
-                                    <div class="route-card-name">WETH / USDC</div>
-                                    <div class="route-card-desc">Wormhole Bridge</div>
-                                </div>
-                                <div class="route-card-right">
-                                    <div class="route-card-val" id="mktPriceWETH">$2,642</div>
-                                    <div class="route-card-sub" style="color:var(--text-dim);" id="mktSrcWETH">REF</div>
-                                </div>
+                                <div class="route-card-right"><div class="route-card-val">SYNC…</div></div>
                             </div>
                         </div>
                     </div>
@@ -1467,9 +1456,9 @@
                             <span class="panel-label"><span id="spotFeedLbl" style="color:var(--accent)">SYNC…</span> <span id="spotSpreadLbl" style="color:var(--green)">SPREAD: —</span></span>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-family:'Space Grotesk',monospace; font-size:11px; color:var(--text-dim); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line);">
-                            <span>PRICE (USDC)</span>
+                            <span id="spotPriceHdr">PRICE (USDC)</span>
                             <span style="text-align:right;" id="spotSizeHdr">SIZE (SUI)</span>
-                            <span style="text-align:right;">TOTAL (USDC)</span>
+                            <span style="text-align:right;" id="spotTotalHdr">TOTAL (USDC)</span>
                         </div>
                         <div id="spotBookRows" style="display:flex; flex-direction:column; gap:4px; font-family:'Space Grotesk',monospace; font-size:11.5px;">
                             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0478)">
@@ -1506,7 +1495,7 @@
                             </div>
                         </div>
                         <div class="input-card" style="margin-bottom:10px;">
-                            <div class="input-top"><span>PRICE</span><span>USDC</span></div>
+                            <div class="input-top"><span>PRICE</span><span id="spotPriceAsset">USDC</span></div>
                             <input type="number" id="spotPriceInput" class="amount-num" value="1.0468" step="0.0001" oninput="updateSpotTotal()">
                         </div>
                         <div class="input-card" style="margin-bottom:16px;">
@@ -1526,6 +1515,18 @@
                     <div class="panel" style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <span class="panel-label" id="predictBoardLbl">LIVE EXPIRY BOARD · SYNC…</span>
                         <button class="filter-btn" onclick="fetchPredictBoard(true)">REFRESH ⟳</button>
+                    </div>
+                    <div class="panel" id="predictAccountPanel" style="margin-bottom:16px; display:none;">
+                        <div class="panel-header">
+                            <span class="panel-label">MY POSITIONS</span>
+                            <span class="panel-label" id="predictBalLbl">PREDICT BALANCE: —</span>
+                        </div>
+                        <div class="table-wrap" style="border:none; background:transparent;">
+                            <table class="custom-table">
+                                <thead><tr><th>MARKET</th><th>SIDE</th><th>QTY</th><th>ENTRY</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+                                <tbody id="predictPositionsBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                     <div class="predict-grid" id="predictGrid">
                         <div class="predict-card"><div class="predict-q">Syncing live expiry markets…</div></div>
@@ -1862,6 +1863,10 @@
         'SUI': 1.047,
         'USDC': 1.000,
         'USDT': 1.000,
+        'WAL': 0.350,
+        'DEEP': 0.089,
+        'NS': 0.150,
+        'CETUS': 0.110,
         'afSUI': 1.121,
         'haSUI': 1.102,
         'vSUI': 1.095,
@@ -1936,18 +1941,21 @@
             const data = await res.json();
             if (data && data.price) {
                 TOKEN_PRICES['WETH'] = parseFloat(data.price);
-                const el = $('mktPriceWETH');
-                if (el) el.textContent = '$' + TOKEN_PRICES['WETH'].toLocaleString(undefined, { maximumFractionDigits: 0 });
             }
         } catch (e) { console.log('ETH feed notice:', e.message); }
-        try {
-            const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=DEEPUSDT');
-            const data = await res.json();
-            if (data && data.price) {
-                const el = $('mktPriceDEEP');
-                if (el) el.textContent = '$' + Number(data.price).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 4 });
-            }
-        } catch (e) { console.log('DEEP feed notice:', e.message); }
+        // Top Sui tokens + WBTC — each feed independent, one failure never blocks the rest
+        const BIN_SPOT = { WAL: 'WALUSDT', DEEP: 'DEEPUSDT', NS: 'NSUSDT', CETUS: 'CETUSUSDT', WBTC: 'BTCUSDT' };
+        for (const [sym, pair] of Object.entries(BIN_SPOT)) {
+            try {
+                const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=' + pair);
+                const d = await r.json();
+                if (d && d.price) TOKEN_PRICES[sym] = parseFloat(d.price);
+            } catch (e) { console.log(sym + ' feed notice:', e.message); }
+        }
+        const wethEl = $('mktPriceWETH');
+        if (wethEl) wethEl.textContent = '$' + TOKEN_PRICES['WETH'].toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const deepEl = $('mktPriceDEEP');
+        if (deepEl && TOKEN_PRICES['DEEP']) deepEl.textContent = '$' + Number(TOKEN_PRICES['DEEP']).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 4 });
         // Real DeepBook mids override reference prices when the hub backend is reachable
         try {
             const res = await fetch('/api/trade/markets');
@@ -1962,6 +1970,18 @@
         } catch (e) { console.log('DeepBook markets notice:', e.message); }
     }
 
+    // Coin decimals from on-chain metadata (cached) — never guessed
+    const _coinDecCache = {};
+    async function coinDecimals(coinType, fallback) {
+        if (_coinDecCache[coinType] != null) return _coinDecCache[coinType];
+        try {
+            const md = await rpc('sui_getCoinMetadata', [coinType]);
+            const d = Number(md && md.decimals);
+            if (Number.isFinite(d)) { _coinDecCache[coinType] = d; return d; }
+        } catch {}
+        return fallback;
+    }
+
     // Fetch real wallet balances via Sui RPC
     async function fetchWalletBalances(notify = false) {
         if (!wallet) return;
@@ -1970,13 +1990,17 @@
             if (Array.isArray(res)) {
                 _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
                 let totalUsd = 0;
-                res.forEach(item => {
+                for (const item of res) {
                     const coin = item.coinType;
                     let sym = 'OTHER';
                     let dec = 9;
                     if (coin === '0x2::sui::SUI') { sym = 'SUI'; dec = 9; }
                     else if (coin.toLowerCase().includes('::usdc::usdc')) { sym = 'USDC'; dec = 6; }
                     else if (coin.toLowerCase().includes('::usdt::usdt')) { sym = 'USDT'; dec = 6; }
+                    else if (coin.toLowerCase().includes('::wal::wal')) { sym = 'WAL'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::deep::deep')) { sym = 'DEEP'; dec = await coinDecimals(coin, 6); }
+                    else if (coin.toLowerCase().includes('::ns::ns')) { sym = 'NS'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::cetus::cetus')) { sym = 'CETUS'; dec = await coinDecimals(coin, 9); }
                     else if (coin.toLowerCase().includes('::afsui::afsui')) { sym = 'afSUI'; dec = 9; }
                     else if (coin.toLowerCase().includes('::hasui::hasui')) { sym = 'haSUI'; dec = 9; }
                     else if (coin.toLowerCase().includes('::vsui::vsui')) { sym = 'vSUI'; dec = 9; }
@@ -1986,7 +2010,7 @@
                     const amt = Number(item.totalBalance) / Math.pow(10, dec);
                     _walletBalances[sym] = amt;
                     totalUsd += amt * (TOKEN_PRICES[sym] || 0);
-                });
+                }
                 updateBalanceLabels();
                 renderPortfolioView(totalUsd);
                 if (notify) toast('Balances updated from Sui Mainnet.');
@@ -2286,6 +2310,79 @@
         }
     }
 
+    // ── PREDICT ACCOUNT: balance + positions + sell/claim ──
+    let _pendingRedeem = null;
+    let _pendingClaim = null;
+    async function fetchPredictAccount() {
+        const panel = $('predictAccountPanel');
+        const body = $('predictPositionsBody');
+        const balLbl = $('predictBalLbl');
+        if (!wallet) { if (panel) panel.style.display = 'none'; return; }
+        try {
+            const [bRes, pRes] = await Promise.all([
+                fetch('/api/trade/predict/balance?wallet=' + encodeURIComponent(wallet)),
+                fetch('/api/trade/predict/positions?wallet=' + encodeURIComponent(wallet))
+            ]);
+            const b = await bRes.json();
+            const p = await pRes.json();
+            if (panel) panel.style.display = 'block';
+            if (balLbl) balLbl.textContent = 'PREDICT BALANCE: ' + (b.error ? '—' : ('$' + Number(b.balance ?? 0).toFixed(2) + ' USDC'));
+            const rows = (p && !p.error && Array.isArray(p.positions)) ? p.positions : [];
+            if (body) body.innerHTML = rows.length ? rows.map((r, i) => {
+                const mkt = esc(r.underlying || '') + ' · ' + (r.expiryMs ? new Date(Number(r.expiryMs)).toLocaleTimeString() : '—');
+                return '<tr><td>' + mkt + '</td><td>' + esc(String(r.side || '—').toUpperCase()) + '</td>' +
+                    '<td>' + esc(String(r.quantity ?? '—')) + '</td><td>$' + Number(r.entryCost ?? 0).toFixed(2) + '</td>' +
+                    '<td>' + esc(String(r.status || 'OPEN')) + '</td>' +
+                    '<td style="white-space:nowrap;"><button class="filter-btn" style="padding:3px 8px;" onclick="sellPredictPosition(' + i + ')">SELL</button> ' +
+                    '<button class="filter-btn" style="padding:3px 8px;" onclick="claimPredictPosition(' + i + ')">CLAIM</button></td></tr>';
+            }).join('') : '<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:18px;">No open Predict positions on this wallet.</td></tr>';
+            window._predictPositions = rows;
+        } catch (e) {
+            console.log('Predict account notice:', e.message);
+            if (balLbl) balLbl.textContent = 'PREDICT BALANCE: —';
+        }
+    }
+    async function sellPredictPosition(i) {
+        const r = (window._predictPositions || [])[i];
+        if (!r || r.orderId == null) { toast('Position reference missing.'); return; }
+        toast('Quoting exit…');
+        try {
+            const res = await fetch('/api/trade/predict/quote-redeem', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet, underlying: r.underlying, expiryMs: r.expiryMs, orderId: String(r.orderId), quantity: Number(r.quantity) })
+            });
+            const q = await res.json();
+            if (q.error || !q.quote) throw new Error(q.error || 'QUOTE_FAILED');
+            _pendingRedeem = { underlying: r.underlying, expiryMs: r.expiryMs, orderId: String(r.orderId), quantity: Number(r.quantity) };
+            showReviewModal({
+                title: 'SELL PREDICT POSITION',
+                desc: `Close ${r.quantity} contracts · ${r.underlying}`,
+                details: [
+                    { k: 'Net Proceeds', v: '$' + Number(q.quote.netProceeds ?? 0).toFixed(2) + ' USDC' },
+                    { k: 'Quantity Closed', v: String(q.quote.quantityClosed ?? r.quantity) },
+                    { k: 'Trading Fee', v: '$' + Number(q.quote.tradingFee ?? 0).toFixed(4) + ' USDC' }
+                ],
+                actionType: 'predict_redeem'
+            });
+        } catch (e) { _pendingRedeem = null; toast('Exit quote failed: ' + String(e.message || '').slice(0, 120)); }
+    }
+    function claimPredictPosition(i) {
+        const r = (window._predictPositions || [])[i];
+        if (!r || r.orderId == null) { toast('Position reference missing.'); return; }
+        if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        _pendingClaim = { underlying: r.underlying, expiryMs: r.expiryMs, orderId: String(r.orderId) };
+        showReviewModal({
+            title: 'CLAIM SETTLED POSITION',
+            desc: `Claim payout for ${r.underlying} · ${r.side || ''} · ${r.quantity} contracts`,
+            details: [
+                { k: 'Market', v: (r.underlying || '') + ' · ' + (r.expiryMs ? new Date(Number(r.expiryMs)).toLocaleString() : '—') },
+                { k: 'Order', v: shortAddr(String(r.orderId)) },
+                { k: 'Quantity', v: String(r.quantity ?? '—') }
+            ],
+            actionType: 'predict_claim'
+        });
+    }
+
     let _spotOrderSide = 'buy';
     function setSpotOrderSide(side) {
         _spotOrderSide = side;
@@ -2300,7 +2397,7 @@
     function updateSpotTotal() {
         const p = parseFloat($('spotPriceInput').value) || 0;
         const a = parseFloat($('spotAmtInput').value) || 0;
-        $('spotTotalVal').textContent = '$' + (p * a).toFixed(2) + ' USDC';
+        $('spotTotalVal').textContent = '$' + (p * a).toFixed(2) + ' ' + (typeof _spotQuote !== 'undefined' ? _spotQuote : 'USDC');
     }
     // Click a ladder level to fill the order price
     function pickSpotPrice(price) {
@@ -2312,19 +2409,67 @@
 
     // ── LIVE SPOT ORDERBOOK (real DeepBook L2 via hub backend, Binance-anchored fallback) ──
     let _spotPool = 'SUI_USDC';
+    let _spotQuote = 'USDC';
     function spotBaseAsset() { return String(_spotPool).split('_')[0] || 'SUI'; }
-    function selectSpotPool(pool) {
+    function fmtPx(p) {
+        const n = Number(p);
+        if (!Number.isFinite(n)) return '—';
+        if (n >= 1000) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        if (n >= 1) return '$' + n.toFixed(4);
+        return '$' + n.toFixed(6);
+    }
+    function selectSpotPool(pool, quote) {
         _spotPool = pool;
+        _spotQuote = quote || String(pool).split('_')[1] || 'USDC';
         const base = spotBaseAsset();
-        ['SUI', 'DEEP'].forEach(b => {
-            const card = $('mktCard' + b);
-            if (card) card.className = 'route-card' + ((pool === b + '_USDC') ? ' selected' : '');
+        document.querySelectorAll('#spotMarketsList .route-card').forEach(c => {
+            c.className = 'route-card' + ((c.dataset.pool === pool) ? ' selected' : '');
         });
         const hdr = $('spotSizeHdr');
         if (hdr) hdr.textContent = 'SIZE (' + base + ')';
+        const ph = $('spotPriceHdr');
+        if (ph) ph.textContent = 'PRICE (' + _spotQuote + ')';
+        const th = $('spotTotalHdr');
+        if (th) th.textContent = 'TOTAL (' + _spotQuote + ')';
         const amt = $('spotAmtAsset');
         if (amt) amt.textContent = base;
+        const pa = $('spotPriceAsset');
+        if (pa) pa.textContent = _spotQuote;
         fetchSpotBook();
+    }
+    // All live DeepBook pools — never a hardcoded pair list
+    async function fetchSpotMarkets() {
+        const box = $('spotMarketsList');
+        try {
+            const res = await fetch('/api/trade/markets');
+            const data = await res.json();
+            if (data.error || !Array.isArray(data.markets) || !data.markets.length) throw new Error(data.error || 'empty markets');
+            const rows = data.markets.map(m => {
+                const key = m.market;
+                const parts = String(key).split('_');
+                return { key, base: parts[0], quote: parts.slice(1).join('_') || 'USDC', last: Number(m.last) };
+            }).filter(r => r.last > 0);
+            rows.sort((a, b) => ((b.quote === 'USDC') - (a.quote === 'USDC')) || ((b.key === 'SUI_USDC') - (a.key === 'SUI_USDC')) || ((b.key === 'DEEP_USDC') - (a.key === 'DEEP_USDC')));
+            if (box) box.innerHTML = rows.map(r =>
+                '<div class="route-card' + ((r.key === _spotPool) ? ' selected' : '') + '" data-pool="' + esc(r.key) + '" onclick="selectSpotPool(\'' + esc(r.key) + '\',\'' + esc(r.quote) + '\')">' +
+                '<div class="route-card-left"><div class="route-card-name">' + esc(r.base) + ' / ' + esc(r.quote) + '</div>' +
+                '<div class="route-card-desc">DeepBook v3</div></div>' +
+                '<div class="route-card-right"><div class="route-card-val">' + fmtPx(r.last) + '</div>' +
+                '<div class="route-card-sub" style="color:var(--green);">LIVE</div></div></div>'
+            ).join('');
+        } catch (e) {
+            console.log('Spot markets notice:', e.message);
+            if (box && !box.querySelector('[data-pool]')) {
+                const fb = [['SUI_USDC', 'SUI', 'USDC'], ['DEEP_USDC', 'DEEP', 'USDC']];
+                box.innerHTML = fb.map(([k, b, q]) => {
+                    const px = TOKEN_PRICES[b] || 0;
+                    return '<div class="route-card' + ((k === _spotPool) ? ' selected' : '') + '" data-pool="' + k + '" onclick="selectSpotPool(\'' + k + '\',\'' + q + '\')">' +
+                        '<div class="route-card-left"><div class="route-card-name">' + b + ' / ' + q + '</div><div class="route-card-desc">DeepBook v3</div></div>' +
+                        '<div class="route-card-right"><div class="route-card-val">' + fmtPx(px) + '</div>' +
+                        '<div class="route-card-sub" style="color:var(--text-dim);">REF</div></div></div>';
+                }).join('');
+            }
+        }
     }
     function spotRowHtml(price, qty, side) {
         const total = price * qty;
@@ -2341,12 +2486,12 @@
         let html = asks.map(([p, q]) => spotRowHtml(Number(p), Number(q), 'ask')).join('');
         const mid = Number(book.midPrice) || ((Number(book.bestBid) + Number(book.bestAsk)) / 2) || 0;
         html += '<div id="spotMidLbl" style="text-align:center; padding:10px 0; font-size:15px; font-weight:700; color:#fff; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin:4px 0;">' +
-            (mid ? mid.toFixed(4) + ' USDC · MID MARKET' : 'MID UNAVAILABLE') + '</div>';
+            (mid ? mid.toFixed(4) + ' ' + _spotQuote + ' · MID MARKET' : 'MID UNAVAILABLE') + '</div>';
         html += bids.map(([p, q]) => spotRowHtml(Number(p), Number(q), 'bid')).join('');
         box.innerHTML = html;
         const spread = Number(book.spread);
         const lbl = $('spotSpreadLbl');
-        if (lbl) lbl.textContent = (spread > 0 && mid > 0) ? 'SPREAD: ' + spread.toFixed(4) + ' USDC (' + (spread / mid * 100).toFixed(2) + '%)' : 'SPREAD: —';
+        if (lbl) lbl.textContent = (spread > 0 && mid > 0) ? 'SPREAD: ' + spread.toFixed(4) + ' ' + _spotQuote + ' (' + (spread / mid * 100).toFixed(2) + '%)' : 'SPREAD: —';
         const feed = $('spotFeedLbl');
         if (feed) { feed.textContent = book.live ? 'LIVE BOOK' : 'REF FEED'; feed.style.color = book.live ? 'var(--green)' : 'var(--amber)'; }
         if (mid > 0 && document.activeElement !== $('spotPriceInput')) $('spotPriceInput').value = mid.toFixed(4);
@@ -2385,14 +2530,15 @@
         }
         const p = $('spotPriceInput').value;
         const a = $('spotAmtInput').value;
+        const base = spotBaseAsset();
         showReviewModal({
             title: 'DEEPBOOK v3 SPOT ORDER',
-            desc: 'Place on-chain ' + _spotOrderSide.toUpperCase() + ' order for ' + a + ' SUI @ ' + p + ' USDC',
+            desc: 'Place on-chain ' + _spotOrderSide.toUpperCase() + ' order for ' + a + ' ' + base + ' @ ' + p + ' ' + _spotQuote,
             details: [
-                { k: 'Market', v: 'SUI / USDC' },
+                { k: 'Market', v: _spotPool.replace('_', ' / ') },
                 { k: 'Side', v: _spotOrderSide.toUpperCase() },
-                { k: 'Size', v: a + ' SUI' },
-                { k: 'Limit Price', v: p + ' USDC' },
+                { k: 'Size', v: a + ' ' + base },
+                { k: 'Limit Price', v: p + ' ' + _spotQuote },
                 { k: 'Orderbook Protocol', v: 'DeepBook v3' }
             ],
             actionType: 'spot_order'
@@ -2783,8 +2929,42 @@
                 awardPoints('swaps', 200, 50);
                 setTimeout(closeModal, 2500);
                 fetchWalletBalances();
+                fetchPredictAccount();
                 return;
             }
+            // Real Predict sell / claim: build unsigned PTB server-side, sign in wallet
+            if ((actionType === 'predict_redeem' || actionType === 'predict_claim') && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const isSell = actionType === 'predict_redeem';
+                const pp = isSell ? _pendingRedeem : _pendingClaim;
+                _pendingRedeem = null; _pendingClaim = null;
+                if (!pp) throw new Error('Position reference expired — reopen the ticket.');
+                status.textContent = 'Building unsigned transaction…';
+                const ep = isSell ? 'build-redeem' : 'claim';
+                const payload = isSell
+                    ? { wallet, underlying: pp.underlying, expiryMs: pp.expiryMs, orderId: pp.orderId, quantity: pp.quantity }
+                    : { wallet, underlying: pp.underlying, expiryMs: pp.expiryMs, orderId: pp.orderId };
+                const bRes = await fetch('/api/trade/predict/' + ep, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const built = await bRes.json();
+                if (built.error || !built.txBytes) throw new Error(built.error || 'BUILD_FAILED');
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                status.textContent = 'Approve in your wallet…';
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">${isSell ? 'Position Sold' : 'Payout Claimed'}</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast(isSell ? 'Predict position sold' : 'Predict payout claimed');
+                recordActivity(isSell ? 'PREDICT_SELL' : 'PREDICT_CLAIM', `${pp.underlying} order ${shortAddr(String(pp.orderId))}`, digest);
+                awardPoints('swaps', 150, 0);
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                fetchPredictAccount();
+                return;
+            }
+            _pendingRedeem = null; _pendingClaim = null;
             _pendingPredict = null;
 
             if (isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
@@ -2940,6 +3120,7 @@
         }
         updateBalanceLabels();
         updateUserPointsDisplay();
+        if (typeof fetchPredictAccount === 'function') fetchPredictAccount();
     }
 
     function disconnectWallet() {
@@ -3053,6 +3234,7 @@
     window.addEventListener('DOMContentLoaded', () => {
         paintWalletState();
         fetchLivePrices();
+        fetchSpotMarkets();
         fetchSpotBook();
         fetchPredictBoard();
         recalcSwap();
@@ -3064,6 +3246,7 @@
         updateUserPointsDisplay();
         setInterval(fetchLivePrices, 30000);
         setInterval(fetchSpotBook, 10000);
+        setInterval(fetchSpotMarkets, 30000);
         setInterval(fetchPredictBoard, 20000);
         setInterval(predictCountdownTick, 1000);
     });
