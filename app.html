@@ -428,7 +428,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 0;
+            height: auto;
+            padding: 6px 0;
             margin: 0;
             position: relative;
             z-index: 2;
@@ -438,16 +439,17 @@
             background: #141414;
             border: 1px solid var(--accent);
             color: var(--accent);
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            border-radius: 0;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.15s ease;
             box-shadow: 0 0 12px rgba(0, 102, 255, 0.25);
-            transform: translateY(-50%);
+            transform: none;
+            flex: none;
         }
         .flip-btn svg {
             width: 19px;
@@ -457,7 +459,7 @@
             color: #fff;
             background: var(--accent);
             border-color: var(--accent);
-            transform: translateY(-50%) rotate(180deg);
+            transform: rotate(180deg);
         }
 
         .route-summary-pill {
