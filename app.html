@@ -1414,7 +1414,7 @@
             <section class="app-view" id="view-spot">
                 <div class="section-tag">02 · CENTRAL LIMIT ORDER BOOK & PREDICTIONS</div>
                 <h1 class="section-title">DeepBook v3 & Predict. <span>Institutional Liquidity.</span></h1>
-                <p class="section-desc">On-chain CLOB trading with maker rebates, and decentralized binary prediction markets on Sui Mainnet.</p>
+                <p class="section-desc">On-chain CLOB trading with maker rebates, plus per-expiry Predict range markets settling $1 per contract in range.</p>
 
                 <div class="sub-tabs-bar">
                     <button class="filter-btn active" id="btnSubSpot" onclick="setDeepbookViewMode('spot')">SPOT ORDERBOOK (CLOB)</button>
@@ -1521,73 +1521,16 @@
                     </div>
                 </div>
 
-                <!-- Predict Interface -->
+                <!-- Predict Interface: live expiry board (real DeepBook Predict markets) -->
                 <div id="deepbookPredictSection" style="display:none;">
-                    <div class="predict-grid">
-                        <div class="predict-card">
-                            <div class="section-tag">PREDICTION MARKET · RESOLVES OCT 31</div>
-                            <div class="predict-q">Will SUI token trade above $1.50 at the end of October?</div>
-                            <div class="predict-bar">
-                                <div class="predict-bar-fill" style="width:68%;"></div>
-                            </div>
-                            <div class="predict-odds-row">
-                                <span style="color:var(--green);">YES 68¢ (68%)</span>
-                                <span style="color:var(--red);">NO 32¢ (32%)</span>
-                            </div>
-                            <div class="predict-actions">
-                                <button class="predict-btn-yes" onclick="buyPredictShare('SUI > $1.50', 'YES', 0.68)">BUY YES · 68¢</button>
-                                <button class="predict-btn-no" onclick="buyPredictShare('SUI > $1.50', 'NO', 0.32)">BUY NO · 32¢</button>
-                            </div>
-                        </div>
-
-                        <div class="predict-card">
-                            <div class="section-tag">PREDICTION MARKET · RESOLVES DEC 31</div>
-                            <div class="predict-q">Will Sui Total Value Locked (TVL) surpass $1.5 Billion in Q4?</div>
-                            <div class="predict-bar">
-                                <div class="predict-bar-fill" style="width:84%;"></div>
-                            </div>
-                            <div class="predict-odds-row">
-                                <span style="color:var(--green);">YES 84¢ (84%)</span>
-                                <span style="color:var(--red);">NO 16¢ (16%)</span>
-                            </div>
-                            <div class="predict-actions">
-                                <button class="predict-btn-yes" onclick="buyPredictShare('Sui TVL > $1.5B', 'YES', 0.84)">BUY YES · 84¢</button>
-                                <button class="predict-btn-no" onclick="buyPredictShare('Sui TVL > $1.5B', 'NO', 0.16)">BUY NO · 16¢</button>
-                            </div>
-                        </div>
-
-                        <div class="predict-card">
-                            <div class="section-tag">PREDICTION MARKET · RESOLVES NOV 5</div>
-                            <div class="predict-q">Will Bitcoin break all-time high ($75,000) before US Election?</div>
-                            <div class="predict-bar">
-                                <div class="predict-bar-fill" style="width:72%;"></div>
-                            </div>
-                            <div class="predict-odds-row">
-                                <span style="color:var(--green);">YES 72¢ (72%)</span>
-                                <span style="color:var(--red);">NO 28¢ (28%)</span>
-                            </div>
-                            <div class="predict-actions">
-                                <button class="predict-btn-yes" onclick="buyPredictShare('BTC > $75k', 'YES', 0.72)">BUY YES · 72¢</button>
-                                <button class="predict-btn-no" onclick="buyPredictShare('BTC > $75k', 'NO', 0.28)">BUY NO · 28¢</button>
-                            </div>
-                        </div>
-
-                        <div class="predict-card">
-                            <div class="section-tag">PREDICTION MARKET · RESOLVES DEC 31</div>
-                            <div class="predict-q">Will DeepBook v3 monthly trading volume exceed $1.0 Billion?</div>
-                            <div class="predict-bar">
-                                <div class="predict-bar-fill" style="width:58%;"></div>
-                            </div>
-                            <div class="predict-odds-row">
-                                <span style="color:var(--green);">YES 58¢ (58%)</span>
-                                <span style="color:var(--red);">NO 42¢ (42%)</span>
-                            </div>
-                            <div class="predict-actions">
-                                <button class="predict-btn-yes" onclick="buyPredictShare('DeepBook Vol > $1B', 'YES', 0.58)">BUY YES · 58¢</button>
-                                <button class="predict-btn-no" onclick="buyPredictShare('DeepBook Vol > $1B', 'NO', 0.42)">BUY NO · 42¢</button>
-                            </div>
-                        </div>
+                    <div class="panel" style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <span class="panel-label" id="predictBoardLbl">LIVE EXPIRY BOARD · SYNC…</span>
+                        <button class="filter-btn" onclick="fetchPredictBoard(true)">REFRESH ⟳</button>
                     </div>
+                    <div class="predict-grid" id="predictGrid">
+                        <div class="predict-card"><div class="predict-q">Syncing live expiry markets…</div></div>
+                    </div>
+                    <p class="section-desc" style="margin-top:14px; margin-bottom:0;">Per-expiry range markets: UP pays $1 per contract when settlement lands above the strike, DOWN at or below. 10 contracts per ticket · min premium 1 USDC · trading halts 10s before expiry.</p>
                 </div>
             </section>
 
@@ -2254,28 +2197,93 @@
             $('btnSubPredict').className = 'filter-btn active';
             $('deepbookSpotSection').style.display = 'none';
             $('deepbookPredictSection').style.display = 'block';
+            fetchPredictBoard();
         }
     }
 
-    function buyPredictShare(marketTitle, outcome, price) {
+    // ── LIVE PREDICT BOARD (real DeepBook Predict expiry markets, no invented cards) ──
+    let _pendingPredict = null;
+    function predictCountdownTick() {
+        const now = Date.now();
+        document.querySelectorAll('[data-pred-exp]').forEach(el => {
+            const ms = Number(el.dataset.predExp) - now;
+            if (!(ms > 0)) { el.textContent = 'SETTLED'; return; }
+            const s = Math.floor(ms / 1000);
+            el.textContent = String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+        });
+    }
+    async function fetchPredictBoard(notify = false) {
+        const grid = $('predictGrid');
+        const lbl = $('predictBoardLbl');
+        try {
+            const res = await fetch('/api/trade/predict/markets');
+            const data = await res.json();
+            if (data.error || !Array.isArray(data.markets)) throw new Error(data.error || 'empty board');
+            const live = data.markets.filter(m => Number(m.expiryTimestamp) > Date.now());
+            if (lbl) lbl.textContent = 'LIVE EXPIRY BOARD · ' + live.length + ' MARKETS · ' + (data.underlyings || []).join('/');
+            if (!live.length && grid) {
+                grid.innerHTML = '<div class="predict-card"><div class="predict-q">No live expiries right now — new windows open every minute.</div></div>';
+                return;
+            }
+            if (grid) grid.innerHTML = live.map(m => {
+                const open = m.tradable && m.marketState !== 'PAUSED';
+                const badge = !m.tradable
+                    ? '<span class="badge-pill badge-sel">' + esc(m.marketState || 'CLOSED') + '</span>'
+                    : '<span class="badge-pill badge-best">OPEN</span>';
+                const ref = (m.referencePrice != null) ? '<div class="route-card-sub">REF: $' + Number(m.referencePrice).toLocaleString() + '</div>' : '<div class="route-card-sub">REF SEEDING…</div>';
+                const btns = open
+                    ? '<button class="predict-btn-yes" onclick="buyPredictShare(\'' + esc(m.underlying || '') + '\',\'' + esc(String(m.expiryMs)) + '\',\'up\')">UP · $1</button>' +
+                      '<button class="predict-btn-no" onclick="buyPredictShare(\'' + esc(m.underlying || '') + '\',\'' + esc(String(m.expiryMs)) + '\',\'down\')">DOWN · $1</button>'
+                    : '<button class="predict-btn-no" style="grid-column:1/-1; cursor:not-allowed; opacity:0.5;" onclick="toast(\'' + (m.marketState === 'PAUSED' ? 'Market paused — minting halted' : 'Expiry passed — minting closed') + '\')">UNAVAILABLE</button>';
+                return '<div class="predict-card">' +
+                    '<div class="section-tag">EXPIRY MARKET · ' + esc(m.underlying || 'UNKNOWN') + ' ' + badge + '</div>' +
+                    '<div class="predict-q">Settles at <span data-pred-exp="' + esc(String(m.expiryTimestamp)) + '">--:--</span></div>' + ref +
+                    '<div class="predict-actions" style="margin-top:12px;">' + btns + '</div></div>';
+            }).join('');
+            predictCountdownTick();
+            if (notify) toast('Predict board synced.');
+        } catch (e) {
+            console.log('Predict board notice:', e.message);
+            if (lbl) lbl.textContent = 'LIVE EXPIRY BOARD · UNAVAILABLE';
+            if (grid) grid.innerHTML = '<div class="predict-card"><div class="predict-q">Live board unreachable — markets will appear when the provider responds. [Retry]</div><div class="predict-actions"><button class="predict-btn-yes" style="grid-column:1/-1;" onclick="fetchPredictBoard(true)">RETRY</button></div></div>';
+        }
+    }
+    // Real on-chain quote → review → build → sign. 10 contracts per ticket.
+    async function buyPredictShare(underlying, expiryMs, side) {
+        if (!underlying) { toast('Market unattributed — cannot quote.'); return; }
         if (!wallet) {
             toast('Connect wallet first.');
             openWalletPicker();
             return;
         }
-        showReviewModal({
-            title: 'DEEPBOOK PREDICT ORDER',
-            desc: `Purchase 100 ${outcome} shares in "${marketTitle}" @ ${price} USDC`,
-            details: [
-                { k: 'Market', v: marketTitle },
-                { k: 'Chosen Outcome', v: outcome },
-                { k: 'Unit Price', v: `${price} USDC` },
-                { k: 'Contract Size', v: '100 Shares' },
-                { k: 'Total Cost', v: `$${(100 * price).toFixed(2)} USDC` },
-                { k: 'Est. Resolution Payout', v: '100.00 USDC' }
-            ],
-            actionType: 'predict'
-        });
+        toast('Quoting on-chain…');
+        try {
+            const res = await fetch('/api/trade/predict/quote-mint', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet, underlying, expiryMs: String(expiryMs), side, strike: 'reference', quantity: 10 })
+            });
+            const q = await res.json();
+            if (q.error || !q.quote) throw new Error(q.error || 'QUOTE_FAILED');
+            _pendingPredict = { underlying, expiryMs: String(expiryMs), side, quantity: 10 };
+            const prob = Number(q.quote.entryProbability);
+            showReviewModal({
+                title: 'DEEPBOOK PREDICT ORDER',
+                desc: `${side.toUpperCase()} range · ${underlying} · 10 contracts · each settles $1 in range`,
+                details: [
+                    { k: 'Market', v: underlying + ' · exp ' + new Date(Number(expiryMs)).toLocaleTimeString() },
+                    { k: 'Side', v: side.toUpperCase() },
+                    { k: 'Entry Probability', v: (prob * 100).toFixed(1) + '%' },
+                    { k: 'Premium', v: '$' + Number(q.quote.premium).toFixed(2) + ' USDC' },
+                    { k: 'Total Cost', v: '$' + Number(q.quote.totalCost).toFixed(2) + ' USDC' },
+                    { k: 'Max Payout', v: '$10.00 USDC' }
+                ],
+                actionType: 'predict'
+            });
+        } catch (e) {
+            _pendingPredict = null;
+            toast('Quote failed: ' + String(e.message || 'unavailable').slice(0, 120));
+        }
     }
 
     let _spotOrderSide = 'buy';
@@ -2750,6 +2758,35 @@
         try {
             let digest = null;
 
+            // Real Predict execution: build unsigned mint PTB server-side, sign in wallet
+            if (actionType === 'predict' && _pendingPredict && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const pp = _pendingPredict;
+                _pendingPredict = null;
+                status.textContent = 'Building unsigned mint transaction…';
+                const bRes = await fetch('/api/trade/predict/build-mint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, underlying: pp.underlying, expiryMs: pp.expiryMs, side: pp.side, strike: 'reference', quantity: pp.quantity })
+                });
+                const built = await bRes.json();
+                if (built.error || !built.txBytes) throw new Error(built.error || 'BUILD_FAILED');
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                status.textContent = 'Approve the Predict mint in your wallet…';
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">Predict Position Minted</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast('Predict position executed on Sui Mainnet');
+                recordActivity('PREDICT', `${pp.side.toUpperCase()} ${pp.underlying} x${pp.quantity}`, digest);
+                awardPoints('swaps', 200, 50);
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                return;
+            }
+            _pendingPredict = null;
+
             if (isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
                 const { Transaction } = await import('@mysten/sui/transactions');
                 const tx = new Transaction();
@@ -3017,6 +3054,7 @@
         paintWalletState();
         fetchLivePrices();
         fetchSpotBook();
+        fetchPredictBoard();
         recalcSwap();
         renderProtocolsRegistry();
         renderEarnSection();
@@ -3026,6 +3064,8 @@
         updateUserPointsDisplay();
         setInterval(fetchLivePrices, 30000);
         setInterval(fetchSpotBook, 10000);
+        setInterval(fetchPredictBoard, 20000);
+        setInterval(predictCountdownTick, 1000);
     });
     </script>
 
