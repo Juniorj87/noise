@@ -1192,6 +1192,9 @@
                                         <option value="DEEP">DEEP</option>
                                         <option value="NS">NS</option>
                                         <option value="CETUS">CETUS</option>
+                                        <option value="NAVX">NAVX</option>
+                                        <option value="IKA">IKA</option>
+                                        <option value="XBTC">XBTC</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1228,6 +1231,9 @@
                                         <option value="DEEP">DEEP</option>
                                         <option value="NS">NS</option>
                                         <option value="CETUS">CETUS</option>
+                                        <option value="NAVX">NAVX</option>
+                                        <option value="IKA">IKA</option>
+                                        <option value="XBTC">XBTC</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1805,8 +1811,20 @@
                     </div>
 
                     <div style="display:flex; gap:10px;">
-                        <input type="text" id="aiInputPrompt" style="flex:1; background:rgba(20,20,20,0.8); border:1px solid var(--line); border-radius:6px; padding:12px 16px; color:#fff; font-family:'Inter',sans-serif; font-size:13px; outline:none;" placeholder="Ask about afSUI vs haSUI, DeepBook maker rebates, or swap routes..." onkeydown="if(event.key==='Enter')sendAiMessage()">
+                        <input type="text" id="aiInputPrompt" style="flex:1; background:rgba(20,20,20,0.8); border:1px solid var(--line); border-radius:6px; padding:12px 16px; color:#fff; font-family:'Inter',sans-serif; font-size:13px; outline:none;" placeholder="Try: swap 10 SUI to USDC · limit buy 50 SUI @ 0.95 · my balances" onkeydown="if(event.key==='Enter')sendAiMessage()">
                         <button class="wallet-btn" onclick="sendAiMessage()" style="padding:0 24px;">Ask AI</button>
+                    </div>
+
+                    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--line);">
+                        <div class="panel-label" style="margin-bottom:10px;">BRING YOUR OWN KEY · <span id="aiKeyStatus" style="color:var(--text-dim);">OFFLINE MODE</span></div>
+                        <div style="font-size:11px; color:var(--text-dim); margin-bottom:10px;">Paste an OpenAI-compatible API key to unlock live answers. The key stays in your browser and goes straight to the provider — never to our servers.</div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <input type="text" id="aiBaseUrl" style="flex:2; min-width:180px; background:rgba(20,20,20,0.8); border:1px solid var(--line); border-radius:4px; padding:9px 12px; color:#fff; font-family:'Space Grotesk',monospace; font-size:11px;" placeholder="https://api.openai.com/v1">
+                            <input type="password" id="aiApiKey" style="flex:2; min-width:180px; background:rgba(20,20,20,0.8); border:1px solid var(--line); border-radius:4px; padding:9px 12px; color:#fff; font-family:'Space Grotesk',monospace; font-size:11px;" placeholder="sk-...">
+                            <input type="text" id="aiModel" style="flex:1; min-width:120px; background:rgba(20,20,20,0.8); border:1px solid var(--line); border-radius:4px; padding:9px 12px; color:#fff; font-family:'Space Grotesk',monospace; font-size:11px;" placeholder="gpt-4o-mini">
+                            <button class="filter-btn active" onclick="saveAiKey()">SAVE</button>
+                            <button class="filter-btn" onclick="clearAiKey()">CLEAR</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1832,7 +1850,7 @@
     let isRealWallet = false;
     let _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
     // Verified input-token decimals (mirrors shared/assets.js mainnet registry)
-    const TOKEN_DECIMALS = { SUI: 9, USDC: 6, USDT: 6, WAL: 9, DEEP: 6, NS: 6, CETUS: 9, WETH: 8, WBTC: 8, afSUI: 9, haSUI: 9, vSUI: 9 };
+    const TOKEN_DECIMALS = { SUI: 9, USDC: 6, USDT: 6, WAL: 9, DEEP: 6, NS: 6, CETUS: 9, NAVX: 9, IKA: 9, XBTC: 8, WETH: 8, WBTC: 8, afSUI: 9, haSUI: 9, vSUI: 9 };
     let _tokenDec = {};
     function tokenDecimals(sym) {
         if (_tokenDec[sym] != null) return _tokenDec[sym];
@@ -1869,7 +1887,8 @@
         }
     }
 
-    function awardPoints(category, base, volumeUsd = 0) {
+    function awardPoints(category, base, volumeUsd = 0, requireVolume = false) {
+        if (requireVolume && !(volumeUsd > 0)) return; // no volume — no points, never reward empty tickets
         const pts = Math.round(base + volumeUsd);
         _userPoints += pts;
         _userPointsBreakdown[category] = (_userPointsBreakdown[category] || 0) + pts;
@@ -1890,6 +1909,9 @@
         'DEEP': 0.089,
         'NS': 0.150,
         'CETUS': 0.110,
+        'NAVX': 0.120,
+        'IKA': 0.080,
+        'XBTC': 64800.0,
         'afSUI': 1.121,
         'haSUI': 1.102,
         'vSUI': 1.095,
@@ -1967,7 +1989,7 @@
             }
         } catch (e) { console.log('ETH feed notice:', e.message); }
         // Top Sui tokens + WBTC — each feed independent, one failure never blocks the rest
-        const BIN_SPOT = { WAL: 'WALUSDT', DEEP: 'DEEPUSDT', NS: 'NSUSDT', CETUS: 'CETUSUSDT', WBTC: 'BTCUSDT' };
+        const BIN_SPOT = { WAL: 'WALUSDT', DEEP: 'DEEPUSDT', NS: 'NSUSDT', CETUS: 'CETUSUSDT', NAVX: 'NAVXUSDT', IKA: 'IKAUSDT', XBTC: 'BTCUSDT', WBTC: 'BTCUSDT' };
         for (const [sym, pair] of Object.entries(BIN_SPOT)) {
             try {
                 const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=' + pair);
@@ -2022,6 +2044,9 @@
                     else if (coin.toLowerCase().includes('::usdc::usdc')) { sym = 'USDC'; dec = 6; }
                     else if (coin.toLowerCase().includes('::usdt::usdt')) { sym = 'USDT'; dec = 6; }
                     else if (coin.toLowerCase().includes('::wal::wal')) { sym = 'WAL'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::navx::navx')) { sym = 'NAVX'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::ika::ika')) { sym = 'IKA'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::xbtc::xbtc')) { sym = 'XBTC'; dec = await coinDecimals(coin, 8); }
                     else if (coin.toLowerCase().includes('::deep::deep')) { sym = 'DEEP'; dec = await coinDecimals(coin, 6); }
                     else if (coin.toLowerCase().includes('::ns::ns')) { sym = 'NS'; dec = await coinDecimals(coin, 6); }
                     else if (coin.toLowerCase().includes('::cetus::cetus')) { sym = 'CETUS'; dec = await coinDecimals(coin, 9); }
@@ -2046,6 +2071,20 @@
         }
     }
 
+    // Swap token universe — balances shown inside the dropdown itself
+    const TOKEN_LIST = ['SUI', 'USDC', 'USDT', 'WAL', 'DEEP', 'NS', 'CETUS', 'NAVX', 'IKA', 'XBTC', 'afSUI', 'haSUI', 'vSUI', 'WETH', 'WBTC'];
+    function refreshSwapTokenOptions() {
+        ['swapFromToken', 'swapToToken'].forEach(id => {
+            const sel = $(id);
+            if (!sel) return;
+            const cur = sel.value;
+            sel.innerHTML = TOKEN_LIST.map(sym => {
+                const b = (wallet && _walletBalances[sym] != null) ? (' · ' + _walletBalances[sym].toLocaleString(undefined, { maximumFractionDigits: 4 })) : '';
+                return '<option value="' + sym + '">' + sym + b + '</option>';
+            }).join('');
+            if (TOKEN_LIST.includes(cur)) sel.value = cur;
+        });
+    }
     function updateBalanceLabels() {
         const fromToken = $('swapFromToken').value;
         const toToken = $('swapToToken').value;
@@ -2058,6 +2097,7 @@
         const bTo = _walletBalances[toToken] || 0;
         $('swapPayBalLabel').textContent = bFrom.toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' ' + fromToken;
         $('swapReceiveBalLabel').textContent = bTo.toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' ' + toToken;
+        refreshSwapTokenOptions();
     }
 
     function setSwapMax() {
@@ -2078,7 +2118,7 @@
         const t = $('swapToToken').value;
         $('swapFromToken').value = t;
         $('swapToToken').value = f;
-        recalcSwap();
+        onTokenPairChange(); // refreshes balances + quotes, not just numbers
     }
 
     function onTokenPairChange() {
@@ -2271,7 +2311,8 @@
             const live = data.markets.filter(m => Number(m.expiryTimestamp) > Date.now());
             if (lbl) lbl.textContent = 'LIVE EXPIRY BOARD · ' + live.length + ' MARKETS · ' + (data.underlyings || []).join('/');
             if (!live.length && grid) {
-                grid.innerHTML = '<div class="predict-card"><div class="predict-q">No live expiries right now — new windows open every minute.</div></div>';
+                grid.innerHTML = '<div class="predict-card"><div class="predict-q">Board is empty — Mainnet Predict minting is currently paused by protocol (trading_paused) or no window is live.</div><div class="predict-actions"><button class="predict-btn-yes" style="grid-column:1/-1;" onclick="fetchPredictBoard(true)">RETRY</button></div></div>';
+                if (lbl) lbl.textContent = 'LIVE EXPIRY BOARD · EMPTY · ' + (data.underlyings || []).join('/');
                 return;
             }
             if (grid) grid.innerHTML = live.map(m => {
@@ -2500,8 +2541,10 @@
         const total = price * qty;
         const color = side === 'ask' ? 'var(--red)' : 'var(--green)';
         const bg = side === 'ask' ? 'rgba(255,51,68,0.04)' : 'rgba(0,255,136,0.04)';
-        return '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:' + color + '; background:' + bg + '; padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(' + price + ')">' +
-            '<span>' + price + '</span><span style="text-align:right;">' + Math.round(qty).toLocaleString() + '</span><span style="text-align:right;">' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span></div>';
+        const p = Number(price);
+        const px = p >= 1000 ? p.toFixed(2) : (p >= 1 ? p.toFixed(4) : p.toFixed(6));
+        return '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:' + color + '; background:' + bg + '; padding:3px 0; cursor:pointer; font-variant-numeric: tabular-nums;" onclick="pickSpotPrice(' + price + ')">' +
+            '<span>' + px + '</span><span style="text-align:right;">' + Math.round(qty).toLocaleString() + '</span><span style="text-align:right;">' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</span></div>';
     }
     function renderSpotBook(book) {
         const box = $('spotBookRows');
@@ -2813,8 +2856,8 @@
         'hasui': 'Haedal haSUI offers 7.28% APY by routing delegations through community-voted validators with low commission rates.',
         'deepbook': 'DeepBook v3 charges 0.02% maker fee rebates and sub-millisecond execution directly in Move smart contracts.',
         'bridge': 'Noise Hub connects to Wormhole Portal and native Sui Bridge for instant cross-chain liquidity between Ethereum, Solana, and Sui.',
-        'predict': 'DeepBook Predict operates binary prediction shares resolved trustlessly on-chain upon market expiry.',
-        'swap': 'Noise Hub aggregates Cetus, Aftermath, DeepBook v3, 7k, Turbos, and FlowX. It automatically splits your trade across venues for zero slippage.',
+        'predict': 'DeepBook Predict runs per-expiry range markets (1- and 5-minute BTC windows): UP pays $1 per contract above the strike, DOWN at or below. 10 contracts per ticket, min 1 USDC premium, no trading in the final 10 seconds.',
+        'swap': 'Noise Hub builds the real route server-side (Cetus aggregator, simulated before signing) and your wallet signs the exact bytes. Zero-amount and no-balance tickets are rejected before review.',
         'lending': 'Top lending rates right now on Sui: NAVI Protocol (9.82% on USDC), Scallop (9.35% on USDC), Suilend (8.94% on USDC).'
     };
 
@@ -2830,19 +2873,152 @@
         </div>`;
         input.value = '';
 
-        let ans = "I analyzed Sui Mainnet state: Cetus, Aftermath, and DeepBook v3 currently hold the highest liquidity for spot swaps. All 20 verified protocols have active contracts and healthy TVL.";
+        // 1) Task intents the app can execute itself (prefill + review, never auto-sign)
+        const acted = parseAiTask(q);
+        if (acted) { aiReply(acted); return; }
+
+        // 2) User key → live model with real wallet/market context
+        let key = '', base = '', model = '';
+        try {
+            key = localStorage.getItem('nh:ai_key') || '';
+            base = (localStorage.getItem('nh:ai_base') || 'https://api.openai.com/v1').replace(/\/+$/, '');
+            model = localStorage.getItem('nh:ai_model') || 'gpt-4o-mini';
+        } catch {}
+        if (key) {
+            aiReply('Thinking with live context…', true);
+            fetch(base + '/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        { role: 'system', content: 'You are Noise AI, a Sui DeFi copilot inside Noise Hub. Be concrete and brief. Use the live context. Never invent balances, prices, or yields; say when data is missing. Never ask for seed phrases.' },
+                        { role: 'system', content: 'LIVE CONTEXT: ' + buildAiContext() },
+                        { role: 'user', content: q }
+                    ],
+                    temperature: 0.4,
+                    max_tokens: 400
+                })
+            }).then(async (res) => {
+                const j = await res.json().catch(() => ({}));
+                const txt = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+                aiReplaceLast(txt ? String(txt).slice(0, 1500) : ('Provider error: ' + (j.error ? (j.error.message || res.status) : res.status)));
+            }).catch((e) => aiReplaceLast('Could not reach the model endpoint: ' + String(e.message || e).slice(0, 140)));
+            return;
+        }
+
+        // 3) Offline built-in knowledge
+        let ans = "I analyzed Sui Mainnet state: Cetus, Aftermath, and DeepBook v3 currently hold the highest liquidity for spot swaps. All 20 verified protocols have active contracts and healthy TVL. Add your API key below for live answers with your wallet context.";
         const low = q.toLowerCase();
         for (const [k, v] of Object.entries(AI_KNOWLEDGE)) {
             if (low.includes(k)) { ans = v; break; }
         }
-
-        setTimeout(() => {
-            chat.innerHTML += `
-            <div style="background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:12px; font-size:13px; line-height:1.5;">
-                <b style="color:var(--accent);">Noise AI:</b> ${esc(ans)}
-            </div>`;
-            chat.scrollTop = chat.scrollHeight;
-        }, 300);
+        aiReply(ans);
+    }
+    function aiReply(text, provisional = false) {
+        const chat = $('aiChatBox');
+        chat.innerHTML += `
+        <div style="background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:12px; font-size:13px; line-height:1.5;" ${provisional ? 'data-ai-prov="1"' : ''}>
+            <b style="color:var(--accent);">Noise AI:</b> ${esc(text)}
+        </div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+    function aiReplaceLast(text) {
+        const chat = $('aiChatBox');
+        const prov = chat.querySelector('[data-ai-prov]');
+        if (prov) {
+            prov.innerHTML = `<b style="color:var(--accent);">Noise AI:</b> ${esc(text)}`;
+            prov.removeAttribute('data-ai-prov');
+        } else aiReply(text);
+        chat.scrollTop = chat.scrollHeight;
+    }
+    function buildAiContext() {
+        const parts = [];
+        parts.push('wallet=' + (wallet ? shortAddr(wallet) : 'disconnected'));
+        const bals = Object.entries(_walletBalances || {}).filter(([, v]) => v > 0).slice(0, 8)
+            .map(([k, v]) => k + ':' + Number(v).toFixed(4)).join(', ');
+        parts.push('balances=[' + (bals || '—') + ']');
+        parts.push('prices: SUI=$' + (TOKEN_PRICES.SUI || '?') + ' WAL=$' + (TOKEN_PRICES.WAL || '?') + ' DEEP=$' + (TOKEN_PRICES.DEEP || '?') + ' NS=$' + (TOKEN_PRICES.NS || '?') + ' CETUS=$' + (TOKEN_PRICES.CETUS || '?'));
+        parts.push('spotPool=' + ((typeof _spotPool !== 'undefined') ? _spotPool : '?'));
+        parts.push('points=' + (typeof _userPoints !== 'undefined' ? _userPoints : 0));
+        return parts.join(' | ');
+    }
+    // Task → app action: prefill + open the right tab, user still signs. Returns reply or null.
+    function parseAiTask(q) {
+        const low = q.toLowerCase();
+        const syms = (typeof TOKEN_LIST !== 'undefined' ? TOKEN_LIST : ['SUI', 'USDC', 'USDT', 'WAL', 'DEEP', 'NS', 'CETUS']).join('|');
+        const amtM = low.match(/(\d+(?:\.\d+)?)/);
+        const found = [...low.matchAll(new RegExp('\\b(' + syms.toLowerCase() + ')\\b', 'g'))].map(m => m[1].toUpperCase());
+        const gotoView = (v) => {
+            document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.app-view').forEach(vw => vw.classList.remove('active'));
+            const btn = document.querySelector('.nav-tab[data-view="' + v + '"]');
+            if (btn) btn.classList.add('active');
+            const tgt = $('view-' + v);
+            if (tgt) tgt.classList.add('active');
+        };
+        if (/(balance|баланс|портфель)/.test(low)) {
+            const rows = Object.entries(_walletBalances || {}).filter(([, v]) => v > 0)
+                .map(([k, v]) => k + ' ' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 })).join(', ');
+            gotoView('portfolio');
+            return wallet ? ('Your on-chain balances: ' + (rows || 'all zero — fund the wallet first') + '. Opened Portfolio for details.') : 'Wallet is not connected — connect it and I will read live balances via Sui RPC.';
+        }
+        if (/(swap|обмен|поменяй|свап)/.test(low) && amtM && found.length >= 1) {
+            const from = found[0];
+            let to = found[1] || (from === 'USDC' ? 'SUI' : 'USDC');
+            if (to === from) to = (from === 'USDC' ? 'SUI' : 'USDC');
+            $('swapFromToken').value = from;
+            $('swapToToken').value = to;
+            $('swapFromAmt').value = amtM[1];
+            onTokenPairChange();
+            gotoView('swap');
+            return `Prefilled swap: ${amtM[1]} ${from} → ${to} at ~$${(((TOKEN_PRICES[from] || 0) * Number(amtM[1]))).toFixed(2)}. Check balances and press EXECUTE SWAP — you sign the real route in your wallet.`;
+        }
+        if (/(limit|лимит|ордер)/.test(low) && amtM) {
+            const pxM = low.match(/@\s*(\d+(?:\.\d+)?)/);
+            if (pxM) $('spotPriceInput').value = pxM[1];
+            $('spotAmtInput').value = amtM[1];
+            updateSpotTotal();
+            gotoView('spot');
+            return `Order entry filled: ${amtM[1]} ${spotBaseAsset()}${pxM ? ' @ ' + pxM[1] + ' ' + _spotQuote : ''} on ${typeof _spotPool !== 'undefined' ? _spotPool : 'SUI_USDC'}. Press PLACE DEEPBOOK ORDER to review and sign.`;
+        }
+        if (/(predict|прогноз|ставка)/.test(low)) {
+            gotoView('spot');
+            setDeepbookViewMode('predict');
+            return 'Opened live Predict expiry board — pick UP or DOWN on an OPEN market; you sign the real mint after an on-chain quote.';
+        }
+        return null;
+    }
+    function saveAiKey() {
+        const k = (($('aiApiKey') || {}).value || '').trim();
+        if (!k) { toast('Paste a key first.'); return; }
+        try {
+            localStorage.setItem('nh:ai_key', k);
+            localStorage.setItem('nh:ai_base', (($('aiBaseUrl') || {}).value || 'https://api.openai.com/v1').trim().replace(/\/+$/, ''));
+            localStorage.setItem('nh:ai_model', (($('aiModel') || {}).value || 'gpt-4o-mini').trim() || 'gpt-4o-mini');
+        } catch {}
+        $('aiApiKey').value = '';
+        paintAiKeyStatus();
+        toast('API key saved locally.');
+    }
+    function clearAiKey() {
+        try { localStorage.removeItem('nh:ai_key'); } catch {}
+        paintAiKeyStatus();
+        toast('API key removed.');
+    }
+    function paintAiKeyStatus() {
+        let on = false, model = '';
+        try { on = !!localStorage.getItem('nh:ai_key'); model = localStorage.getItem('nh:ai_model') || ''; } catch {}
+        const el = $('aiKeyStatus');
+        if (el) {
+            el.textContent = on ? ('LIVE · ' + (model || 'custom model')) : 'OFFLINE MODE';
+            el.style.color = on ? 'var(--green)' : 'var(--text-dim)';
+        }
+        const b = $('aiBaseUrl'), m = $('aiModel');
+        try {
+            if (b && !b.value) b.value = localStorage.getItem('nh:ai_base') || '';
+            if (m && !m.value) m.value = localStorage.getItem('nh:ai_model') || '';
+        } catch {}
     }
 
     function copyRefLink() {
@@ -3079,7 +3255,7 @@
                 btn.textContent = 'Done';
                 toast('Swap executed on Sui Mainnet');
                 recordActivity('SWAP', `${fAmt} ${fTok} → ${tTok} via ${(built.provider || 'Cetus').toUpperCase()}`, digest);
-                awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1));
+                awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1), true);
                 setTimeout(closeModal, 2500);
                 fetchWalletBalances();
                 return;
@@ -3102,7 +3278,7 @@
                 if (actionType === 'swap') {
                     const fAmt = parseFloat($('swapFromAmt').value) || 0;
                     const fTok = $('swapFromToken').value;
-                    awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1));
+                    awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1), true);
                 }
                 setTimeout(closeModal, 2500);
                 fetchWalletBalances();
@@ -3363,6 +3539,7 @@
         paintWalletState();
         captureRefParam();
         paintRefLink();
+        paintAiKeyStatus();
         fetchLivePrices();
         fetchSpotMarkets();
         fetchSpotBook();
