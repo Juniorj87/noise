@@ -427,9 +427,12 @@
         .swap-divider {
             display: flex;
             justify-content: center;
-            margin: -2px 0;
+            align-items: center;
+            height: 0;
+            margin: 0;
             position: relative;
             z-index: 2;
+            overflow: visible;
         }
         .flip-btn {
             background: #141414;
@@ -444,6 +447,7 @@
             justify-content: center;
             transition: all 0.15s ease;
             box-shadow: 0 0 12px rgba(0, 102, 255, 0.25);
+            transform: translateY(-50%);
         }
         .flip-btn svg {
             width: 19px;
@@ -453,7 +457,7 @@
             color: #fff;
             background: var(--accent);
             border-color: var(--accent);
-            transform: rotate(180deg);
+            transform: translateY(-50%) rotate(180deg);
         }
 
         .route-summary-pill {
@@ -879,6 +883,9 @@
             border-radius: 8px;
             padding: 20px;
             transition: all 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         .predict-card:hover {
             border-color: var(--line-strong);
@@ -915,6 +922,8 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-top: auto;
+            padding-top: 12px;
         }
         .predict-btn-yes {
             background: rgba(0, 255, 136, 0.1);
@@ -1822,6 +1831,14 @@
     let walletName = null;
     let isRealWallet = false;
     let _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
+    // Verified input-token decimals (mirrors shared/assets.js mainnet registry)
+    const TOKEN_DECIMALS = { SUI: 9, USDC: 6, USDT: 6, WAL: 9, DEEP: 6, NS: 6, CETUS: 9, WETH: 8, WBTC: 8, afSUI: 9, haSUI: 9, vSUI: 9 };
+    let _tokenDec = {};
+    function tokenDecimals(sym) {
+        if (_tokenDec[sym] != null) return _tokenDec[sym];
+        if (TOKEN_DECIMALS[sym] != null) return TOKEN_DECIMALS[sym];
+        return null;
+    }
     let _selectedRoute = 'noise';
     let _activeTab = 'swap';
     let _selectedBridgeVenue = 'wormhole';
@@ -1995,6 +2012,7 @@
             const res = await rpc('suix_getAllBalances', [wallet]);
             if (Array.isArray(res)) {
                 _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
+                _tokenDec = {};
                 let totalUsd = 0;
                 for (const item of res) {
                     const coin = item.coinType;
@@ -2005,7 +2023,7 @@
                     else if (coin.toLowerCase().includes('::usdt::usdt')) { sym = 'USDT'; dec = 6; }
                     else if (coin.toLowerCase().includes('::wal::wal')) { sym = 'WAL'; dec = await coinDecimals(coin, 9); }
                     else if (coin.toLowerCase().includes('::deep::deep')) { sym = 'DEEP'; dec = await coinDecimals(coin, 6); }
-                    else if (coin.toLowerCase().includes('::ns::ns')) { sym = 'NS'; dec = await coinDecimals(coin, 9); }
+                    else if (coin.toLowerCase().includes('::ns::ns')) { sym = 'NS'; dec = await coinDecimals(coin, 6); }
                     else if (coin.toLowerCase().includes('::cetus::cetus')) { sym = 'CETUS'; dec = await coinDecimals(coin, 9); }
                     else if (coin.toLowerCase().includes('::afsui::afsui')) { sym = 'afSUI'; dec = 9; }
                     else if (coin.toLowerCase().includes('::hasui::hasui')) { sym = 'haSUI'; dec = 9; }
@@ -2015,6 +2033,7 @@
 
                     const amt = Number(item.totalBalance) / Math.pow(10, dec);
                     _walletBalances[sym] = amt;
+                    _tokenDec[sym] = dec;
                     totalUsd += amt * (TOKEN_PRICES[sym] || 0);
                 }
                 updateBalanceLabels();
@@ -2268,7 +2287,7 @@
                 return '<div class="predict-card">' +
                     '<div class="section-tag">EXPIRY MARKET · ' + esc(m.underlying || 'UNKNOWN') + ' ' + badge + '</div>' +
                     '<div class="predict-q">Settles at <span data-pred-exp="' + esc(String(m.expiryTimestamp)) + '">--:--</span></div>' + ref +
-                    '<div class="predict-actions" style="margin-top:12px;">' + btns + '</div></div>';
+                    '<div class="predict-actions">' + btns + '</div></div>';
             }).join('');
             predictCountdownTick();
             if (notify) toast('Predict board synced.');
@@ -2932,8 +2951,12 @@
         }
         const fromToken = $('swapFromToken').value;
         const toToken = $('swapToToken').value;
-        const fromAmt = $('swapFromAmt').value;
+        const fromAmt = parseFloat($('swapFromAmt').value) || 0;
         const toAmt = $('swapToAmt').value;
+        if (!(fromAmt > 0)) { toast('Enter an amount above zero.'); return; }
+        if (fromToken === toToken) { toast('Pick two different tokens.'); return; }
+        const bal = _walletBalances[fromToken] || 0;
+        if (bal < fromAmt) { toast('Insufficient ' + fromToken + ' balance.'); return; }
         const routeObj = ROUTES_INFO.find(r => r.id === _selectedRoute) || ROUTES_INFO[0];
 
         showReviewModal({
@@ -2941,7 +2964,7 @@
             desc: `Aggregated swap: ${fromAmt} ${fromToken} → ${toAmt} ${toToken}`,
             details: [
                 { k: 'You Pay', v: `${fromAmt} ${fromToken}` },
-                { k: 'You Receive', v: `${toAmt} ${toToken}` },
+                { k: 'You Receive (est.)', v: `${toAmt} ${toToken}` },
                 { k: 'Route / Venue', v: routeObj.name },
                 { k: 'Max Slippage', v: '0%' },
                 { k: 'Est. Network Fee', v: '~0.0028 SUI' },
@@ -3024,6 +3047,44 @@
             _pendingRedeem = null; _pendingClaim = null;
             _pendingPredict = null;
 
+            // Real swap: backend builds a simulated Cetus route PTB, wallet signs it.
+            // No placeholder transfers — bytes exist only after on-chain dry-run success.
+            if (actionType === 'swap' && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const fTok = $('swapFromToken').value;
+                const tTok = $('swapToToken').value;
+                const fAmt = parseFloat($('swapFromAmt').value) || 0;
+                if (!(fAmt > 0)) throw new Error('Enter an amount above zero.');
+                if (fTok === tTok) throw new Error('Pick two different tokens.');
+                const dec = tokenDecimals(fTok);
+                if (dec == null) throw new Error('Unknown decimals for ' + fTok + ' — refresh balances first.');
+                const amountMist = String(Math.floor(fAmt * Math.pow(10, dec)));
+                status.textContent = 'Requesting route from Cetus aggregator…';
+                const bRes = await fetch('/api/swap', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ from: fTok, to: tTok, sender: wallet, amountMist, slippage: 0 })
+                });
+                const built = await bRes.json();
+                if (built.error || !built.txBytes) throw new Error((built.error || 'BUILD_FAILED') + (built.detail || built.message ? ': ' + (built.detail || built.message) : ''));
+                const tDec = tokenDecimals(tTok) ?? 9;
+                const realOut = built.amountOut != null ? (Number(built.amountOut) / Math.pow(10, tDec)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : $('swapToAmt').value;
+                const gasSui = built.gasEst != null ? (Number(built.gasEst) / 1e9).toFixed(4) : null;
+                status.innerHTML = `Route <b>${esc(built.provider || 'Cetus')}</b> · out ≈ <b>${esc(String(realOut))} ${esc(tTok)}</b>` +
+                    (gasSui ? ` · gas ≈ ${gasSui} SUI` : '') + `<br>Approve the swap in your wallet…`;
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">Swap Confirmed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast('Swap executed on Sui Mainnet');
+                recordActivity('SWAP', `${fAmt} ${fTok} → ${tTok} via ${(built.provider || 'Cetus').toUpperCase()}`, digest);
+                awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1));
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                return;
+            }
+
             if (isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
                 const { Transaction } = await import('@mysten/sui/transactions');
                 const tx = new Transaction();
@@ -3033,11 +3094,19 @@
                 digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
                 if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
             } else if (!isRealWallet) {
-                // Secure simulated execution for demo / test without browser extension
-                const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-                const randBytes = new Uint8Array(44);
-                window.crypto.getRandomValues(randBytes);
-                digest = Array.from(randBytes, b => chars[b % chars.length]).join('');
+                // Demo session: honest simulation, never a fake mainnet link
+                status.innerHTML = `<span style="color:var(--amber)">Simulated — connect a real wallet to execute on-chain.</span>`;
+                btn.textContent = 'Done (Demo)';
+                toast('Demo simulation — no on-chain transaction.');
+                recordActivity(actionType.toUpperCase(), `Simulated via ${actionType.toUpperCase()}`, 'demo');
+                if (actionType === 'swap') {
+                    const fAmt = parseFloat($('swapFromAmt').value) || 0;
+                    const fTok = $('swapFromToken').value;
+                    awardPoints('swaps', 100, fAmt * (TOKEN_PRICES[fTok] || 1));
+                }
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                return;
             }
 
             status.innerHTML = `<span style="color:var(--green)">Transaction Confirmed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
@@ -3186,6 +3255,7 @@
         walletName = null;
         isRealWallet = false;
         _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
+        _tokenDec = {};
         paintWalletState();
         renderPortfolioView(0);
         toast('Wallet disconnected.');
