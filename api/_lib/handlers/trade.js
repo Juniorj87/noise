@@ -466,7 +466,8 @@ async function predictRouter(req, res, url, action) {
         };
       } catch (e) {
         const code = e.code || 'BUILD_FAILED';
-        return err(code, String(e.message || e).slice(0, 200), code === 'SIMULATION_FAILED' ? 400 : 502);
+        const status = code === 'SIMULATION_FAILED' ? 400 : (/INVALID|UNKNOWN|EXPIRED|PAUSED|UNAVAILABLE/.test(code) ? 400 : 502);
+        return err(code, String(e.message || e).slice(0, 200), status);
       }
     }
     // Predict account funding + LP (unsigned PTBs, wallet signs; gatedBuild simulates)
