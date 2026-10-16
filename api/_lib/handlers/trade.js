@@ -368,6 +368,16 @@ async function predictRouter(req, res, url, action) {
         return err('PROVIDER_UNAVAILABLE', 'Predict positions unavailable.', 502);
       }
     }
+    if (action === 'plp-balance' && req.method === 'GET') {
+      const wallet = url.searchParams.get('wallet');
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      try {
+        return await withBreaker('deepbook-predict', () =>
+          cached(`dbp:plp:${wallet}`, 15_000, () => A.getPlpBalance(wallet)));
+      } catch (e) {
+        return err('PROVIDER_UNAVAILABLE', 'Predict PLP balance unavailable.', 502);
+      }
+    }
     if (req.method !== 'POST') return err('INVALID_REQUEST', 'Unknown predict action.', 404);
     const b = await readJson(req);
     if (action === 'quote-mint') {
@@ -453,6 +463,26 @@ async function predictRouter(req, res, url, action) {
           ok: true, txBytes: g.txBytes,
           simulation: g.simulation, simulationStatus: g.simulationStatus, gasEst: g.gasEst,
           note: 'Unsigned claim-settled PTB — review in your wallet before signing.',
+        };
+      } catch (e) {
+        const code = e.code || 'BUILD_FAILED';
+        return err(code, String(e.message || e).slice(0, 200), code === 'SIMULATION_FAILED' ? 400 : 502);
+      }
+    }
+    // Predict account funding + LP (unsigned PTBs, wallet signs; gatedBuild simulates)
+    if (['account-setup', 'account-deposit', 'account-withdraw', 'plp-supply'].includes(action)) {
+      if (!isWalletAddress(b.wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      try {
+        let built;
+        if (action === 'account-setup') built = await A.buildAccountSetup({ wallet: b.wallet });
+        else if (action === 'account-deposit') built = await A.buildDeposit({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc), create: !!b.create });
+        else if (action === 'account-withdraw') built = await A.buildWithdraw({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc) });
+        else built = await A.buildPlpSupply({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc) });
+        const g = await gatedBuild(built, b.wallet);
+        return {
+          ok: true, txBytes: g.txBytes,
+          simulation: g.simulation, simulationStatus: g.simulationStatus, gasEst: g.gasEst,
+          note: 'Unsigned Predict PTB — review in your wallet before signing.',
         };
       } catch (e) {
         const code = e.code || 'BUILD_FAILED';

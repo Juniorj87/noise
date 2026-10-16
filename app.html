@@ -1543,6 +1543,15 @@
                             <span class="panel-label">MY POSITIONS</span>
                             <span class="panel-label" id="predictBalLbl">PREDICT BALANCE: —</span>
                         </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+                            <input type="number" id="predictFundAmt" class="amount-num" value="10" min="0" step="any" placeholder="0.0" style="flex:1; min-width:120px; font-size:18px; background:rgba(20,20,20,0.8); border:1px solid var(--line); padding:10px 14px; color:#fff; outline:none;">
+                            <span class="panel-label">USDC</span>
+                            <button class="filter-btn" onclick="predictFund('setup')">SETUP ACCOUNT</button>
+                            <button class="filter-btn" onclick="predictFund('deposit')">DEPOSIT</button>
+                            <button class="filter-btn" onclick="predictFund('withdraw')">WITHDRAW</button>
+                            <button class="filter-btn" onclick="predictFund('plpsupply')">SUPPLY LP</button>
+                            <span class="panel-label" id="predictPlpLbl" style="margin-left:auto;"></span>
+                        </div>
                         <div class="table-wrap" style="border:none; background:transparent;">
                             <table class="custom-table">
                                 <thead><tr><th>MARKET</th><th>SIDE</th><th>QTY</th><th>ENTRY</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
@@ -2182,29 +2191,34 @@
     }
 
     function executeBridgeAction() {
-        if (!wallet) {
-            toast('Connect wallet first.');
-            openWalletPicker();
-            return;
-        }
-        const amt = $('bridgeAmountInput').value;
+        const amt = parseFloat($('bridgeAmountInput').value) || 0;
         const tok = $('bridgeTokenSelect').value;
         const src = $('bridgeSourceChain').value.toUpperCase();
         const dst = $('bridgeDestChain').value.toUpperCase();
-        const venue = _selectedBridgeVenue === 'wormhole' ? 'Wormhole' : 'Sui Bridge';
-
-        showReviewModal({
-            title: 'CROSS-CHAIN BRIDGE TRANSFER',
-            desc: `Transfer ${amt} ${tok} from ${src} to ${dst} via ${venue}`,
-            details: [
-                { k: 'Origin Network', v: src },
-                { k: 'Destination', v: dst },
-                { k: 'Amount', v: `${amt} ${tok}` },
-                { k: 'Bridge Protocol', v: venue },
-                { k: 'Points Reward', v: '+400 NOISE POINTS' }
-            ],
-            actionType: 'bridge'
-        });
+        if (!(amt > 0)) { toast('Enter an amount above zero.'); return; }
+        const isWormhole = _selectedBridgeVenue === 'wormhole';
+        const venue = isWormhole ? 'Wormhole' : 'Sui Bridge';
+        const url = isWormhole ? 'https://portalbridge.com/#/transfer' : 'https://bridge.sui.io';
+        // Bridges settle on external protocols — the hub hands off, never fakes a transfer.
+        $('modalContainer').innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal-card">
+                <div class="modal-title">CROSS-CHAIN BRIDGE TRANSFER</div>
+                <div class="modal-desc">Transfer ${esc(String(amt))} ${esc(tok)} from ${esc(src)} to ${esc(dst)} via ${esc(venue)}. Bridging executes inside the ${esc(venue)} app — Noise Hub does not move these funds itself.</div>
+                <div style="margin-bottom:20px;">
+                    <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+                        <span style="color:var(--text-dim);">Amount</span>
+                        <b style="color:#fff; font-family:'Space Grotesk',monospace;">${esc(String(amt))} ${esc(tok)}</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+                        <span style="color:var(--text-dim);">Route</span>
+                        <b style="color:#fff; font-family:'Space Grotesk',monospace;">${esc(src)} → ${esc(dst)}</b>
+                    </div>
+                </div>
+                <a class="exec-btn" style="display:block; text-align:center; text-decoration:none;" href="${esc(url)}" target="_blank" rel="noopener">OPEN ${esc(venue.toUpperCase())} ↗</a>
+                <button class="modal-close-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>`;
     }
 
     // ── SWAP CALCULATION & ROUTE COMPARISON ENGINE ──
@@ -2382,6 +2396,30 @@
     // ── PREDICT ACCOUNT: balance + positions + sell/claim ──
     let _pendingRedeem = null;
     let _pendingClaim = null;
+    let _pendingFund = null;
+    const FUND_EP = { setup: 'account-setup', deposit: 'account-deposit', withdraw: 'account-withdraw', plpsupply: 'plp-supply' };
+    const FUND_TITLES = { setup: 'SETUP PREDICT ACCOUNT', deposit: 'DEPOSIT USDC TO PREDICT', withdraw: 'WITHDRAW USDC FROM PREDICT', plpsupply: 'SUPPLY PREDICT LIQUIDITY' };
+    async function predictFund(kind) {
+        if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        const amt = parseFloat(($('predictFundAmt') || {}).value) || 0;
+        if (kind !== 'setup' && !(amt > 0)) { toast('Enter an amount above zero.'); return; }
+        _pendingFund = { kind, amountUsdc: amt };
+        const notes = {
+            setup: 'Creates your one-time Predict account wrapper. Aborts if it already exists.',
+            deposit: `Moves ${amt} USDC from wallet into your Predict account (minting balance).`,
+            withdraw: `Moves ${amt} USDC from your Predict account back to your wallet.`,
+            plpsupply: `Queues ${amt} USDC as LP supply — fills at the periodic pool flush, not instantly.`
+        };
+        showReviewModal({
+            title: FUND_TITLES[kind] || 'PREDICT FUNDING',
+            desc: notes[kind] || '',
+            details: [
+                { k: 'Action', v: (FUND_TITLES[kind] || kind) },
+                ...(kind === 'setup' ? [] : [{ k: 'Amount', v: amt + ' USDC' }])
+            ],
+            actionType: 'predict_fund'
+        });
+    }
     async function fetchPredictAccount() {
         const panel = $('predictAccountPanel');
         const body = $('predictPositionsBody');
@@ -2396,6 +2434,12 @@
             const p = await pRes.json();
             if (panel) panel.style.display = 'block';
             if (balLbl) balLbl.textContent = 'PREDICT BALANCE: ' + (b.error ? '—' : ('$' + Number(b.balance ?? 0).toFixed(2) + ' USDC'));
+            try {
+                const plpRes = await fetch('/api/trade/predict/plp-balance?wallet=' + encodeURIComponent(wallet));
+                const plp = await plpRes.json();
+                const plpLbl = $('predictPlpLbl');
+                if (plpLbl) plpLbl.textContent = (plp && !plp.error) ? ('PLP: ' + plp.raw) : '';
+            } catch {}
             const rows = (p && !p.error && Array.isArray(p.positions)) ? p.positions : [];
             if (body) body.innerHTML = rows.length ? rows.map((r, i) => {
                 const mkt = esc(r.underlying || '') + ' · ' + (r.expiryMs ? new Date(Number(r.expiryMs)).toLocaleTimeString() : '—');
@@ -2593,15 +2637,20 @@
             renderSpotBookFallback();
         }
     }
+    let _pendingSpot = null;
+    let _pendingSpotSetup = null;
     function executeSpotOrder() {
         if (!wallet) {
             toast('Connect wallet to trade on DeepBook.');
             openWalletPicker();
             return;
         }
-        const p = $('spotPriceInput').value;
-        const a = $('spotAmtInput').value;
+        const p = parseFloat($('spotPriceInput').value) || 0;
+        const a = parseFloat($('spotAmtInput').value) || 0;
+        if (!(p > 0)) { toast('Enter a limit price above zero — click any ladder level.'); return; }
+        if (!(a > 0)) { toast('Enter an amount above zero.'); return; }
         const base = spotBaseAsset();
+        _pendingSpot = { pool: _spotPool, side: _spotOrderSide.toUpperCase(), price: String(p), quantity: String(a) };
         showReviewModal({
             title: 'DEEPBOOK v3 SPOT ORDER',
             desc: 'Place on-chain ' + _spotOrderSide.toUpperCase() + ' order for ' + a + ' ' + base + ' @ ' + p + ' ' + _spotQuote,
@@ -2688,17 +2737,29 @@
 
     // ── EARN CARDS SECTION ──
     const EARN_ITEMS = [
-        { id: 'afsui', name: 'Aftermath afSUI', proto: 'Aftermath Finance', cat: 'STAKING', apy: '7.12%', tvl: '$78.4M', asset: 'SUI → afSUI', desc: 'Instant unstake liquidity, boosted validator commissions.' },
-        { id: 'hasui', name: 'Haedal haSUI', proto: 'Haedal Protocol', cat: 'STAKING', apy: '7.28%', tvl: '$36.2M', asset: 'SUI → haSUI', desc: 'Auto-compounding epoch rewards, verified node operators.' },
-        { id: 'ssui', name: 'SpringSui sSUI', proto: 'SpringSui / Suilend', cat: 'STAKING', apy: '7.41%', tvl: '$18.9M', asset: 'SUI → sSUI', desc: 'Instant redemption via SIP-33, zero lockup penalty.' },
-        { id: 'vsui', name: 'Volo vSUI', proto: 'Volo Finance', cat: 'STAKING', apy: '6.85%', tvl: '$24.1M', asset: 'SUI → vSUI', desc: 'Institutional grade validator set, enterprise SLA.' },
-        { id: 'native', name: 'Sui Native PoS', proto: 'Sui Network', cat: 'STAKING', apy: '3.35%', tvl: '$850.0M', asset: 'SUI Native', desc: 'Zero protocol fee, raw L1 consensus proof-of-stake.' },
-        { id: 'navi_usdc', name: 'NAVI USDC Supply', proto: 'NAVI Protocol', cat: 'LENDING', apy: '9.82%', tvl: '$184.2M', asset: 'USDC Deposit', desc: 'Primary Sui money market, collateral eligible, high utilization.' },
-        { id: 'suilend_usdc', name: 'Suilend USDC Supply', proto: 'Suilend', cat: 'LENDING', apy: '8.94%', tvl: '$92.1M', asset: 'USDC Deposit', desc: 'Isolated pool security, dynamic interest rate curves.' },
-        { id: 'scallop_usdc', name: 'Scallop sUSDC', proto: 'Scallop', cat: 'LENDING', apy: '9.35%', tvl: '$86.5M', asset: 'USDC Supply', desc: 'Compound interest tokens, flash loan fee distribution.' },
-        { id: 'cetus_pool', name: 'Cetus SUI/USDC LP', proto: 'Cetus Protocol', cat: 'POOLS', apy: '24.80%', tvl: '$64.0M', asset: 'SUI + USDC', desc: 'Concentrated range CLMM fees + CETUS reward incentives.' },
-        { id: 'turbos_pool', name: 'Turbos SUI/USDC LP', proto: 'Turbos Finance', cat: 'POOLS', apy: '21.60%', tvl: '$14.8M', asset: 'SUI + USDC', desc: 'Dynamic tick spacing, automated rebalancing vaults.' }
+        { id: 'afsui', name: 'Aftermath afSUI', proto: 'Aftermath Finance', cat: 'STAKING', apy: '7.12%', tvl: '$78.4M', asset: 'SUI → afSUI', desc: 'Instant unstake liquidity, boosted validator commissions.', url: 'https://aftermath.finance' },
+        { id: 'hasui', name: 'Haedal haSUI', proto: 'Haedal Protocol', cat: 'STAKING', apy: '7.28%', tvl: '$36.2M', asset: 'SUI → haSUI', desc: 'Auto-compounding epoch rewards, verified node operators.', url: 'https://haedal.xyz' },
+        { id: 'ssui', name: 'SpringSui sSUI', proto: 'SpringSui / Suilend', cat: 'STAKING', apy: '7.41%', tvl: '$18.9M', asset: 'SUI → sSUI', desc: 'Instant redemption via SIP-33, zero lockup penalty.', url: 'https://springsui.com' },
+        { id: 'vsui', name: 'Volo vSUI', proto: 'Volo Finance', cat: 'STAKING', apy: '6.85%', tvl: '$24.1M', asset: 'SUI → vSUI', desc: 'Institutional grade validator set, enterprise SLA.', url: 'https://volo.finance' },
+        { id: 'native', name: 'Sui Native PoS', proto: 'Sui Network', cat: 'STAKING', apy: '3.35%', tvl: '$850.0M', asset: 'SUI Native', desc: 'Zero protocol fee, raw L1 consensus proof-of-stake.', url: 'https://sui.io' },
+        { id: 'navi_usdc', name: 'NAVI USDC Supply', proto: 'NAVI Protocol', cat: 'LENDING', apy: '9.82%', tvl: '$184.2M', asset: 'USDC Deposit', desc: 'Primary Sui money market, collateral eligible, high utilization.', url: 'https://naviprotocol.io' },
+        { id: 'suilend_usdc', name: 'Suilend USDC Supply', proto: 'Suilend', cat: 'LENDING', apy: '8.94%', tvl: '$92.1M', asset: 'USDC Deposit', desc: 'Isolated pool security, dynamic interest rate curves.', url: 'https://suilend.fi' },
+        { id: 'scallop_usdc', name: 'Scallop sUSDC', proto: 'Scallop', cat: 'LENDING', apy: '9.35%', tvl: '$86.5M', asset: 'USDC Supply', desc: 'Compound interest tokens, flash loan fee distribution.', url: 'https://scallop.io' },
+        { id: 'cetus_pool', name: 'Cetus SUI/USDC LP', proto: 'Cetus Protocol', cat: 'POOLS', apy: '24.80%', tvl: '$64.0M', asset: 'SUI + USDC', desc: 'Concentrated range CLMM fees + CETUS reward incentives.', url: 'https://app.cetus.zone' },
+        { id: 'turbos_pool', name: 'Turbos SUI/USDC LP', proto: 'Turbos Finance', cat: 'POOLS', apy: '21.60%', tvl: '$14.8M', asset: 'SUI + USDC', desc: 'Dynamic tick spacing, automated rebalancing vaults.', url: 'https://turbos.finance' }
     ];
+    let _earnFilter = 'ALL';
+    // Live afSUI staking APY from the Aftermath SDK (ratio → %). Static otherwise.
+    async function refreshEarnApy() {
+        try {
+            const res = await fetch('/api/aftermath/staking-apy');
+            const data = await res.json();
+            if (data && Number(data.value) > 0 && data.unit === 'ratio') {
+                const it = EARN_ITEMS.find(e => e.id === 'afsui');
+                if (it) { it.apy = (Number(data.value) * 100).toFixed(2) + '%'; renderEarnSection(_earnFilter); }
+            }
+        } catch (e) { console.log('Earn APY notice:', e.message); }
+    }
 
     function renderEarnSection(filter = 'ALL') {
         const grid = $('earnCardsGrid');
@@ -2731,37 +2792,97 @@
                 <div class="earn-row"><span>Underlying Asset:</span><span>${esc(e.asset)}</span></div>
                 <div class="earn-row"><span>Reward Compounding:</span><span>Epoch / Realtime</span></div>
             </div>
-            <button class="earn-cta-btn" onclick="openEarnActionModal('${e.id}')">STAKE / DEPOSIT</button>
+            <button class="earn-cta-btn" onclick="openEarnActionModal('${e.id}')">${e.id === 'native' ? 'STAKE NOW' : 'OPEN APP ↗'}</button>
         </div>`).join('');
     }
 
     function filterEarnCards(cat, btn) {
         document.querySelectorAll('#view-earn .filter-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
+        _earnFilter = cat;
         renderEarnSection(cat);
     }
 
-    function openEarnActionModal(id) {
+    let _validatorsCache = null;
+    async function openEarnActionModal(id) {
+        const item = EARN_ITEMS.find(e => e.id === id);
+        if (!item) return;
+        // Only native SUI staking executes inside the hub today — everything else
+        // opens the verified venue app instead of faking a deposit.
+        if (id !== 'native') {
+            window.open(item.url, '_blank', 'noopener');
+            toast('Opening ' + item.proto + ' — stake there, balances stay in your wallet.');
+            return;
+        }
         if (!wallet) {
             toast('Connect wallet first.');
             openWalletPicker();
             return;
         }
-        const item = EARN_ITEMS.find(e => e.id === id);
-        if (!item) return;
-
-        showReviewModal({
-            title: 'STAKE & EARN: ' + item.name,
-            desc: 'Deposit directly into ' + item.proto + ' to earn ' + item.apy + ' APY',
-            details: [
-                { k: 'Protocol', v: item.proto },
-                { k: 'Strategy', v: item.cat },
-                { k: 'Current APY', v: item.apy },
-                { k: 'Deposit Asset', v: item.asset },
-                { k: 'Smart Contract', v: 'Verified Sui Mainnet Package' }
-            ],
-            actionType: 'stake'
-        });
+        if (!_validatorsCache) {
+            try {
+                const res = await fetch('/api/earn/validators');
+                const data = await res.json();
+                _validatorsCache = data.validators || data || [];
+            } catch (e) { _validatorsCache = []; }
+        }
+        const opts = (_validatorsCache || []).slice(0, 30).map((v, i) =>
+            '<option value="' + esc(v.suiAddress || v.address || '') + '"' + (i === 0 ? ' selected' : '') + '>' +
+            esc(v.name || shortAddr(v.suiAddress || v.address || '')) + '</option>').join('');
+        $('modalContainer').innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal-card">
+                <div class="modal-title">STAKE SUI · NATIVE PoS</div>
+                <div class="modal-desc">Delegate to a validator (min 1 SUI). Rewards accrue in the StakedSui object.</div>
+                <div class="input-card" style="margin-bottom:10px;">
+                    <div class="input-top"><span>AMOUNT</span><span>SUI</span></div>
+                    <input type="number" id="earnStakeAmt" class="amount-num" value="1" min="1" step="any">
+                </div>
+                <div class="input-card" style="margin-bottom:16px;">
+                    <div class="input-top"><span>VALIDATOR</span><span>${(_validatorsCache || []).length} VERIFIED</span></div>
+                    <div class="token-select-wrap" style="width:100%;"><select id="earnValidatorSel" style="width:100%;">${opts || '<option value="">No validators reachable</option>'}</select></div>
+                </div>
+                <div id="earnStakeStatus" style="font-size:11.5px; color:var(--text-dim); margin-bottom:16px; font-family:'Space Grotesk',monospace;"></div>
+                <button class="exec-btn" id="earnStakeBtn" onclick="executeNativeStake()">STAKE VIA SUI NETWORK</button>
+                <button class="modal-close-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>`;
+    }
+    async function executeNativeStake() {
+        const amt = parseFloat(($('earnStakeAmt') || {}).value) || 0;
+        const validator = ($('earnValidatorSel') || {}).value || '';
+        const status = $('earnStakeStatus');
+        const btn = $('earnStakeBtn');
+        const say = (t) => { if (status) status.textContent = t; };
+        if (!(amt >= 1)) { toast('Minimum stake is 1 SUI.'); return; }
+        if (!/^0x[0-9a-fA-F]{64}$/.test(validator)) { toast('Pick a validator.'); return; }
+        if (!isRealWallet) { toast('Demo session — connect a real wallet to stake.'); return; }
+        btn.disabled = true;
+        say('Building stake transaction…');
+        try {
+            const bRes = await fetch('/api/earn/stake', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet, validator, amount: String(Math.floor(amt * 1e9)) })
+            });
+            const built = await bRes.json();
+            if (built.error || !built.txBytes) throw new Error(built.error || 'BUILD_FAILED');
+            say('Approve the delegation in your wallet…');
+            const { Transaction } = await import('@mysten/sui/transactions');
+            const tx = Transaction.from(built.txBytes);
+            const res = await window.HubWallet.signAndExecute(tx);
+            const digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+            if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+            say('Staked.');
+            closeModal();
+            toast('Staked ' + amt + ' SUI');
+            recordActivity('STAKE', amt + ' SUI → ' + shortAddr(validator), digest);
+            awardPoints('earn', 250, 0);
+            fetchWalletBalances();
+        } catch (e) {
+            say(String(e.message || 'failed').slice(0, 160));
+            btn.disabled = false;
+            toast('Stake failed: ' + String(e.message || 'error').slice(0, 120));
+        }
     }
 
     // ── LEADERBOARD DATA & RENDERING ──
@@ -3228,6 +3349,106 @@
             }
             _pendingRedeem = null; _pendingClaim = null;
             _pendingPredict = null;
+            // Predict funding (setup/deposit/withdraw/LP): unsigned PTB from backend, wallet signs
+            if (actionType === 'predict_fund' && _pendingFund && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const fp = _pendingFund;
+                _pendingFund = null;
+                const ep = FUND_EP[fp.kind];
+                if (!ep) throw new Error('Unknown funding action.');
+                status.textContent = 'Building unsigned transaction…';
+                const payload = fp.kind === 'setup' ? { wallet } : { wallet, amountUsdc: fp.amountUsdc };
+                const bRes = await fetch('/api/trade/predict/' + ep, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                });
+                const built = await bRes.json();
+                if (built.error || !built.txBytes) throw new Error(built.error || 'BUILD_FAILED');
+                status.textContent = 'Approve in your wallet…';
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">${esc(FUND_TITLES[fp.kind] || 'Done')}</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast('Predict account updated');
+                recordActivity('PREDICT_FUND', (FUND_TITLES[fp.kind] || fp.kind) + (fp.kind === 'setup' ? '' : ' ' + fp.amountUsdc + ' USDC'), digest);
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                fetchPredictAccount();
+                return;
+            }
+            _pendingFund = null;
+
+            // Real DeepBook spot order: backend builds a simulated limit PTB, wallet signs it.
+            // No trading account → offer the one-time setup first, then resume the order.
+            if (actionType === 'spot_order' && _pendingSpot && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const so = _pendingSpot;
+                status.textContent = 'Building limit order…';
+                const bRes = await fetch('/api/trade/build', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, market: so.pool, side: so.side, type: 'LIMIT', price: so.price, quantity: so.quantity })
+                });
+                const built = await bRes.json();
+                if (built.error || !built.txBytes) {
+                    if (built.error === 'TRADING_ACCOUNT_REQUIRED') {
+                        _pendingSpot = so;
+                        status.textContent = 'Preparing trading-account setup…';
+                        const sRes = await fetch('/api/trade/setup-account', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ wallet })
+                        });
+                        const setup = await sRes.json();
+                        if (setup.error || !setup.txBytes) throw new Error(setup.error || 'SETUP_FAILED');
+                        _pendingSpotSetup = setup.txBytes;
+                        closeModal();
+                        showReviewModal({
+                            title: 'DEEPBOOK TRADING ACCOUNT',
+                            desc: 'One-time BalanceManager setup — required before your first order, then the order resumes.',
+                            details: [
+                                { k: 'Account', v: 'DeepBook BalanceManager' },
+                                { k: 'Cost', v: 'One-time setup + gas' },
+                                { k: 'Next', v: so.side + ' ' + so.quantity + ' @ ' + so.price }
+                            ],
+                            actionType: 'spot_setup'
+                        });
+                        return;
+                    }
+                    throw new Error((built.error || 'BUILD_FAILED') + (built.message ? ': ' + built.message : ''));
+                }
+                _pendingSpot = null;
+                const gasSui = built.gasEst != null ? (Number(built.gasEst) / 1e9).toFixed(4) : null;
+                status.innerHTML = `Limit ${esc(so.side)} ${esc(so.quantity)} @ ${esc(so.price)}` +
+                    (gasSui ? ` · gas ≈ ${gasSui} SUI` : '') + `<br>Approve the order in your wallet…`;
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">Limit Order Placed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast('DeepBook order placed');
+                recordActivity('SPOT', `${so.side} ${so.quantity} @ ${so.price} (${so.pool})`, digest);
+                awardPoints('swaps', 150, 0);
+                setTimeout(closeModal, 2500);
+                fetchWalletBalances();
+                return;
+            }
+            if (actionType === 'spot_setup' && _pendingSpotSetup && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const bytes = _pendingSpotSetup;
+                _pendingSpotSetup = null;
+                status.textContent = 'Approve the trading-account setup in your wallet…';
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(bytes);
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                closeModal();
+                toast('Trading account ready — press PLACE again to send the order.');
+                recordActivity('SPOT_SETUP', 'DeepBook BalanceManager created', digest);
+                fetchWalletBalances();
+                return;
+            }
+            _pendingSpot = null; _pendingSpotSetup = null;
 
             // Real swap: backend builds a simulated Cetus route PTB, wallet signs it.
             // No placeholder transfers — bytes exist only after on-chain dry-run success.
@@ -3302,11 +3523,6 @@
                 const fTok = $('swapFromToken').value;
                 const vol = fAmt * (TOKEN_PRICES[fTok] || 1);
                 awardPoints('swaps', 100, vol);
-            } else if (actionType === 'bridge') {
-                const bAmt = parseFloat($('bridgeAmountInput').value) || 100;
-                const bTok = $('bridgeTokenSelect').value;
-                const vol = bAmt * (TOKEN_PRICES[bTok] || 1);
-                awardPoints('swaps', 300, vol);
             } else if (actionType === 'stake') {
                 awardPoints('earn', 250, 0);
             } else if (actionType === 'spot_order') {
@@ -3547,6 +3763,7 @@
         paintRefLink();
         paintAiKeyStatus();
         fetchLivePrices();
+        refreshEarnApy();
         fetchSpotMarkets();
         fetchSpotBook();
         fetchPredictBoard();

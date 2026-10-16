@@ -460,6 +460,96 @@ export const deepbookPredictAdapter = {
     }
   },
 
+  /** Build unsigned account-setup PTB (one Predict wrapper per owner). Aborts on-chain if it exists. */
+  async buildAccountSetup({ wallet }) {
+    if (!wallet) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET', message: 'wallet is required' });
+    const c = predictClient();
+    let tx;
+    try {
+      tx = c.tx.createManager();
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+    try {
+      tx.setSenderIfNotSet(wallet);
+      const bytes = await tx.build({ client: sui.provider.rawClient() });
+      return { txBytes: Buffer.from(bytes).toString('base64'), source: 'DeepBook Predict SDK (tx.createManager)' };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+  },
+
+  /** Build unsigned USDC deposit PTB. create:true fuses create+deposit+share for first run. */
+  async buildDeposit({ wallet, amountUsdc, create }) {
+    if (!wallet) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET', message: 'wallet is required' });
+    if (!(Number(amountUsdc) > 0)) throw Object.assign(new Error('INVALID_AMOUNT'), { code: 'INVALID_AMOUNT', message: 'amountUsdc must be > 0' });
+    const c = predictClient();
+    let tx;
+    try {
+      tx = c.tx.deposit(wallet, Number(amountUsdc), { create: !!create });
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+    try {
+      tx.setSenderIfNotSet(wallet);
+      const bytes = await tx.build({ client: sui.provider.rawClient() });
+      return { txBytes: Buffer.from(bytes).toString('base64'), source: 'DeepBook Predict SDK (tx.deposit)' };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+  },
+
+  /** Build unsigned USDC withdraw PTB (lands as a coin object to the owner). */
+  async buildWithdraw({ wallet, amountUsdc }) {
+    if (!wallet) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET', message: 'wallet is required' });
+    if (!(Number(amountUsdc) > 0)) throw Object.assign(new Error('INVALID_AMOUNT'), { code: 'INVALID_AMOUNT', message: 'amountUsdc must be > 0' });
+    const c = predictClient();
+    let tx;
+    try {
+      tx = c.tx.withdraw(wallet, Number(amountUsdc), { toCoinObject: true });
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+    try {
+      tx.setSenderIfNotSet(wallet);
+      const bytes = await tx.build({ client: sui.provider.rawClient() });
+      return { txBytes: Buffer.from(bytes).toString('base64'), source: 'DeepBook Predict SDK (tx.withdraw)' };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+  },
+
+  /** Build unsigned PLP supply-request PTB (fills at the periodic flush). */
+  async buildPlpSupply({ wallet, amountUsdc }) {
+    if (!wallet) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET', message: 'wallet is required' });
+    if (!(Number(amountUsdc) > 0)) throw Object.assign(new Error('INVALID_AMOUNT'), { code: 'INVALID_AMOUNT', message: 'amountUsdc must be > 0' });
+    const c = predictClient();
+    let tx;
+    try {
+      tx = c.tx.supplyPlp(wallet, Number(amountUsdc));
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+    try {
+      tx.setSenderIfNotSet(wallet);
+      const bytes = await tx.build({ client: sui.provider.rawClient() });
+      return { txBytes: Buffer.from(bytes).toString('base64'), source: 'DeepBook Predict SDK (tx.supplyPlp)' };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+  },
+
+  /** PLP share balance (raw units; scale flagged explicitly, never silently divided). */
+  async getPlpBalance(wallet) {
+    const c = predictClient();
+    try {
+      const raw = await c.read.plpBalance(wallet);
+      return { raw: String(raw ?? 0n), source: 'DeepBook Predict SDK (read.plpBalance)', updatedAt: new Date().toISOString() };
+    } catch (e) {
+      throw Object.assign(new Error('PROVIDER_UNAVAILABLE'), { code: 'PROVIDER_UNAVAILABLE', message: 'PLP balance unavailable' });
+    }
+  },
+
   /** Live positions for an owner (empty array = no positions, never an error). */
   async getPositions(wallet) {
     const c = predictClient();
