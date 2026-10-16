@@ -647,7 +647,7 @@
             margin-top: 2px;
         }
 
-        /* ── Protocols Registry Grid (All 20) ── */
+        /* ── Protocols Registry Grid (All 21) ── */
         .filter-bar {
             display: flex;
             align-items: center;
@@ -1141,7 +1141,7 @@
                     <button class="nav-tab" data-view="rewards">Points & Ref</button>
                     <button class="nav-tab" data-view="leaderboard">Leaderboard</button>
                     <button class="nav-tab" data-view="activity">Activity</button>
-                    <button class="nav-tab" data-view="protocols">Protocols (20)</button>
+                    <button class="nav-tab" data-view="protocols">Protocols (21)</button>
                 </nav>
             </div>
             <div class="nav-right">
@@ -1161,7 +1161,7 @@
             <section class="app-view active" id="view-swap">
                 <div class="section-tag">01 · LIQUIDITY & CROSS-CHAIN AGGREGATOR</div>
                 <h1 class="section-title">One terminal. <span>Best execution.</span></h1>
-                <p class="section-desc">Multi-route DEX aggregator across Cetus, Aftermath, DeepBook v3, Turbos, 7k, FlowX, and cross-chain bridging via Wormhole and Sui Bridge.</p>
+                <p class="section-desc">Multi-route DEX aggregator across Cetus, Aftermath, DeepBook v3, Turbos, 7k, FlowX, MMT, and cross-chain bridging via Wormhole and Sui Bridge.</p>
 
                 <div class="sub-tabs-bar">
                     <button class="filter-btn active" id="modeBtnSwap" onclick="setSwapViewMode('swap')">SWAP AGGREGATOR</button>
@@ -1777,21 +1777,21 @@
                 </div>
             </section>
 
-            <!-- ── VIEW 8: PROTOCOLS REGISTRY (ALL 20 PROTOCOLS) ── -->
+            <!-- ── VIEW 8: PROTOCOLS REGISTRY (ALL 21 PROTOCOLS) ── -->
             <section class="app-view" id="view-protocols">
                 <div class="section-tag">08 · ECOSYSTEM REGISTRY</div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px;">
-                    <h1 class="section-title">All 20 Protocols. <span>Sui Verified.</span></h1>
-                    <span class="badge-pill badge-best" style="font-size:11px; padding:4px 10px;">20 / 20 PROTOCOLS ACTIVE</span>
+                    <h1 class="section-title">All 21 Protocols. <span>Sui Verified.</span></h1>
+                    <span class="badge-pill badge-best" style="font-size:11px; padding:4px 10px;">21 / 21 PROTOCOLS ACTIVE</span>
                 </div>
                 <p class="section-desc">Full registry of verified protocols on Sui Mainnet. Live contract capabilities, TVL, and audited integration endpoints.</p>
 
                 <div class="filter-bar">
-                    <button class="filter-btn active" onclick="filterProtocolsGrid('ALL', this)">ALL (20)</button>
-                    <button class="filter-btn" onclick="filterProtocolsGrid('DEX', this)">DEX & TRADING (6)</button>
+                    <button class="filter-btn active" onclick="filterProtocolsGrid('ALL', this)">ALL (21)</button>
+                    <button class="filter-btn" onclick="filterProtocolsGrid('DEX', this)">DEX & TRADING (8)</button>
                     <button class="filter-btn" onclick="filterProtocolsGrid('LENDING', this)">LENDING & CDP (4)</button>
                     <button class="filter-btn" onclick="filterProtocolsGrid('STAKING', this)">LIQUID STAKING (5)</button>
-                    <button class="filter-btn" onclick="filterProtocolsGrid('YIELD', this)">YIELD & BRIDGES (5)</button>
+                    <button class="filter-btn" onclick="filterProtocolsGrid('YIELD', this)">YIELD & BRIDGES (3)</button>
                 </div>
 
                 <div class="protocols-grid" id="protocolsCardsGrid">
@@ -1808,7 +1808,7 @@
                 <div class="panel" style="max-width:840px;">
                     <div style="min-height:280px; max-height:420px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; margin-bottom:20px;" id="aiChatBox">
                         <div style="background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:14px; font-size:13px; line-height:1.5;">
-                            <b style="color:var(--accent);">Noise AI:</b> Hello. I am your Sui DeFi copilot. I track all 20 protocols, APYs across lending and liquid staking, DeepBook v3 orderbooks, and cross-chain bridges. What would you like to explore?
+                            <b style="color:var(--accent);">Noise AI:</b> Hello. I am your Sui DeFi copilot. I track all 21 protocols, APYs across lending and liquid staking, DeepBook v3 orderbooks, and cross-chain bridges. What would you like to explore?
                         </div>
                     </div>
 
@@ -2214,6 +2214,7 @@
         { id: 'aftermath', name: 'Aftermath Finance', desc: 'Smart Router v2 Liquidity', factor: 0.9991, badge: '-0.09%' },
         { id: 'cetus', name: 'Cetus Protocol', desc: 'CLMM Concentrated Liquidity', factor: 0.9985, badge: '-0.15%' },
         { id: 'deepbook', name: 'DeepBook v3', desc: 'Direct On-Chain CLOB Match', factor: 0.9982, badge: '-0.18%' },
+        { id: 'mmt', name: 'Momentum (MMT)', desc: 'Tick-Optimized AMM Liquidity', factor: 0.9979, badge: '-0.21%' },
         { id: 'turbos', name: 'Turbos Finance', desc: 'Dynamic Range Concentrated AMM', factor: 0.9975, badge: '-0.25%' },
         { id: 'flowx', name: 'FlowX Finance', desc: 'Multi-Pool Ecosystem AMM', factor: 0.9968, badge: '-0.32%' }
     ];
@@ -2615,7 +2616,7 @@
         });
     }
 
-    // ── ALL 20 PROTOCOLS REGISTRY ──
+    // ── ALL 21 PROTOCOLS REGISTRY ──
     const ALL_PROTOCOLS = [
         { id:'sui', name:'Sui Network', cat:'INFRASTRUCTURE', tvl:'$1.20B', status:'LIVE', desc:'L1 high-throughput settlement layer, object-centric data model, sub-second finality.', caps:['SETTLEMENT','RPC','BALANCES'], url:'https://sui.io', docs:'https://docs.sui.io' },
         { id:'sui-native', name:'Sui Native Staking', cat:'STAKING', tvl:'$850M', status:'LIVE', desc:'Direct PoS delegation to verified validators with auto-compounding epoch rewards.', caps:['STAKE','UNSTAKE','VALIDATORS'], url:'https://sui.io', docs:'https://docs.sui.io' },
@@ -2625,7 +2626,7 @@
         { id:'deepbook-predict', name:'DeepBook Predict', cat:'DEX', tvl:'$8.2M', status:'LIVE', desc:'Decentralized binary prediction markets built directly on DeepBook liquidity.', caps:['PREDICT','SETTLEMENT'], url:'https://deepbook.tech', docs:'https://deepbook.tech' },
         { id:'turbos', name:'Turbos Finance', cat:'DEX', tvl:'$22.8M', status:'LIVE', desc:'Non-custodial concentrated liquidity AMM backed by Jump Crypto and Mysten Labs.', caps:['SWAP','CONCENTRATED_LP'], url:'https://turbos.finance', docs:'https://turbos.finance' },
         { id:'flowx', name:'FlowX Finance', cat:'DEX', tvl:'$12.5M', status:'LIVE', desc:'Comprehensive DEX aggregator pulling liquidity across all AMM pools on Sui.', caps:['SWAP','AGGREGATOR','FARMING'], url:'https://flowx.finance', docs:'https://docs.flowx.finance' },
-        { id:'momentum', name:'Momentum', cat:'DEX', tvl:'$6.1M', status:'LIVE', desc:'Capital-efficient decentralized exchange with optimized tick math.', caps:['SWAP','POOLS'], url:'https://momentum.finance', docs:'https://momentum.finance' },
+        { id:'momentum', name:'Momentum (MMT)', cat:'DEX', tvl:'$6.1M', status:'LIVE', desc:'Capital-efficient DEX on Sui (mmt.finance) with optimized tick math and aggregated liquidity.', caps:['SWAP','POOLS'], url:'https://www.mmt.finance', docs:'https://www.mmt.finance' },
         { id:'bluefin-spot', name:'Bluefin Spot & Perps', cat:'DEX', tvl:'$34.0M', status:'LIVE', desc:'High-throughput orderbook exchange offering spot trading and perpetual futures.', caps:['SPOT','PERPS','ORDERBOOK'], url:'https://bluefin.io', docs:'https://bluefin.io' },
         { id:'navi', name:'NAVI Protocol', cat:'LENDING', tvl:'$385.0M', status:'LIVE', desc:'The leading liquidity protocol on Sui for lending, borrowing, and yield generation.', caps:['SUPPLY','BORROW','LEVERAGE'], url:'https://naviprotocol.io', docs:'https://docs.naviprotocol.io' },
         { id:'suilend', name:'Suilend', cat:'LENDING', tvl:'$198.5M', status:'LIVE', desc:'Institutional-grade money market developed by the Solend engineering team.', caps:['SUPPLY','BORROW','CAPSULES'], url:'https://suilend.fi', docs:'https://docs.suilend.fi' },
@@ -2634,6 +2635,7 @@
         { id:'haedal', name:'Haedal Protocol', cat:'STAKING', tvl:'$36.2M', status:'LIVE', desc:'Liquid staking protocol issuing haSUI with validator health scoring.', caps:['STAKE_haSUI','UNSTAKE','CLAIM'], url:'https://haedal.xyz', docs:'https://haedal.xyz' },
         { id:'volo', name:'Volo', cat:'STAKING', tvl:'$24.1M', status:'LIVE', desc:'Liquid staking protocol issuing vSUI, backed by enterprise validator nodes.', caps:['STAKE_vSUI','UNSTAKE'], url:'https://volo.finance', docs:'https://sdk.naviprotocol.io/wallet-client/volo' },
         { id:'springsui', name:'SpringSui', cat:'STAKING', tvl:'$18.9M', status:'LIVE', desc:'Native liquid staking framework implementing instant redemption via SIP-33.', caps:['STAKE_sSUI','SIP33_REDEEM'], url:'https://springsui.com', docs:'https://docs.suilend.fi/springsui' },
+        { id:'magma', name:'Magma Finance', cat:'STAKING', tvl:'—', status:'LIVE', desc:'Liquid staking protocol on Sui — stake SUI and stay liquid across DeFi venues.', caps:['STAKE','LIQUID_STAKING'], url:'https://magmafinance.io', docs:'https://magmafinance.io' },
         { id:'kai', name:'Kai Finance', cat:'YIELD', tvl:'$15.6M', status:'LIVE', desc:'Automated yield optimizer and vault strategy protocol on top of Sui money markets.', caps:['VAULTS','AUTO_COMPOUND'], url:'https://kai.finance', docs:'https://kai.finance' },
         { id:'steamm', name:'STEAMM', cat:'YIELD', tvl:'$9.2M', status:'LIVE', desc:'Smart dynamic AMM optimizing yield for liquidity providers using volatility curves.', caps:['DYNAMIC_AMM','YIELD_CURVE'], url:'https://suilend.fi', docs:'https://docs.suilend.fi/steamm' },
         { id:'wormhole', name:'Wormhole / Portal', cat:'YIELD', tvl:'$95.0M', status:'LIVE', desc:'Cross-chain liquidity bridge connecting Sui with Ethereum, Solana, and Arbitrum.', caps:['BRIDGE','CROSS_CHAIN'], url:'https://portalbridge.com', docs:'https://docs.wormhole.com' }
@@ -2860,7 +2862,9 @@
         'bridge': 'Noise Hub connects to Wormhole Portal and native Sui Bridge for instant cross-chain liquidity between Ethereum, Solana, and Sui.',
         'predict': 'DeepBook Predict runs per-expiry range markets (1- and 5-minute BTC windows): UP pays $1 per contract above the strike, DOWN at or below. 10 contracts per ticket, min 1 USDC premium, no trading in the final 10 seconds.',
         'swap': 'Noise Hub builds the real route server-side (Cetus aggregator, simulated before signing) and your wallet signs the exact bytes. Zero-amount and no-balance tickets are rejected before review.',
-        'lending': 'Top lending rates right now on Sui: NAVI Protocol (9.82% on USDC), Scallop (9.35% on USDC), Suilend (8.94% on USDC).'
+        'lending': 'Top lending rates right now on Sui: NAVI Protocol (9.82% on USDC), Scallop (9.35% on USDC), Suilend (8.94% on USDC).',
+        'mmt': 'Momentum (mmt.finance) is a capital-efficient DEX on Sui with optimized tick math — routed in the swap comparison and listed in Protocols.',
+        'magma': 'Magma Finance (magmafinance.io) is a liquid staking protocol on Sui — listed in Protocols under Liquid Staking.'
     };
 
     function sendAiMessage() {
@@ -2910,7 +2914,7 @@
         }
 
         // 3) Offline built-in knowledge
-        let ans = "I analyzed Sui Mainnet state: Cetus, Aftermath, and DeepBook v3 currently hold the highest liquidity for spot swaps. All 20 verified protocols have active contracts and healthy TVL. Add your API key below for live answers with your wallet context.";
+        let ans = "I analyzed Sui Mainnet state: Cetus, Aftermath, and DeepBook v3 currently hold the highest liquidity for spot swaps. All 21 verified protocols have active contracts and healthy TVL. Add your API key below for live answers with your wallet context.";
         const low = q.toLowerCase();
         for (const [k, v] of Object.entries(AI_KNOWLEDGE)) {
             if (low.includes(k)) { ans = v; break; }
