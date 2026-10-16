@@ -470,13 +470,14 @@ async function predictRouter(req, res, url, action) {
       }
     }
     // Predict account funding + LP (unsigned PTBs, wallet signs; gatedBuild simulates)
-    if (['account-setup', 'account-deposit', 'account-withdraw', 'plp-supply'].includes(action)) {
+    if (['account-setup', 'account-deposit', 'account-withdraw', 'plp-supply', 'plp-withdraw'].includes(action)) {
       if (!isWalletAddress(b.wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
       try {
         let built;
         if (action === 'account-setup') built = await A.buildAccountSetup({ wallet: b.wallet });
         else if (action === 'account-deposit') built = await A.buildDeposit({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc), create: !!b.create });
         else if (action === 'account-withdraw') built = await A.buildWithdraw({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc) });
+        else if (action === 'plp-withdraw') built = await A.buildPlpWithdraw({ wallet: b.wallet, shares: b.shares });
         else built = await A.buildPlpSupply({ wallet: b.wallet, amountUsdc: Number(b.amountUsdc) });
         const g = await gatedBuild(built, b.wallet);
         return {

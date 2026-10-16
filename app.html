@@ -1550,6 +1550,8 @@
                             <button class="filter-btn" onclick="predictFund('deposit')">DEPOSIT</button>
                             <button class="filter-btn" onclick="predictFund('withdraw')">WITHDRAW</button>
                             <button class="filter-btn" onclick="predictFund('plpsupply')">SUPPLY LP</button>
+                            <input type="text" id="predictPlpShares" inputmode="numeric" placeholder="PLP shares (raw)" style="width:130px; background:rgba(20,20,20,0.8); border:1px solid var(--line); padding:9px 10px; color:#fff; font-family:'Space Grotesk',monospace; font-size:11px; outline:none;">
+                            <button class="filter-btn" onclick="predictFund('plpwithdraw')">EXIT LP</button>
                             <span class="panel-label" id="predictPlpLbl" style="margin-left:auto;"></span>
                         </div>
                         <div class="table-wrap" style="border:none; background:transparent;">
@@ -2397,10 +2399,25 @@
     let _pendingRedeem = null;
     let _pendingClaim = null;
     let _pendingFund = null;
-    const FUND_EP = { setup: 'account-setup', deposit: 'account-deposit', withdraw: 'account-withdraw', plpsupply: 'plp-supply' };
-    const FUND_TITLES = { setup: 'SETUP PREDICT ACCOUNT', deposit: 'DEPOSIT USDC TO PREDICT', withdraw: 'WITHDRAW USDC FROM PREDICT', plpsupply: 'SUPPLY PREDICT LIQUIDITY' };
+    const FUND_EP = { setup: 'account-setup', deposit: 'account-deposit', withdraw: 'account-withdraw', plpsupply: 'plp-supply', plpwithdraw: 'plp-withdraw' };
+    const FUND_TITLES = { setup: 'SETUP PREDICT ACCOUNT', deposit: 'DEPOSIT USDC TO PREDICT', withdraw: 'WITHDRAW USDC FROM PREDICT', plpsupply: 'SUPPLY PREDICT LIQUIDITY', plpwithdraw: 'EXIT PREDICT LIQUIDITY' };
     async function predictFund(kind) {
         if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        if (kind === 'plpwithdraw') {
+            const shares = (($('predictPlpShares') || {}).value || '').trim();
+            if (!/^\d+$/.test(shares) || BigInt(shares) <= 0n) { toast('Enter PLP shares as a whole raw number.'); return; }
+            _pendingFund = { kind, shares };
+            showReviewModal({
+                title: FUND_TITLES[kind],
+                desc: 'Queues a PLP withdraw request — fills at the periodic pool flush, not instantly.',
+                details: [
+                    { k: 'Action', v: FUND_TITLES[kind] },
+                    { k: 'Shares (raw)', v: shares }
+                ],
+                actionType: 'predict_fund'
+            });
+            return;
+        }
         const amt = parseFloat(($('predictFundAmt') || {}).value) || 0;
         if (kind !== 'setup' && !(amt > 0)) { toast('Enter an amount above zero.'); return; }
         _pendingFund = { kind, amountUsdc: amt };
@@ -2792,7 +2809,7 @@
                 <div class="earn-row"><span>Underlying Asset:</span><span>${esc(e.asset)}</span></div>
                 <div class="earn-row"><span>Reward Compounding:</span><span>Epoch / Realtime</span></div>
             </div>
-            <button class="earn-cta-btn" onclick="openEarnActionModal('${e.id}')">${e.id === 'native' ? 'STAKE NOW' : 'OPEN APP ↗'}</button>
+            <button class="earn-cta-btn" onclick="openEarnActionModal('${e.id}')">${e.id === 'native' ? 'STAKE NOW' : (e.id === 'afsui' ? 'STAKE / UNSTAKE' : 'OPEN APP ↗')}</button>
         </div>`).join('');
     }
 
@@ -2804,12 +2821,28 @@
     }
 
     let _validatorsCache = null;
+    async function ensureValidators() {
+        if (!_validatorsCache) {
+            try {
+                const res = await fetch('/api/earn/validators');
+                const data = await res.json();
+                _validatorsCache = data.validators || data || [];
+            } catch (e) { _validatorsCache = []; }
+        }
+        return _validatorsCache;
+    }
+    function validatorOptions() {
+        return (_validatorsCache || []).slice(0, 30).map((v, i) =>
+            '<option value="' + esc(v.suiAddress || v.address || '') + '"' + (i === 0 ? ' selected' : '') + '>' +
+            esc(v.name || shortAddr(v.suiAddress || v.address || '')) + '</option>').join('') ||
+            '<option value="">No validators reachable</option>';
+    }
     async function openEarnActionModal(id) {
         const item = EARN_ITEMS.find(e => e.id === id);
         if (!item) return;
-        // Only native SUI staking executes inside the hub today — everything else
-        // opens the verified venue app instead of faking a deposit.
-        if (id !== 'native') {
+        // Only native SUI staking and afSUI liquid actions execute inside the hub —
+        // everything else opens the verified venue app instead of faking a deposit.
+        if (id !== 'native' && id !== 'afsui') {
             window.open(item.url, '_blank', 'noopener');
             toast('Opening ' + item.proto + ' — stake there, balances stay in your wallet.');
             return;
@@ -2819,16 +2852,8 @@
             openWalletPicker();
             return;
         }
-        if (!_validatorsCache) {
-            try {
-                const res = await fetch('/api/earn/validators');
-                const data = await res.json();
-                _validatorsCache = data.validators || data || [];
-            } catch (e) { _validatorsCache = []; }
-        }
-        const opts = (_validatorsCache || []).slice(0, 30).map((v, i) =>
-            '<option value="' + esc(v.suiAddress || v.address || '') + '"' + (i === 0 ? ' selected' : '') + '>' +
-            esc(v.name || shortAddr(v.suiAddress || v.address || '')) + '</option>').join('');
+        await ensureValidators();
+        if (id === 'native') {
         $('modalContainer').innerHTML = `
         <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
             <div class="modal-card">
@@ -2840,13 +2865,100 @@
                 </div>
                 <div class="input-card" style="margin-bottom:16px;">
                     <div class="input-top"><span>VALIDATOR</span><span>${(_validatorsCache || []).length} VERIFIED</span></div>
-                    <div class="token-select-wrap" style="width:100%;"><select id="earnValidatorSel" style="width:100%;">${opts || '<option value="">No validators reachable</option>'}</select></div>
+                    <div class="token-select-wrap" style="width:100%;"><select id="earnValidatorSel" style="width:100%;">${validatorOptions()}</select></div>
                 </div>
                 <div id="earnStakeStatus" style="font-size:11.5px; color:var(--text-dim); margin-bottom:16px; font-family:'Space Grotesk',monospace;"></div>
                 <button class="exec-btn" id="earnStakeBtn" onclick="executeNativeStake()">STAKE VIA SUI NETWORK</button>
                 <button class="modal-close-btn" onclick="closeModal()">Cancel</button>
             </div>
         </div>`;
+        return;
+    }
+    // afSUI liquid actions — real Aftermath builds, signed in wallet
+    if (id === 'afsui') {
+        $('modalContainer').innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal-card">
+                <div class="modal-title">AFTERMATH afSUI</div>
+                <div class="modal-desc">Stake SUI → afSUI, or exit afSUI → SUI (instant atomic swap, or queued to next epoch).</div>
+                <div style="display:flex; gap:6px; margin-bottom:12px;">
+                    <button class="filter-btn active" id="afSideStake" onclick="setAfSide('stake')">STAKE</button>
+                    <button class="filter-btn" id="afSideUnstake" onclick="setAfSide('unstake')">UNSTAKE</button>
+                </div>
+                <div class="input-card" style="margin-bottom:10px;">
+                    <div class="input-top"><span>AMOUNT</span><span id="afAmtAsset">SUI</span></div>
+                    <input type="number" id="afAmt" class="amount-num" value="1" min="0" step="any">
+                </div>
+                <div class="input-card" id="afValidatorBox" style="margin-bottom:10px;">
+                    <div class="input-top"><span>VALIDATOR</span><span>${(_validatorsCache || []).length} VERIFIED</span></div>
+                    <div class="token-select-wrap" style="width:100%;"><select id="afValidatorSel" style="width:100%;">${validatorOptions()}</select></div>
+                </div>
+                <div class="input-card" id="afAtomicBox" style="margin-bottom:10px; display:none;">
+                    <div class="input-top"><span>EXIT MODE</span><span>ATOMIC = INSTANT</span></div>
+                    <div class="token-select-wrap" style="width:100%;"><select id="afAtomicSel" style="width:100%;">
+                        <option value="true">Atomic — instant, needs vault reserves</option>
+                        <option value="false">Queued — next epoch boundary</option>
+                    </select></div>
+                </div>
+                <div id="afStatus" style="font-size:11.5px; color:var(--text-dim); margin-bottom:16px; font-family:'Space Grotesk',monospace;"></div>
+                <button class="exec-btn" id="afGoBtn" onclick="executeAfAction()">STAKE VIA AFTERMATH</button>
+                <button class="modal-close-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>`;
+        return;
+    }
+    }
+    let _afSide = 'stake';
+    function setAfSide(side) {
+        _afSide = side;
+        $('afSideStake').className = 'filter-btn' + (side === 'stake' ? ' active' : '');
+        $('afSideUnstake').className = 'filter-btn' + (side === 'unstake' ? ' active' : '');
+        $('afValidatorBox').style.display = side === 'stake' ? 'block' : 'none';
+        $('afAtomicBox').style.display = side === 'unstake' ? 'block' : 'none';
+        $('afAmtAsset').textContent = side === 'stake' ? 'SUI' : 'afSUI';
+        $('afGoBtn').textContent = side === 'stake' ? 'STAKE VIA AFTERMATH' : 'UNSTAKE VIA AFTERMATH';
+    }
+    async function executeAfAction() {
+        const amt = parseFloat(($('afAmt') || {}).value) || 0;
+        const status = $('afStatus');
+        const btn = $('afGoBtn');
+        const say = (t) => { if (status) status.textContent = t; };
+        if (!(amt >= 1)) { toast('Minimum is 1 token.'); return; }
+        if (!isRealWallet) { toast('Demo session — connect a real wallet.'); return; }
+        btn.disabled = true;
+        try {
+            let url, body;
+            if (_afSide === 'stake') {
+                const validator = ($('afValidatorSel') || {}).value || '';
+                if (!/^0x[0-9a-fA-F]{64}$/.test(validator)) { toast('Pick a validator.'); btn.disabled = false; return; }
+                url = '/api/aftermath/liquid-stake';
+                body = { wallet, validator, amount: String(Math.floor(amt * 1e9)) };
+                say('Building liquid-stake transaction…');
+            } else {
+                const atomic = (($('afAtomicSel') || {}).value || 'true') === 'true';
+                url = '/api/aftermath/liquid-unstake';
+                body = { wallet, amount: String(Math.floor(amt * 1e9)), isAtomic: atomic };
+                say('Building unstake transaction…');
+            }
+            const bRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const built = await bRes.json();
+            if (built.error || !built.txBytes) throw new Error((built.error || 'BUILD_FAILED') + (built.detail || built.message ? ': ' + (built.detail || built.message) : ''));
+            say('Approve in your wallet…');
+            const { Transaction } = await import('@mysten/sui/transactions');
+            const tx = Transaction.from(built.txBytes);
+            const res = await window.HubWallet.signAndExecute(tx);
+            const digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+            if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+            closeModal();
+            toast(_afSide === 'stake' ? ('Staked ' + amt + ' SUI → afSUI') : ('Unstaked ' + amt + ' afSUI'));
+            recordActivity(_afSide === 'stake' ? 'STAKE' : 'UNSTAKE', amt + (_afSide === 'stake' ? ' SUI → afSUI' : ' afSUI → SUI'), digest);
+            awardPoints('earn', 250, 0);
+            fetchWalletBalances();
+        } catch (e) {
+            say(String(e.message || 'failed').slice(0, 160));
+            btn.disabled = false;
+            toast('Aftermath action failed: ' + String(e.message || 'error').slice(0, 120));
+        }
     }
     async function executeNativeStake() {
         const amt = parseFloat(($('earnStakeAmt') || {}).value) || 0;
@@ -3356,7 +3468,9 @@
                 const ep = FUND_EP[fp.kind];
                 if (!ep) throw new Error('Unknown funding action.');
                 status.textContent = 'Building unsigned transaction…';
-                const payload = fp.kind === 'setup' ? { wallet } : { wallet, amountUsdc: fp.amountUsdc };
+                const payload = fp.kind === 'setup' ? { wallet }
+                    : fp.kind === 'plpwithdraw' ? { wallet, shares: fp.shares }
+                    : { wallet, amountUsdc: fp.amountUsdc };
                 const bRes = await fetch('/api/trade/predict/' + ep, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                 });

@@ -539,6 +539,28 @@ export const deepbookPredictAdapter = {
     }
   },
 
+  /** Build unsigned PLP withdraw-request PTB (fills at the periodic flush). */
+  async buildPlpWithdraw({ wallet, shares }) {
+    if (!wallet) throw Object.assign(new Error('INVALID_WALLET'), { code: 'INVALID_WALLET', message: 'wallet is required' });
+    if (!/^\d+$/.test(String(shares)) || BigInt(shares) <= 0n) {
+      throw Object.assign(new Error('INVALID_SHARES'), { code: 'INVALID_SHARES', message: 'shares must be a positive integer (raw PLP units)' });
+    }
+    const c = predictClient();
+    let tx;
+    try {
+      tx = c.tx.withdrawPlp(wallet, BigInt(shares));
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+    try {
+      tx.setSenderIfNotSet(wallet);
+      const bytes = await tx.build({ client: sui.provider.rawClient() });
+      return { txBytes: Buffer.from(bytes).toString('base64'), source: 'DeepBook Predict SDK (tx.withdrawPlp)' };
+    } catch (e) {
+      return { error: String(e?.message || e).slice(0, 300), code: 'BUILD_FAILED' };
+    }
+  },
+
   /** PLP share balance (raw units; scale flagged explicitly, never silently divided). */
   async getPlpBalance(wallet) {
     const c = predictClient();
