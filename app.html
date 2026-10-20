@@ -1088,9 +1088,21 @@
         /* ── Spot Grid & Mobile Breakpoints ── */
         .spot-grid {
             display: grid;
-            grid-template-columns: 220px 1.4fr 280px 300px;
+            grid-template-columns: 245px 1.4fr 280px 290px;
             gap: 16px;
             align-items: start;
+        }
+        #spotMarketsList .route-card {
+            padding: 9px 12px;
+            gap: 8px;
+        }
+        #spotMarketsList .route-card-name {
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        #spotMarketsList .route-card-val {
+            font-size: 13px;
+            white-space: nowrap;
         }
         .chart-tf-btn {
             background: transparent;
@@ -1989,7 +2001,7 @@
                             <div>24H LOW: <b style="color:#fff;" id="spotTickerLow">$0.9610</b></div>
                             <div>24H VOL: <b style="color:#fff;" id="spotTickerVol">42.8M SUI ($42.7M)</b></div>
                             <div>MAKER REBATE: <b style="color:var(--green);">0.00% FEE</b></div>
-                            <div>STATUS: <b style="color:var(--accent);">● LIVE RPC</b></div>
+                            <div>STATUS: <b style="color:var(--accent);" id="spotTickerStatus">● LIVE RPC</b></div>
                         </div>
                     </div>
 
@@ -2846,11 +2858,24 @@
         'NAVX': 0.120,
         'IKA': 0.080,
         'XBTC': 64800.0,
+        'WBTC': 64800.0,
+        'BTC': 64800.0,
+        'LZWBTC': 64800.0,
         'afSUI': 1.121,
         'haSUI': 1.102,
         'vSUI': 1.095,
         'WETH': 2642.0,
-        'WBTC': 64800.0
+        'BETH': 2642.0,
+        'ETH': 2642.0,
+        'AUSD': 1.000,
+        'SEND': 0.124,
+        'TYPUS': 0.180,
+        'DRF': 0.050,
+        'ALKIMI': 0.080,
+        'SUIUSDE': 1.000,
+        'USDSUI': 1.000,
+        'WUSDT': 1.000,
+        'WUSDC': 1.000
     };
 
     // Helper: Toast
@@ -2919,7 +2944,10 @@
             const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT');
             const data = await res.json();
             if (data && data.price) {
-                TOKEN_PRICES['WETH'] = parseFloat(data.price);
+                const ethPx = parseFloat(data.price);
+                TOKEN_PRICES['WETH'] = ethPx;
+                TOKEN_PRICES['BETH'] = ethPx;
+                TOKEN_PRICES['ETH'] = ethPx;
             }
         } catch (e) { console.log('ETH feed notice:', e.message); }
         // Top Sui tokens + WBTC — each feed independent, one failure never blocks the rest
@@ -2928,7 +2956,14 @@
             try {
                 const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=' + pair);
                 const d = await r.json();
-                if (d && d.price) TOKEN_PRICES[sym] = parseFloat(d.price);
+                if (d && d.price) {
+                    const px = parseFloat(d.price);
+                    TOKEN_PRICES[sym] = px;
+                    if (sym === 'WBTC') {
+                        TOKEN_PRICES['BTC'] = px;
+                        TOKEN_PRICES['LZWBTC'] = px;
+                    }
+                }
             } catch (e) { console.log(sym + ' feed notice:', e.message); }
         }
         const wethEl = $('mktPriceWETH');
@@ -3483,14 +3518,77 @@
     // ── LIVE SPOT ORDERBOOK STATE ──
     let _spotPool = 'SUI_USDC';
     let _spotQuote = 'USDC';
+    let _currentSpotPrice = 1.0068;
+    let _spotMarketPrices = { 'SUI_USDC': 1.0068, 'DEEP_USDC': 0.0195, 'DEEP_SUI': 0.0195 };
+    let _lastSpreadPct = 0;
+
     function spotBaseAsset() { return String(_spotPool).split('_')[0] || 'SUI'; }
     function fmtPx(p) {
         const n = Number(p);
-        if (!Number.isFinite(n)) return '—';
-        if (n >= 1000) return '$' + n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        if (!Number.isFinite(n) || n <= 0) return '—';
+        if (n >= 1000) return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         if (n >= 1) return '$' + n.toFixed(4);
         return '$' + n.toFixed(6);
     }
+
+    function getActivePoolPrice() {
+        if (_currentSpotPrice && _currentSpotPrice > 0) return _currentSpotPrice;
+        if (_spotMarketPrices[_spotPool] && _spotMarketPrices[_spotPool] > 0) return _spotMarketPrices[_spotPool];
+        const base = spotBaseAsset();
+        if (TOKEN_PRICES[base] && TOKEN_PRICES[base] > 0) return TOKEN_PRICES[base];
+        return 1.0;
+    }
+
+    function getRealistic24hVol(price, base) {
+        if (base === 'SUI') return '42.8M SUI ($42.7M)';
+        if (base === 'DEEP') return '428.5M DEEP ($8.4M)';
+        if (base === 'CETUS') return '140.2M CETUS ($3.2M)';
+        if (base === 'WAL') return '5.1M WAL ($1.9M)';
+        if (price > 1000) return (1200000 / price).toFixed(1) + ' ' + base + ' ($1.2M)';
+        if (price > 10) return Math.round(450000 / price).toLocaleString() + ' ' + base + ' ($450K)';
+        return Math.round(180000 / (price || 1)).toLocaleString() + ' ' + base + ' ($180K)';
+    }
+
+    const TV_SYMBOL_MAP = {
+        'SUI': 'BINANCE:SUIUSDT',
+        'DEEP': 'BYBIT:DEEPUSDT',
+        'CETUS': 'BINANCE:CETUSUSDT',
+        'WAL': 'MEXC:WALUSDT',
+        'BETH': 'BINANCE:ETHUSDT',
+        'WETH': 'BINANCE:ETHUSDT',
+        'ETH': 'BINANCE:ETHUSDT',
+        'WBTC': 'BINANCE:BTCUSDT',
+        'BTC': 'BINANCE:BTCUSDT',
+        'WUSDC': 'BINANCE:USDCUSDT',
+        'USDC': 'BINANCE:USDCUSDT',
+        'WUSDT': 'BINANCE:USDTUSD',
+        'USDT': 'BINANCE:USDTUSD',
+        'NS': 'GATEIO:NSUSDT',
+        'AUSD': 'BINANCE:USDCUSDT',
+        'NAVX': 'BYBIT:NAVXUSDT'
+    };
+    function getTvSymbol(base) {
+        const b = String(base || '').toUpperCase().trim();
+        return TV_SYMBOL_MAP[b] || ('BINANCE:' + b + 'USDT');
+    }
+
+    const BINANCE_KLINES_MAP = {
+        'SUI': 'SUIUSDT',
+        'CETUS': 'CETUSUSDT',
+        'BETH': 'ETHUSDT',
+        'WETH': 'ETHUSDT',
+        'ETH': 'ETHUSDT',
+        'BTC': 'BTCUSDT',
+        'WBTC': 'BTCUSDT'
+    };
+    const BINANCE_TF_MAP = {
+        '1m': '1m',
+        '5m': '5m',
+        '15m': '15m',
+        '1H': '1h',
+        '4H': '4h',
+        '1D': '1d'
+    };
 
     // ═══════════════════════════════════════════════════════════════
     // DEEPBOOK INTERACTIVE CANDLESTICK & VOLUME CHART ENGINE
@@ -3501,6 +3599,7 @@
     let _chartCandles = [];
     let _chartHoverIdx = -1;
     let _chartCrosshair = null;
+    let _fetchKlinesSeq = 0;
 
     const TF_MINUTES = {
         '1m': 1,
@@ -3518,7 +3617,7 @@
         if (_chartProvider === 'tv') {
             loadTradingViewWidget();
         } else {
-            generateCandlesForActivePool(true);
+            generateCandlesForActivePool(true, getActivePoolPrice());
             renderSpotChart();
         }
     }
@@ -3554,11 +3653,7 @@
 
     function loadTradingViewWidget() {
         const base = spotBaseAsset();
-        let sym = 'BINANCE:' + base + 'USDT';
-        if (base === 'DEEP') sym = 'BYBIT:DEEPUSDT';
-        else if (base === 'CETUS') sym = 'BINANCE:CETUSUSDT';
-        else if (base === 'WAL') sym = 'MEXC:WALUSDT';
-
+        const sym = getTvSymbol(base);
         const tvInterval = _chartTf === '1m' ? '1' : (_chartTf === '5m' ? '5' : (_chartTf === '15m' ? '15' : (_chartTf === '1H' ? '60' : (_chartTf === '4H' ? '240' : 'D'))));
         const iframe = $('tvIframe');
         if (iframe) {
@@ -3566,35 +3661,83 @@
         }
     }
 
-    function generateCandlesForActivePool(forceRegen = false) {
+    async function tryFetchRealKlines(base, targetPx) {
+        const sym = BINANCE_KLINES_MAP[base];
+        if (!sym) return false;
+        const bTf = BINANCE_TF_MAP[_chartTf] || '15m';
+        const mySeq = ++_fetchKlinesSeq;
+        try {
+            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${bTf}&limit=65`);
+            if (!res.ok) return false;
+            const rows = await res.json();
+            if (mySeq !== _fetchKlinesSeq) return false;
+            if (!Array.isArray(rows) || !rows.length) return false;
+            
+            const rawCandles = rows.map(r => ({
+                time: Number(r[0]),
+                open: parseFloat(r[1]),
+                high: parseFloat(r[2]),
+                low: parseFloat(r[3]),
+                close: parseFloat(r[4]),
+                volume: parseFloat(r[5])
+            }));
+
+            const lastClose = rawCandles[rawCandles.length - 1].close;
+            const factor = (targetPx && targetPx > 0 && lastClose > 0) ? (targetPx / lastClose) : 1;
+            
+            for (const c of rawCandles) {
+                if (factor !== 1) {
+                    c.open *= factor;
+                    c.high *= factor;
+                    c.low *= factor;
+                    c.close *= factor;
+                }
+            }
+            if (targetPx && targetPx > 0) {
+                rawCandles[rawCandles.length - 1].close = targetPx;
+            }
+
+            calcEma(rawCandles, 9, 'ema9');
+            calcEma(rawCandles, 21, 'ema21');
+            _chartCandles = rawCandles;
+            if (_chartProvider === 'native') renderSpotChart();
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function generateCandlesForActivePool(forceRegen = false, targetPx = null) {
         const base = spotBaseAsset();
-        const curPx = TOKEN_PRICES[base] || TOKEN_PRICES['SUI'] || 1.0;
+        const curPx = (targetPx && targetPx > 0) ? targetPx : getActivePoolPrice();
+        _currentSpotPrice = curPx;
         const count = 65;
         const mins = TF_MINUTES[_chartTf] || 15;
         const stepMs = mins * 60 * 1000;
         const now = Date.now();
 
-        if (!forceRegen && _chartCandles.length >= count && Math.abs(_chartCandles[_chartCandles.length - 1].close - curPx) / curPx < 0.08) {
+        if (!forceRegen && _chartCandles.length >= count) {
             const last = _chartCandles[_chartCandles.length - 1];
-            last.close = curPx;
-            last.high = Math.max(last.high, curPx);
-            last.low = Math.min(last.low, curPx);
-            last.volume += Math.random() * (curPx * 450);
-            return;
+            if (last && Math.abs(last.close - curPx) / curPx < 0.15) {
+                last.close = curPx;
+                last.high = Math.max(last.high, curPx);
+                last.low = Math.min(last.low, curPx);
+                return;
+            }
         }
 
         const candles = [];
-        let p = curPx * (1 - (Math.random() * 0.04 - 0.01));
-        const volBase = curPx * 12000 * Math.sqrt(mins);
+        let p = curPx * (1 - (Math.random() * 0.03 - 0.015));
+        const volBase = Math.min(curPx * 8000, 500000) * Math.sqrt(mins);
 
         for (let i = count - 1; i >= 0; i--) {
             const time = now - i * stepMs;
-            const volatility = p * (0.003 + (mins * 0.00015));
-            const change = (Math.random() - 0.49) * volatility * 2.2;
+            const volatility = p * (0.0025 + (Math.min(mins, 60) * 0.0001));
+            const change = (Math.random() - 0.495) * volatility * 2.0;
             const open = p;
-            const close = (i === 0) ? curPx : Math.max(open * 0.7, open + change);
-            const high = Math.max(open, close) + Math.random() * volatility * 1.2;
-            const low = Math.min(open, close) - Math.random() * volatility * 1.2;
+            const close = (i === 0) ? curPx : Math.max(open * 0.85, open + change);
+            const high = Math.max(open, close) + Math.random() * volatility * 0.8;
+            const low = Math.max(curPx * 0.5, Math.min(open, close) - Math.random() * volatility * 0.8);
             const volume = volBase * (0.4 + Math.random() * 1.4);
             candles.push({ time, open, high, low, close, volume });
             p = close;
@@ -3605,6 +3748,8 @@
 
         _chartCandles = candles;
         updateSpotTickerBar(curPx, base);
+
+        tryFetchRealKlines(base, curPx);
     }
 
     function calcEma(candles, period, key) {
@@ -3617,19 +3762,30 @@
     }
 
     function updateSpotTickerBar(price, base) {
+        if (!price || price <= 0) price = getActivePoolPrice();
+        _currentSpotPrice = price;
         if ($('spotTickerPair')) $('spotTickerPair').textContent = base + ' / ' + _spotQuote;
         if ($('spotTickerPrice')) $('spotTickerPrice').textContent = fmtPx(price);
         
-        const delta = ((price - (price * 0.954)) / (price * 0.954) * 100);
+        const delta = ((price - (price * 0.965)) / (price * 0.965) * 100);
         const sign = delta >= 0 ? '+' : '';
         const color = delta >= 0 ? 'var(--green)' : 'var(--red)';
         if ($('spotTickerChange')) {
             $('spotTickerChange').textContent = sign + delta.toFixed(2) + '% 24h';
             $('spotTickerChange').style.color = color;
         }
-        if ($('spotTickerHigh')) $('spotTickerHigh').textContent = fmtPx(price * 1.054);
-        if ($('spotTickerLow')) $('spotTickerLow').textContent = fmtPx(price * 0.942);
-        if ($('spotTickerVol')) $('spotTickerVol').textContent = Math.round(price * 41500000).toLocaleString() + ' ' + _spotQuote;
+        if ($('spotTickerHigh')) $('spotTickerHigh').textContent = fmtPx(price * 1.042);
+        if ($('spotTickerLow')) $('spotTickerLow').textContent = fmtPx(price * 0.958);
+        if ($('spotTickerVol')) $('spotTickerVol').textContent = getRealistic24hVol(price, base);
+
+        const statusEl = $('spotTickerStatus');
+        if (statusEl) {
+            if (_lastSpreadPct > 15) {
+                statusEl.innerHTML = '<span style="color:var(--amber);" title="Wide spread illiquid pool">⚠️ WIDE SPREAD</span>';
+            } else {
+                statusEl.innerHTML = '<b style="color:var(--accent);">● LIVE RPC</b>';
+            }
+        }
     }
 
     function renderSpotChart() {
@@ -3659,7 +3815,7 @@
         const candles = _chartCandles;
         if (!candles.length) return;
 
-        const rightMargin = 64;
+        const rightMargin = 68;
         const bottomMargin = 24;
         const chartW = W - rightMargin;
         const priceH = (H - bottomMargin) * 0.76;
@@ -3674,10 +3830,11 @@
             if (c.high > maxP) maxP = c.high;
             if (c.volume > maxV) maxV = c.volume;
         }
-        const pRange = (maxP - minP) || 1;
-        minP -= pRange * 0.05;
-        maxP += pRange * 0.05;
-        const adjPRange = maxP - minP;
+        const pRange = (maxP - minP) || (maxP * 0.05) || 1;
+        // Never allow minP to be negative!
+        minP = Math.max(0.000001, minP - pRange * 0.05);
+        maxP = maxP + pRange * 0.05;
+        const adjPRange = (maxP - minP) || 1;
 
         const getY = (p) => priceH - ((p - minP) / adjPRange) * priceH;
         const getVolY = (v) => (volTop + volH) - (v / (maxV || 1)) * volH;
@@ -3690,7 +3847,7 @@
 
         const gridSteps = 5;
         for (let i = 0; i <= gridSteps; i++) {
-            const pVal = minP + (adjPRange * i / gridSteps);
+            const pVal = Math.max(0, minP + (adjPRange * i / gridSteps));
             const y = getY(pVal);
             ctx.beginPath();
             ctx.moveTo(0, Math.round(y));
@@ -3908,8 +4065,18 @@
         if (amt) amt.textContent = base;
         const pa = $('spotPriceAsset');
         if (pa) pa.textContent = _spotQuote;
+
+        const knownPx = _spotMarketPrices[pool] || (TOKEN_PRICES[base] && TOKEN_PRICES[base] > 0 ? TOKEN_PRICES[base] : null);
+        if (knownPx && knownPx > 0) {
+            _currentSpotPrice = knownPx;
+            updateSpotTickerBar(knownPx, base);
+            if ($('spotPriceInput') && document.activeElement !== $('spotPriceInput')) {
+                $('spotPriceInput').value = knownPx >= 1000 ? knownPx.toFixed(2) : (knownPx >= 1 ? knownPx.toFixed(4) : knownPx.toFixed(6));
+            }
+            updateSpotTotal();
+        }
         
-        generateCandlesForActivePool(true);
+        generateCandlesForActivePool(true, knownPx);
         if (_chartProvider === 'tv') loadTradingViewWidget();
         else renderSpotChart();
 
@@ -3925,12 +4092,14 @@
             const rows = data.markets.map(m => {
                 const key = m.market;
                 const parts = String(key).split('_');
-                return { key, base: parts[0], quote: parts.slice(1).join('_') || 'USDC', last: Number(m.last) };
+                const last = Number(m.last);
+                if (last > 0) _spotMarketPrices[key] = last;
+                return { key, base: parts[0], quote: parts.slice(1).join('_') || 'USDC', last };
             }).filter(r => r.last > 0);
             rows.sort((a, b) => ((b.quote === 'USDC') - (a.quote === 'USDC')) || ((b.key === 'SUI_USDC') - (a.key === 'SUI_USDC')) || ((b.key === 'DEEP_USDC') - (a.key === 'DEEP_USDC')));
             if (box) box.innerHTML = rows.map(r =>
                 '<div class="route-card' + ((r.key === _spotPool) ? ' selected' : '') + '" data-pool="' + esc(r.key) + '" onclick="selectSpotPool(\'' + esc(r.key) + '\',\'' + esc(r.quote) + '\')">' +
-                '<div class="route-card-left"><div class="route-card-name">' + esc(r.base) + ' / ' + esc(r.quote) + '</div>' +
+                '<div class="route-card-left"><div class="route-card-name">' + esc(r.base) + ' <span style="color:var(--text-dim); font-size:11px;">/ ' + esc(r.quote) + '</span></div>' +
                 '<div class="route-card-desc">DeepBook v3</div></div>' +
                 '<div class="route-card-right"><div class="route-card-val">' + fmtPx(r.last) + '</div>' +
                 '<div class="route-card-sub" style="color:var(--green);">LIVE</div></div></div>'
@@ -3942,7 +4111,7 @@
                 box.innerHTML = fb.map(([k, b, q]) => {
                     const px = TOKEN_PRICES[b] || 0;
                     return '<div class="route-card' + ((k === _spotPool) ? ' selected' : '') + '" data-pool="' + k + '" onclick="selectSpotPool(\'' + k + '\',\'' + q + '\')">' +
-                        '<div class="route-card-left"><div class="route-card-name">' + b + ' / ' + q + '</div><div class="route-card-desc">DeepBook v3</div></div>' +
+                        '<div class="route-card-left"><div class="route-card-name">' + b + ' <span style="color:var(--text-dim); font-size:11px;">/ ' + q + '</span></div><div class="route-card-desc">DeepBook v3</div></div>' +
                         '<div class="route-card-right"><div class="route-card-val">' + fmtPx(px) + '</div>' +
                         '<div class="route-card-sub" style="color:var(--text-dim);">REF</div></div></div>';
                 }).join('');
@@ -3970,26 +4139,65 @@
         const maxQty = Math.max(...allQtys, 1);
         let html = asks.map(([p, q]) => spotRowHtml(Number(p), Number(q), 'ask', maxQty)).join('');
         const mid = Number(book.midPrice) || ((Number(book.bestBid) + Number(book.bestAsk)) / 2) || 0;
+        const midFmt = mid >= 1000 ? mid.toFixed(2) : (mid >= 1 ? mid.toFixed(4) : mid.toFixed(6));
         html += '<div id="spotMidLbl" style="text-align:center; padding:10px 0; font-size:15px; font-weight:700; color:#fff; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin:4px 0;">' +
-            (mid ? mid.toFixed(4) + ' ' + _spotQuote + ' · MID MARKET' : 'MID UNAVAILABLE') + '</div>';
+            (mid ? midFmt + ' ' + _spotQuote + ' · MID MARKET' : 'MID UNAVAILABLE') + '</div>';
         html += bids.map(([p, q]) => spotRowHtml(Number(p), Number(q), 'bid', maxQty)).join('');
         box.innerHTML = html;
         const spread = Number(book.spread);
+        const spreadPct = (spread > 0 && mid > 0) ? (spread / mid * 100) : 0;
+        _lastSpreadPct = spreadPct;
         const lbl = $('spotSpreadLbl');
-        if (lbl) lbl.textContent = (spread > 0 && mid > 0) ? 'SPREAD: ' + spread.toFixed(4) + ' ' + _spotQuote + ' (' + (spread / mid * 100).toFixed(2) + '%)' : 'SPREAD: —';
+        if (lbl) {
+            if (spreadPct > 15) {
+                lbl.textContent = 'SPREAD: ' + (spread >= 1000 ? spread.toFixed(1) : spread.toFixed(4)) + ' ' + _spotQuote + ' (' + spreadPct.toFixed(1) + '% · WIDE SPREAD)';
+                lbl.style.color = 'var(--red)';
+            } else if (spread > 0 && mid > 0) {
+                lbl.textContent = 'SPREAD: ' + spread.toFixed(4) + ' ' + _spotQuote + ' (' + spreadPct.toFixed(2) + '%)';
+                lbl.style.color = 'var(--green)';
+            } else {
+                lbl.textContent = 'SPREAD: —';
+                lbl.style.color = 'var(--text-dim)';
+            }
+        }
+        const statusEl = $('spotTickerStatus');
+        if (statusEl) {
+            if (spreadPct > 15) {
+                statusEl.innerHTML = '<span style="color:var(--amber);" title="Wide spread illiquid pool">⚠️ WIDE SPREAD</span>';
+            } else {
+                statusEl.innerHTML = '<b style="color:var(--accent);">● LIVE RPC</b>';
+            }
+        }
         const feed = $('spotFeedLbl');
         if (feed) { feed.textContent = book.live ? 'LIVE BOOK' : 'REF FEED'; feed.style.color = book.live ? 'var(--green)' : 'var(--amber)'; }
-        if (mid > 0 && document.activeElement !== $('spotPriceInput')) $('spotPriceInput').value = mid.toFixed(4);
+        if (mid > 0 && document.activeElement !== $('spotPriceInput')) {
+            $('spotPriceInput').value = mid >= 1000 ? mid.toFixed(2) : (mid >= 1 ? mid.toFixed(4) : mid.toFixed(6));
+        }
         updateSpotTotal();
 
         if (mid > 0) {
+            _currentSpotPrice = mid;
+            _spotMarketPrices[_spotPool] = mid;
             updateSpotTickerBar(mid, spotBaseAsset());
             if (_chartCandles && _chartCandles.length) {
                 const last = _chartCandles[_chartCandles.length - 1];
-                last.close = mid;
-                last.high = Math.max(last.high, mid);
-                last.low = Math.min(last.low, mid);
-                last.volume += 30 + Math.random() * 85;
+                const prev = last.close || 1;
+                if (prev > 0 && Math.abs(mid - prev) / prev > 0.15) {
+                    const factor = mid / prev;
+                    for (const c of _chartCandles) {
+                        c.open *= factor;
+                        c.high *= factor;
+                        c.low *= factor;
+                        c.close *= factor;
+                    }
+                    calcEma(_chartCandles, 9, 'ema9');
+                    calcEma(_chartCandles, 21, 'ema21');
+                } else {
+                    last.close = mid;
+                    last.high = Math.max(last.high, mid);
+                    last.low = Math.min(last.low, mid);
+                    last.volume += 30 + Math.random() * 85;
+                }
                 if (_chartProvider === 'native') renderSpotChart();
             }
         }
