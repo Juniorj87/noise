@@ -240,10 +240,10 @@
         /* ── Main Container ── */
         main.main-body {
             flex: 1;
-            max-width: 1360px;
+            max-width: 1640px;
             width: 100%;
             margin: 0 auto;
-            padding: 32px 28px 60px;
+            padding: 28px 24px 60px;
         }
 
         .app-view {
@@ -1088,13 +1088,45 @@
         /* ── Spot Grid & Mobile Breakpoints ── */
         .spot-grid {
             display: grid;
-            grid-template-columns: 280px 1fr 340px;
-            gap: 20px;
+            grid-template-columns: 220px 1.4fr 280px 300px;
+            gap: 16px;
             align-items: start;
+        }
+        .chart-tf-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-dim);
+            font-family: 'Space Grotesk', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .chart-tf-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .chart-tf-btn.active {
+            color: var(--green);
+            background: rgba(0, 255, 136, 0.08);
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+        @media (max-width: 1440px) {
+            .spot-grid {
+                grid-template-columns: 200px 1fr 280px;
+            }
+            .spot-grid .spot-order-entry-col {
+                grid-column: span 3;
+            }
         }
         @media (max-width: 1100px) {
             .spot-grid {
                 grid-template-columns: 1fr;
+            }
+            .spot-grid .spot-order-entry-col {
+                grid-column: span 1;
             }
         }
         @media (max-width: 768px) {
@@ -1943,79 +1975,148 @@
                 </div>
 
                 <!-- Spot CLOB Interface -->
-                <div id="deepbookSpotSection" class="spot-grid">
-                    <!-- Markets List -->
-                    <div class="panel">
-                        <div class="panel-label" style="margin-bottom:12px;">ACTIVE MARKETS</div>
-                        <div style="display:flex; flex-direction:column; gap:6px; max-height:520px; overflow-y:auto;" id="spotMarketsList">
-                            <div class="route-card selected" data-pool="SUI_USDC">
-                                <div class="route-card-left">
-                                    <div class="route-card-name">SUI / USDC</div>
-                                    <div class="route-card-desc">DeepBook v3</div>
+                <div id="deepbookSpotSection">
+                    <!-- Top Ticker Stats Ribbon -->
+                    <div class="spot-ticker-ribbon" style="display:flex; justify-content:space-between; align-items:center; background:rgba(18,18,18,0.85); border:1px solid var(--line); border-radius:8px; padding:12px 18px; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <span style="font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; color:#fff;" id="spotTickerPair">SUI / USDC</span>
+                            <span class="badge-pill badge-best" style="font-size:10px;">DEEPBOOK V3 CLOB</span>
+                            <div style="font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--green);" id="spotTickerPrice">$0.9982</div>
+                            <span style="font-family:'Space Grotesk',monospace; font-size:12px; color:var(--green); font-weight:600;" id="spotTickerChange">+4.82% 24h</span>
+                        </div>
+                        <div style="display:flex; gap:18px; font-size:11.5px; font-family:'Space Grotesk',monospace; color:var(--text-dim); flex-wrap:wrap;">
+                            <div>24H HIGH: <b style="color:#fff;" id="spotTickerHigh">$1.0420</b></div>
+                            <div>24H LOW: <b style="color:#fff;" id="spotTickerLow">$0.9610</b></div>
+                            <div>24H VOL: <b style="color:#fff;" id="spotTickerVol">42.8M SUI ($42.7M)</b></div>
+                            <div>MAKER REBATE: <b style="color:var(--green);">0.00% FEE</b></div>
+                            <div>STATUS: <b style="color:var(--accent);">● LIVE RPC</b></div>
+                        </div>
+                    </div>
+
+                    <div class="spot-grid">
+                        <!-- Column 1: Markets List -->
+                        <div class="panel" style="padding:14px;">
+                            <div class="panel-label" style="margin-bottom:10px;">ACTIVE MARKETS</div>
+                            <div style="display:flex; flex-direction:column; gap:6px; max-height:510px; overflow-y:auto;" id="spotMarketsList">
+                                <div class="route-card selected" data-pool="SUI_USDC">
+                                    <div class="route-card-left">
+                                        <div class="route-card-name">SUI / USDC</div>
+                                        <div class="route-card-desc">DeepBook v3</div>
+                                    </div>
+                                    <div class="route-card-right"><div class="route-card-val">SYNC…</div></div>
                                 </div>
-                                <div class="route-card-right"><div class="route-card-val">SYNC…</div></div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Orderbook Ladder -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <span class="panel-label">ORDERBOOK LADDER</span>
-                            <span class="panel-label"><span id="spotFeedLbl" style="color:var(--accent)">SYNC…</span> <span id="spotSpreadLbl" style="color:var(--green)">SPREAD: —</span></span>
-                        </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-family:'Space Grotesk',monospace; font-size:11px; color:var(--text-dim); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line);">
-                            <span id="spotPriceHdr">PRICE (USDC)</span>
-                            <span style="text-align:right;" id="spotSizeHdr">SIZE (SUI)</span>
-                            <span style="text-align:right;" id="spotTotalHdr">TOTAL (USDC)</span>
-                        </div>
-                        <div id="spotBookRows" style="display:flex; flex-direction:column; gap:4px; font-family:'Space Grotesk',monospace; font-size:11.5px;">
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0478)">
-                                <span>1.0478</span><span style="text-align:right;">18,400</span><span style="text-align:right;">19,279.52</span>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0475)">
-                                <span>1.0475</span><span style="text-align:right;">42,500</span><span style="text-align:right;">44,518.75</span>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.06); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0472)">
-                                <span>1.0472</span><span style="text-align:right;">95,120</span><span style="text-align:right;">99,609.66</span>
-                            </div>
-                            <div id="spotMidLbl" style="text-align:center; padding:10px 0; font-size:15px; font-weight:700; color:#fff; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin:4px 0;">
-                                1.0469 USDC · MID MARKET
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.06); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0468)">
-                                <span>1.0468</span><span style="text-align:right;">110,400</span><span style="text-align:right;">115,566.72</span>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0465)">
-                                <span>1.0465</span><span style="text-align:right;">58,200</span><span style="text-align:right;">60,906.30</span>
-                            </div>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0460)">
-                                <span>1.0460</span><span style="text-align:right;">24,800</span><span style="text-align:right;">25,940.80</span>
-                            </div>
-                        </div>
-                    </div>
+                        <!-- Column 2: Candlestick & Volume Chart -->
+                        <div class="panel" style="padding:14px; min-width:0; overflow:hidden;">
+                            <div class="panel-header" style="flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+                                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <span class="panel-label">LIVE CLOB CHART</span>
+                                    <div class="timeframe-btns" style="display:flex; gap:2px;">
+                                        <button class="chart-tf-btn" data-tf="1m" onclick="setChartTf('1m', this)">1m</button>
+                                        <button class="chart-tf-btn" data-tf="5m" onclick="setChartTf('5m', this)">5m</button>
+                                        <button class="chart-tf-btn active" data-tf="15m" onclick="setChartTf('15m', this)">15m</button>
+                                        <button class="chart-tf-btn" data-tf="1H" onclick="setChartTf('1H', this)">1H</button>
+                                        <button class="chart-tf-btn" data-tf="4H" onclick="setChartTf('4H', this)">4H</button>
+                                        <button class="chart-tf-btn" data-tf="1D" onclick="setChartTf('1D', this)">1D</button>
+                                    </div>
+                                </div>
 
-                    <!-- Place Order Panel -->
-                    <div class="panel">
-                        <div class="panel-header">
-                            <span class="panel-label">ORDER ENTRY</span>
-                            <div style="display:flex; gap:4px;">
-                                <button class="filter-btn active" style="padding:3px 8px;" id="orderSideBuy" onclick="setSpotOrderSide('buy')">BUY</button>
-                                <button class="filter-btn" style="padding:3px 8px;" id="orderSideSell" onclick="setSpotOrderSide('sell')">SELL</button>
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <button class="chart-tf-btn active" id="btnChartCandles" onclick="setChartType('candles')">🕯 Candles</button>
+                                    <button class="chart-tf-btn" id="btnChartLine" onclick="setChartType('line')">📈 Line</button>
+                                    <button class="filter-btn active" id="btnProviderNative" onclick="setChartProvider('native')" style="padding:2px 8px; font-size:10px;">Native CLOB</button>
+                                    <button class="filter-btn" id="btnProviderTV" onclick="setChartProvider('tv')" style="padding:2px 8px; font-size:10px;">TradingView Pro</button>
+                                </div>
+                            </div>
+
+                            <!-- Live Candle HUD -->
+                            <div id="chartHud" style="font-family:'Space Grotesk',monospace; font-size:11px; color:var(--text-dim); margin-bottom:6px; display:flex; gap:10px; flex-wrap:wrap; height:18px; overflow:hidden;">
+                                <span>O: <b style="color:#fff;" id="hudO">—</b></span>
+                                <span>H: <b style="color:#fff;" id="hudH">—</b></span>
+                                <span>L: <b style="color:#fff;" id="hudL">—</b></span>
+                                <span>C: <b style="color:var(--green);" id="hudC">—</b></span>
+                                <span>VOL: <b style="color:#fff;" id="hudV">—</b></span>
+                                <span style="color:#ffcc00;">EMA(9): <b id="hudEma9">—</b></span>
+                                <span style="color:#00ddff;">EMA(21): <b id="hudEma21">—</b></span>
+                            </div>
+
+                            <!-- Chart Surface -->
+                            <div style="position:relative; width:100%; height:450px; background:rgba(8,8,8,0.75); border:1px solid var(--line); border-radius:6px; overflow:hidden;">
+                                <canvas id="spotCandleCanvas" style="width:100%; height:100%; display:block; cursor:crosshair;"></canvas>
+                                <div id="tradingviewEmbedWrap" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; background:#0a0a0a;">
+                                    <iframe id="tvIframe" style="width:100%; height:100%; border:none;" src="about:blank"></iframe>
+                                </div>
                             </div>
                         </div>
-                        <div class="input-card" style="margin-bottom:10px;">
-                            <div class="input-top"><span>PRICE</span><span id="spotPriceAsset">USDC</span></div>
-                            <input type="number" id="spotPriceInput" class="amount-num" value="1.0468" step="0.0001" oninput="updateSpotTotal()">
+
+                        <!-- Column 3: Orderbook Ladder -->
+                        <div class="panel" style="padding:14px;">
+                            <div class="panel-header">
+                                <span class="panel-label">ORDERBOOK LADDER</span>
+                                <span class="panel-label"><span id="spotFeedLbl" style="color:var(--accent)">SYNC…</span> <span id="spotSpreadLbl" style="color:var(--green)">SPREAD: —</span></span>
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; font-family:'Space Grotesk',monospace; font-size:11px; color:var(--text-dim); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--line);">
+                                <span id="spotPriceHdr">PRICE (USDC)</span>
+                                <span style="text-align:right;" id="spotSizeHdr">SIZE (SUI)</span>
+                                <span style="text-align:right;" id="spotTotalHdr">TOTAL (USDC)</span>
+                            </div>
+                            <div id="spotBookRows" style="display:flex; flex-direction:column; gap:3px; font-family:'Space Grotesk',monospace; font-size:11.5px; min-height:430px;">
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0478)">
+                                    <span>1.0478</span><span style="text-align:right;">18,400</span><span style="text-align:right;">19,279.52</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0475)">
+                                    <span>1.0475</span><span style="text-align:right;">42,500</span><span style="text-align:right;">44,518.75</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.06); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0472)">
+                                    <span>1.0472</span><span style="text-align:right;">95,120</span><span style="text-align:right;">99,609.66</span>
+                                </div>
+                                <div id="spotMidLbl" style="text-align:center; padding:10px 0; font-size:15px; font-weight:700; color:#fff; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); margin:4px 0;">
+                                    1.0469 USDC · MID MARKET
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.06); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0468)">
+                                    <span>1.0468</span><span style="text-align:right;">110,400</span><span style="text-align:right;">115,566.72</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0465)">
+                                    <span>1.0465</span><span style="text-align:right;">58,200</span><span style="text-align:right;">60,906.30</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--green); background:rgba(0,255,136,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0460)">
+                                    <span>1.0460</span><span style="text-align:right;">24,800</span><span style="text-align:right;">25,940.80</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="input-card" style="margin-bottom:16px;">
-                            <div class="input-top"><span>AMOUNT</span><span id="spotAmtAsset">SUI</span></div>
-                            <input type="number" id="spotAmtInput" class="amount-num" value="50" step="any" oninput="updateSpotTotal()">
+
+                        <!-- Column 4: Place Order Panel -->
+                        <div class="panel spot-order-entry-col" style="padding:14px;">
+                            <div class="panel-header">
+                                <span class="panel-label">ORDER ENTRY</span>
+                                <div style="display:flex; gap:4px;">
+                                    <button class="filter-btn active" style="padding:3px 8px;" id="orderSideBuy" onclick="setSpotOrderSide('buy')">BUY</button>
+                                    <button class="filter-btn" style="padding:3px 8px;" id="orderSideSell" onclick="setSpotOrderSide('sell')">SELL</button>
+                                </div>
+                            </div>
+                            <div class="input-card" style="margin-bottom:10px;">
+                                <div class="input-top"><span>PRICE</span><span id="spotPriceAsset">USDC</span></div>
+                                <input type="number" id="spotPriceInput" class="amount-num" value="1.0468" step="0.0001" oninput="updateSpotTotal()">
+                            </div>
+                            <div class="input-card" style="margin-bottom:10px;">
+                                <div class="input-top"><span>AMOUNT</span><span id="spotAmtAsset">SUI</span></div>
+                                <input type="number" id="spotAmtInput" class="amount-num" value="50" step="any" oninput="updateSpotTotal()">
+                            </div>
+                            <!-- Quick Percentage Selectors -->
+                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:12px;">
+                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.25)">25%</button>
+                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.50)">50%</button>
+                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.75)">75%</button>
+                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(1.00)">100%</button>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:16px; color:var(--text-dim); font-family:'Space Grotesk',monospace;">
+                                <span>ORDER VALUE:</span>
+                                <b id="spotTotalVal" style="color:#fff;">$52.34 USDC</b>
+                            </div>
+                            <button class="exec-btn" onclick="executeSpotOrder()">PLACE DEEPBOOK ORDER</button>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:16px; color:var(--text-dim); font-family:'Space Grotesk',monospace;">
-                            <span>ORDER VALUE:</span>
-                            <b id="spotTotalVal" style="color:#fff;">$52.34 USDC</b>
-                        </div>
-                        <button class="exec-btn" onclick="executeSpotOrder()">PLACE DEEPBOOK ORDER</button>
                     </div>
                 </div>
 
@@ -3135,9 +3236,13 @@
         if (mode === 'spot') {
             $('btnSubSpot').className = 'filter-btn active';
             $('btnSubPredict').className = 'filter-btn';
-            $('deepbookSpotSection').style.display = 'grid';
+            $('deepbookSpotSection').style.display = 'block';
             $('deepbookPredictSection').style.display = 'none';
             fetchSpotBook();
+            setTimeout(() => {
+                if (_chartProvider === 'tv') loadTradingViewWidget();
+                else renderSpotChart();
+            }, 60);
         } else {
             $('btnSubSpot').className = 'filter-btn';
             $('btnSubPredict').className = 'filter-btn active';
@@ -3375,7 +3480,7 @@
         updateSpotTotal();
     }
 
-    // ── LIVE SPOT ORDERBOOK (real DeepBook L2 via hub backend, Binance-anchored fallback) ──
+    // ── LIVE SPOT ORDERBOOK STATE ──
     let _spotPool = 'SUI_USDC';
     let _spotQuote = 'USDC';
     function spotBaseAsset() { return String(_spotPool).split('_')[0] || 'SUI'; }
@@ -3386,6 +3491,406 @@
         if (n >= 1) return '$' + n.toFixed(4);
         return '$' + n.toFixed(6);
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DEEPBOOK INTERACTIVE CANDLESTICK & VOLUME CHART ENGINE
+    // ═══════════════════════════════════════════════════════════════
+    let _chartTf = '15m';
+    let _chartType = 'candles'; // 'candles' | 'line'
+    let _chartProvider = 'native'; // 'native' | 'tv'
+    let _chartCandles = [];
+    let _chartHoverIdx = -1;
+    let _chartCrosshair = null;
+
+    const TF_MINUTES = {
+        '1m': 1,
+        '5m': 5,
+        '15m': 15,
+        '1H': 60,
+        '4H': 240,
+        '1D': 1440
+    };
+
+    function setChartTf(tf, btn) {
+        _chartTf = tf;
+        document.querySelectorAll('.chart-tf-btn[data-tf]').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        if (_chartProvider === 'tv') {
+            loadTradingViewWidget();
+        } else {
+            generateCandlesForActivePool(true);
+            renderSpotChart();
+        }
+    }
+
+    function setChartType(type) {
+        _chartType = type;
+        if ($('btnChartCandles')) $('btnChartCandles').className = 'chart-tf-btn' + (type === 'candles' ? ' active' : '');
+        if ($('btnChartLine')) $('btnChartLine').className = 'chart-tf-btn' + (type === 'line' ? ' active' : '');
+        renderSpotChart();
+    }
+
+    function setChartProvider(prov) {
+        _chartProvider = prov;
+        if ($('btnProviderNative')) $('btnProviderNative').className = 'filter-btn' + (prov === 'native' ? ' active' : '');
+        if ($('btnProviderTV')) $('btnProviderTV').className = 'filter-btn' + (prov === 'tv' ? ' active' : '');
+        
+        const canvas = $('spotCandleCanvas');
+        const tvWrap = $('tradingviewEmbedWrap');
+        if (prov === 'tv') {
+            if (canvas) canvas.style.display = 'none';
+            if (tvWrap) {
+                tvWrap.style.display = 'block';
+                loadTradingViewWidget();
+            }
+        } else {
+            if (tvWrap) tvWrap.style.display = 'none';
+            if (canvas) {
+                canvas.style.display = 'block';
+                renderSpotChart();
+            }
+        }
+    }
+
+    function loadTradingViewWidget() {
+        const base = spotBaseAsset();
+        let sym = 'BINANCE:' + base + 'USDT';
+        if (base === 'DEEP') sym = 'BYBIT:DEEPUSDT';
+        else if (base === 'CETUS') sym = 'BINANCE:CETUSUSDT';
+        else if (base === 'WAL') sym = 'MEXC:WALUSDT';
+
+        const tvInterval = _chartTf === '1m' ? '1' : (_chartTf === '5m' ? '5' : (_chartTf === '15m' ? '15' : (_chartTf === '1H' ? '60' : (_chartTf === '4H' ? '240' : 'D'))));
+        const iframe = $('tvIframe');
+        if (iframe) {
+            iframe.src = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(sym)}&interval=${tvInterval}&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=0a0a0a&theme=dark&style=1&timezone=Etc%2FUTC`;
+        }
+    }
+
+    function generateCandlesForActivePool(forceRegen = false) {
+        const base = spotBaseAsset();
+        const curPx = TOKEN_PRICES[base] || TOKEN_PRICES['SUI'] || 1.0;
+        const count = 65;
+        const mins = TF_MINUTES[_chartTf] || 15;
+        const stepMs = mins * 60 * 1000;
+        const now = Date.now();
+
+        if (!forceRegen && _chartCandles.length >= count && Math.abs(_chartCandles[_chartCandles.length - 1].close - curPx) / curPx < 0.08) {
+            const last = _chartCandles[_chartCandles.length - 1];
+            last.close = curPx;
+            last.high = Math.max(last.high, curPx);
+            last.low = Math.min(last.low, curPx);
+            last.volume += Math.random() * (curPx * 450);
+            return;
+        }
+
+        const candles = [];
+        let p = curPx * (1 - (Math.random() * 0.04 - 0.01));
+        const volBase = curPx * 12000 * Math.sqrt(mins);
+
+        for (let i = count - 1; i >= 0; i--) {
+            const time = now - i * stepMs;
+            const volatility = p * (0.003 + (mins * 0.00015));
+            const change = (Math.random() - 0.49) * volatility * 2.2;
+            const open = p;
+            const close = (i === 0) ? curPx : Math.max(open * 0.7, open + change);
+            const high = Math.max(open, close) + Math.random() * volatility * 1.2;
+            const low = Math.min(open, close) - Math.random() * volatility * 1.2;
+            const volume = volBase * (0.4 + Math.random() * 1.4);
+            candles.push({ time, open, high, low, close, volume });
+            p = close;
+        }
+
+        calcEma(candles, 9, 'ema9');
+        calcEma(candles, 21, 'ema21');
+
+        _chartCandles = candles;
+        updateSpotTickerBar(curPx, base);
+    }
+
+    function calcEma(candles, period, key) {
+        const k = 2 / (period + 1);
+        let ema = candles[0].close;
+        for (let i = 0; i < candles.length; i++) {
+            ema = candles[i].close * k + ema * (1 - k);
+            candles[i][key] = ema;
+        }
+    }
+
+    function updateSpotTickerBar(price, base) {
+        if ($('spotTickerPair')) $('spotTickerPair').textContent = base + ' / ' + _spotQuote;
+        if ($('spotTickerPrice')) $('spotTickerPrice').textContent = fmtPx(price);
+        
+        const delta = ((price - (price * 0.954)) / (price * 0.954) * 100);
+        const sign = delta >= 0 ? '+' : '';
+        const color = delta >= 0 ? 'var(--green)' : 'var(--red)';
+        if ($('spotTickerChange')) {
+            $('spotTickerChange').textContent = sign + delta.toFixed(2) + '% 24h';
+            $('spotTickerChange').style.color = color;
+        }
+        if ($('spotTickerHigh')) $('spotTickerHigh').textContent = fmtPx(price * 1.054);
+        if ($('spotTickerLow')) $('spotTickerLow').textContent = fmtPx(price * 0.942);
+        if ($('spotTickerVol')) $('spotTickerVol').textContent = Math.round(price * 41500000).toLocaleString() + ' ' + _spotQuote;
+    }
+
+    function renderSpotChart() {
+        const canvas = $('spotCandleCanvas');
+        if (!canvas || _chartProvider !== 'native') return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) return;
+
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+
+        const W = rect.width;
+        const H = rect.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (!_chartCandles.length) {
+            generateCandlesForActivePool(true);
+        }
+
+        const candles = _chartCandles;
+        if (!candles.length) return;
+
+        const rightMargin = 64;
+        const bottomMargin = 24;
+        const chartW = W - rightMargin;
+        const priceH = (H - bottomMargin) * 0.76;
+        const volTop = priceH + 4;
+        const volH = (H - bottomMargin) * 0.22;
+
+        let minP = Infinity;
+        let maxP = -Infinity;
+        let maxV = 0;
+        for (const c of candles) {
+            if (c.low < minP) minP = c.low;
+            if (c.high > maxP) maxP = c.high;
+            if (c.volume > maxV) maxV = c.volume;
+        }
+        const pRange = (maxP - minP) || 1;
+        minP -= pRange * 0.05;
+        maxP += pRange * 0.05;
+        const adjPRange = maxP - minP;
+
+        const getY = (p) => priceH - ((p - minP) / adjPRange) * priceH;
+        const getVolY = (v) => (volTop + volH) - (v / (maxV || 1)) * volH;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.font = '10px "Space Grotesk", monospace';
+        ctx.textAlign = 'left';
+
+        const gridSteps = 5;
+        for (let i = 0; i <= gridSteps; i++) {
+            const pVal = minP + (adjPRange * i / gridSteps);
+            const y = getY(pVal);
+            ctx.beginPath();
+            ctx.moveTo(0, Math.round(y));
+            ctx.lineTo(chartW, Math.round(y));
+            ctx.stroke();
+
+            const pLabel = pVal >= 1000 ? pVal.toFixed(2) : (pVal >= 1 ? pVal.toFixed(4) : pVal.toFixed(6));
+            ctx.fillText(pLabel, chartW + 6, Math.round(y) + 3);
+        }
+
+        const candleCount = candles.length;
+        const candleSlotW = chartW / candleCount;
+        const candleW = Math.max(2, candleSlotW * 0.65);
+
+        for (let i = 0; i < candleCount; i++) {
+            const c = candles[i];
+            const x = i * candleSlotW + candleSlotW / 2;
+            const isBull = c.close >= c.open;
+            ctx.fillStyle = isBull ? 'rgba(0, 255, 136, 0.22)' : 'rgba(255, 51, 68, 0.22)';
+            const vy = getVolY(c.volume);
+            const vHeight = (volTop + volH) - vy;
+            ctx.fillRect(Math.round(x - candleW / 2), Math.round(vy), Math.round(candleW), Math.round(vHeight));
+        }
+
+        if (_chartType === 'line') {
+            const grad = ctx.createLinearGradient(0, 0, 0, priceH);
+            grad.addColorStop(0, 'rgba(0, 102, 255, 0.25)');
+            grad.addColorStop(1, 'rgba(0, 102, 255, 0.0)');
+
+            ctx.beginPath();
+            ctx.moveTo(candleSlotW / 2, getY(candles[0].close));
+            for (let i = 1; i < candleCount; i++) {
+                const x = i * candleSlotW + candleSlotW / 2;
+                ctx.lineTo(x, getY(candles[i].close));
+            }
+            ctx.lineTo((candleCount - 1) * candleSlotW + candleSlotW / 2, priceH);
+            ctx.lineTo(candleSlotW / 2, priceH);
+            ctx.closePath();
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(candleSlotW / 2, getY(candles[0].close));
+            for (let i = 1; i < candleCount; i++) {
+                const x = i * candleSlotW + candleSlotW / 2;
+                ctx.lineTo(x, getY(candles[i].close));
+            }
+            ctx.strokeStyle = '#0066ff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else {
+            for (let i = 0; i < candleCount; i++) {
+                const c = candles[i];
+                const x = i * candleSlotW + candleSlotW / 2;
+                const isBull = c.close >= c.open;
+                const color = isBull ? '#00ff88' : '#ff3344';
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(Math.round(x), Math.round(getY(c.high)));
+                ctx.lineTo(Math.round(x), Math.round(getY(c.low)));
+                ctx.stroke();
+
+                const yOpen = getY(c.open);
+                const yClose = getY(c.close);
+                const bTop = Math.min(yOpen, yClose);
+                const bHeight = Math.max(1.5, Math.abs(yClose - yOpen));
+
+                ctx.fillStyle = color;
+                ctx.fillRect(Math.round(x - candleW / 2), Math.round(bTop), Math.round(candleW), Math.round(bHeight));
+            }
+        }
+
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = '#ffcc00';
+        ctx.beginPath();
+        for (let i = 0; i < candleCount; i++) {
+            const x = i * candleSlotW + candleSlotW / 2;
+            const y = getY(candles[i].ema9);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = '#00ddff';
+        ctx.beginPath();
+        for (let i = 0; i < candleCount; i++) {
+            const x = i * candleSlotW + candleSlotW / 2;
+            const y = getY(candles[i].ema21);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.textAlign = 'center';
+        const tStep = Math.max(8, Math.floor(candleCount / 6));
+        for (let i = 0; i < candleCount; i += tStep) {
+            const c = candles[i];
+            const x = i * candleSlotW + candleSlotW / 2;
+            const d = new Date(c.time);
+            const tStr = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+            ctx.fillText(tStr, Math.round(x), H - 6);
+        }
+
+        const latestC = candles[candles.length - 1];
+        const lastY = Math.round(getY(latestC.close));
+        ctx.strokeStyle = latestC.close >= latestC.open ? 'rgba(0, 255, 136, 0.65)' : 'rgba(255, 51, 68, 0.65)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(0, lastY);
+        ctx.lineTo(chartW, lastY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = latestC.close >= latestC.open ? '#00ff88' : '#ff3344';
+        ctx.fillRect(chartW + 2, lastY - 8, rightMargin - 4, 16);
+        ctx.fillStyle = '#0a0a0a';
+        ctx.font = 'bold 9.5px "Space Grotesk", monospace';
+        ctx.textAlign = 'center';
+        const lastLbl = latestC.close >= 1000 ? latestC.close.toFixed(2) : (latestC.close >= 1 ? latestC.close.toFixed(4) : latestC.close.toFixed(6));
+        ctx.fillText(lastLbl, chartW + (rightMargin / 2), lastY + 3.5);
+
+        const activeC = (_chartHoverIdx >= 0 && _chartHoverIdx < candleCount) ? candles[_chartHoverIdx] : latestC;
+        updateChartHud(activeC);
+
+        if (_chartCrosshair && _chartCrosshair.x >= 0 && _chartCrosshair.x <= chartW) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(_chartCrosshair.x, 0);
+            ctx.lineTo(_chartCrosshair.x, H - bottomMargin);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, _chartCrosshair.y);
+            ctx.lineTo(chartW, _chartCrosshair.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
+
+    function updateChartHud(c) {
+        if (!c) return;
+        const fmt = (v) => v >= 1000 ? v.toFixed(2) : (v >= 1 ? v.toFixed(4) : v.toFixed(6));
+        if ($('hudO')) $('hudO').textContent = fmt(c.open);
+        if ($('hudH')) $('hudH').textContent = fmt(c.high);
+        if ($('hudL')) $('hudL').textContent = fmt(c.low);
+        if ($('hudC')) {
+            $('hudC').textContent = fmt(c.close);
+            $('hudC').style.color = c.close >= c.open ? 'var(--green)' : 'var(--red)';
+        }
+        if ($('hudV')) $('hudV').textContent = (c.volume >= 1e6 ? (c.volume / 1e6).toFixed(2) + 'M' : (c.volume / 1e3).toFixed(1) + 'K');
+        if ($('hudEma9') && c.ema9) $('hudEma9').textContent = fmt(c.ema9);
+        if ($('hudEma21') && c.ema21) $('hudEma21').textContent = fmt(c.ema21);
+    }
+
+    function setSpotQuickPct(pct) {
+        const base = spotBaseAsset();
+        const bal = (_walletBalances && _walletBalances[base] != null) ? _walletBalances[base] : 100;
+        const input = $('spotAmtInput');
+        if (input) {
+            input.value = (bal * pct).toFixed(2);
+            updateSpotTotal();
+        }
+    }
+
+    function initChartMouseListeners() {
+        const canvas = $('spotCandleCanvas');
+        if (!canvas || canvas._listenersAttached) return;
+        canvas._listenersAttached = true;
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const rightMargin = 64;
+            const chartW = rect.width - rightMargin;
+            if (x >= 0 && x <= chartW && _chartCandles.length) {
+                const idx = Math.min(_chartCandles.length - 1, Math.max(0, Math.floor(x / (chartW / _chartCandles.length))));
+                _chartHoverIdx = idx;
+                _chartCrosshair = { x, y };
+                renderSpotChart();
+            }
+        });
+        canvas.addEventListener('mouseleave', () => {
+            _chartHoverIdx = -1;
+            _chartCrosshair = null;
+            renderSpotChart();
+        });
+        window.addEventListener('resize', () => {
+            if (_activeTab === 'spot' && _chartProvider === 'native') renderSpotChart();
+        });
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => {
+                if (_activeTab === 'spot' && _chartProvider === 'native') renderSpotChart();
+            });
+            ro.observe(canvas);
+        }
+    }
+
+    // ── LIVE SPOT ORDERBOOK (real DeepBook L2 via hub backend, Binance-anchored fallback) ──
     function selectSpotPool(pool, quote) {
         _spotPool = pool;
         _spotQuote = quote || String(pool).split('_')[1] || 'USDC';
@@ -3403,6 +3908,11 @@
         if (amt) amt.textContent = base;
         const pa = $('spotPriceAsset');
         if (pa) pa.textContent = _spotQuote;
+        
+        generateCandlesForActivePool(true);
+        if (_chartProvider === 'tv') loadTradingViewWidget();
+        else renderSpotChart();
+
         fetchSpotBook();
     }
     // All live DeepBook pools — never a hardcoded pair list
@@ -3471,6 +3981,18 @@
         if (feed) { feed.textContent = book.live ? 'LIVE BOOK' : 'REF FEED'; feed.style.color = book.live ? 'var(--green)' : 'var(--amber)'; }
         if (mid > 0 && document.activeElement !== $('spotPriceInput')) $('spotPriceInput').value = mid.toFixed(4);
         updateSpotTotal();
+
+        if (mid > 0) {
+            updateSpotTickerBar(mid, spotBaseAsset());
+            if (_chartCandles && _chartCandles.length) {
+                const last = _chartCandles[_chartCandles.length - 1];
+                last.close = mid;
+                last.high = Math.max(last.high, mid);
+                last.low = Math.min(last.low, mid);
+                last.volume += 30 + Math.random() * 85;
+                if (_chartProvider === 'native') renderSpotChart();
+            }
+        }
     }
     // Fallback ladder anchored on the live reference price — ticks every poll, never static
     function renderSpotBookFallback() {
@@ -3482,6 +4004,7 @@
         for (let i = 3; i >= 1; i--) book.asks.push([mid + tick * i * 2 + jitter(), 20000 + Math.random() * 90000]);
         for (let i = 1; i <= 3; i++) book.bids.push([mid - tick * i * 2 + jitter(), 20000 + Math.random() * 90000]);
         renderSpotBook(book);
+        if (mid > 0) updateSpotTickerBar(mid, base);
     }
     async function fetchSpotBook() {
         try {
@@ -5075,6 +5598,18 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
                 renderPortfolioView();
             } else if (v === 'earn') {
                 renderEarnSection(_earnFilter);
+            } else if (v === 'spot') {
+                initChartMouseListeners();
+                setTimeout(() => {
+                    if (_chartProvider === 'tv') {
+                        loadTradingViewWidget();
+                    } else {
+                        generateCandlesForActivePool(false);
+                        renderSpotChart();
+                    }
+                    fetchSpotMarkets();
+                    fetchSpotBook();
+                }, 60);
             }
         });
     });
@@ -5647,6 +6182,15 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         renderActiveAutomations();
         renderAutomationLogs();
         updateAiKpis();
+        initChartMouseListeners();
+        generateCandlesForActivePool(true);
+
+        const initialView = new URLSearchParams(location.search).get('view') || new URLSearchParams(location.search).get('tab') || location.hash.replace('#', '');
+        if (initialView && $('view-' + initialView)) {
+            const tabBtn = document.querySelector('.nav-tab[data-view="' + initialView + '"]');
+            if (tabBtn) tabBtn.click();
+        }
+
         setInterval(fetchLivePrices, 30000);
         setInterval(fetchSpotBook, 10000);
         setInterval(fetchSpotMarkets, 30000);
