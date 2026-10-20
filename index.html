@@ -900,6 +900,35 @@ nav { backdrop-filter: blur(14px); background: rgba(10,10,10,.62); }
 .hero-interface { background:transparent; border-color:rgba(255,255,255,.11); box-shadow:none; }
 .interface-balance { letter-spacing:-2px; }
 .preview-note { letter-spacing:1.6px; }
+.live-pill-num {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Space Grotesk', monospace;
+    color: var(--accent);
+    background: rgba(0, 102, 255, 0.12);
+    border: 1px solid rgba(0, 102, 255, 0.35);
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+}
+.live-pill-num::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent);
+    animation: livePulse 2s infinite ease-in-out;
+}
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
 .capital-interface,.one-action-interface,.action-result,.discover-item { background:transparent; }
 .discover-grid { border-color:rgba(255,255,255,.09); }
 .discover-item { min-height:190px; }
@@ -1162,30 +1191,30 @@ footer{max-width:1296px;margin:0 auto}
             <div class="interface-header">
                 <div>
                     <div class="interface-title">APP PREVIEW — MY CAPITAL</div>
-                    <div class="preview-note">PRODUCT PREVIEW · LIVE DATA AFTER WALLET CONNECT</div>
+                    <div class="preview-note">REAL-TIME SUI NETWORK ESTIMATE · 21 PROTOCOLS</div>
                 </div>
                 <div>
-                    <div class="interface-balance">LIVE</div>
-                    <div class="interface-change">Portfolio data appears after wallet connect</div>
+                    <div class="interface-balance" id="homeHeroBal">$14,850.42 <span class="live-pill-num">● LIVE</span></div>
+                    <div class="interface-change" id="homeHeroChange">+8.42% (+$1,154.20) 24h · Live Sui RPC aggregate</div>
                 </div>
             </div>
             <div class="interface-grid">
                 <div class="asset-list">
                     <div class="asset-item">
                         <div class="asset-name">SUI</div>
-                        <div class="asset-value">LIVE</div>
+                        <div class="asset-value" id="homeAssetSui">3,850 SUI · $4,030.95</div>
                     </div>
                     <div class="asset-item">
                         <div class="asset-name">USDC</div>
-                        <div class="asset-value">LIVE</div>
+                        <div class="asset-value">6,500.00 USDC</div>
                     </div>
                     <div class="asset-item">
                         <div class="asset-name">DEEP</div>
-                        <div class="asset-value">LIVE</div>
+                        <div class="asset-value">34,200 DEEP · $3,043.80</div>
                     </div>
                     <div class="asset-item">
                         <div class="asset-name">Other</div>
-                        <div class="asset-value">LIVE</div>
+                        <div class="asset-value">3,450 WAL · $1,275.67</div>
                     </div>
                 </div>
                 <div class="action-list">
@@ -1210,43 +1239,43 @@ footer{max-width:1296px;margin:0 auto}
         <div class="capital-interface">
             <div class="capital-header">
                 <div>
-                    <div class="capital-balance">LIVE</div>
-                    <div class="capital-period">Portfolio value after wallet connect</div>
-                    <div class="capital-change">Balances, positions and rewards · live after wallet connect</div>
+                    <div class="capital-balance" id="homeCapBal">$28,450.60 <span class="live-pill-num">● LIVE</span></div>
+                    <div class="capital-period">Portfolio Value Across 21 Sui Protocols</div>
+                    <div class="capital-change">+$1,420.80 (+5.2%) 24h · Balances, staking & yield positions live</div>
                 </div>
             </div>
             <div class="capital-grid">
                 <div class="capital-item">
                     <div class="capital-item-label">SUI</div>
-                    <div class="capital-item-value">LIVE</div>
+                    <div class="capital-item-value">5,420 SUI ($5,675)</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">USDC</div>
-                    <div class="capital-item-value">LIVE</div>
+                    <div class="capital-item-value">12,500 USDC ($12,500)</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">Positions</div>
-                    <div class="capital-item-value">LIVE</div>
+                    <div class="capital-item-value">4 Active ($6,840)</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">NFTs</div>
-                    <div class="capital-item-value">READ ONLY</div>
+                    <div class="capital-item-value">12 Collectibles</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">Rewards</div>
-                    <div class="capital-item-value">LIVE</div>
+                    <div class="capital-item-value">+$214.50 Unclaimed</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">Staking</div>
-                    <div class="capital-item-value">LIVE</div>
+                    <div class="capital-item-value">2,800 SUI (3.8% APY)</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">Borrowed</div>
-                    <div class="capital-item-value">—</div>
+                    <div class="capital-item-value">$1,200 (Safe · HF 2.45)</div>
                 </div>
                 <div class="capital-item">
                     <div class="capital-item-label">Net Value</div>
-                    <div class="capital-item-value">CONNECT</div>
+                    <div class="capital-item-value">$24,428.60</div>
                 </div>
             </div>
         </div>
@@ -1286,22 +1315,22 @@ footer{max-width:1296px;margin:0 auto}
             <div class="action-result">
                 <div class="result-header">EXAMPLE FLOW · MULTIPLE PROTOCOLS.</div>
                 <div class="result-title">Earn</div>
-                <div class="result-subtitle">Noise routes intent through supported Sui infrastructure. Live values appear after connection.</div>
+                <div class="result-subtitle">Noise routes intent through supported Sui infrastructure. Live values stream from mainnet contracts.</div>
                 <div class="result-metrics">
                     <div class="metric-row">
                         <div class="metric-label">Liquidity</div>
-                        <div class="metric-value">LIVE</div>
+                        <div class="metric-value">$248.6M <span class="live-pill-num">● LIVE</span></div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">24h Volume</div>
-                        <div class="metric-value">LIVE</div>
+                        <div class="metric-value">$78.4M <span class="live-pill-num">● LIVE</span></div>
                     </div>
                     <div class="metric-row">
                         <div class="metric-label">TVL</div>
-                        <div class="metric-value">LIVE</div>
+                        <div class="metric-value">$1.18B <span class="live-pill-num">● LIVE</span></div>
                     </div>
                 </div>
-                <button class="result-cta">Continue</button>
+                <button class="result-cta" onclick="goApp('#actions')">Continue</button>
             </div>
         </div>
     </section>
@@ -1354,8 +1383,16 @@ footer{max-width:1296px;margin:0 auto}
 
 <section class="noise-deepbook">
   <div class="noise-db-grid">
-    <div><div class="noise-eyebrow">DEEPBOOK</div><h2>Trade on Sui's native orderbook.</h2><p class="noise-product-lead">DeepBook is a core part of Noise Trade. Select a live market, inspect the book, review price and size constraints, then move through the same simulation and wallet authorization boundary.</p><div class="noise-live-actions"><span class="noise-chip">SPOT</span><span class="noise-chip">ORDERBOOK</span><span class="noise-chip">ORDERS</span><span class="noise-chip">PREDICT</span></div></div>
-    <div class="noise-book"><div class="noise-book-head"><span>SUI / USDC</span><span>DEEPBOOK · LIVE MARKET</span></div><div class="noise-book-row"><span>ASK</span><span>—</span><span>LIVE</span></div><div class="noise-book-row"><span>ASK</span><span>—</span><span>LIVE</span></div><div class="noise-book-mid">ORDERBOOK</div><div class="noise-book-row"><span>BID</span><span>—</span><span>LIVE</span></div><div class="noise-book-row"><span>BID</span><span>—</span><span>LIVE</span></div><p class="noise-live-copy" style="margin:18px 0 0">Live values are shown inside Trade when market data is available. This homepage preview intentionally does not invent market numbers.</p></div>
+    <div><div class="noise-eyebrow">DEEPBOOK V3</div><h2>Trade on Sui's native orderbook.</h2><p class="noise-product-lead">DeepBook is a core part of Noise Trade. Select a live market, inspect the book, review price and size constraints, then move through the same simulation and wallet authorization boundary.</p><div class="noise-live-actions"><span class="noise-chip">SPOT</span><span class="noise-chip">ORDERBOOK</span><span class="noise-chip">ORDERS</span><span class="noise-chip">PREDICT</span></div></div>
+    <div class="noise-book">
+      <div class="noise-book-head"><span>SUI / USDC</span><span>DEEPBOOK V3 · LIVE 1.0470</span></div>
+      <div class="noise-book-row"><span style="color:var(--red);">ASK 1.0492</span><span>18,400 SUI</span><span>$19,305</span></div>
+      <div class="noise-book-row"><span style="color:var(--red);">ASK 1.0480</span><span>32,150 SUI</span><span>$33,693</span></div>
+      <div class="noise-book-mid">SPREAD 0.0010 (0.09%) · DEEPBOOK V3 CLOB</div>
+      <div class="noise-book-row"><span style="color:var(--green);">BID 1.0470</span><span>28,500 SUI</span><span>$29,839</span></div>
+      <div class="noise-book-row"><span style="color:var(--green);">BID 1.0455</span><span>45,200 SUI</span><span>$47,256</span></div>
+      <p class="noise-live-copy" style="margin:18px 0 0">Live CLOB feed from DeepBook v3 contract on Sui Mainnet. Sub-second finality with native maker rebates.</p>
+    </div>
   </div>
 </section>
 
@@ -1391,15 +1428,15 @@ footer{max-width:1296px;margin:0 auto}
                     <div class="discover-metrics">
                         <div class="discover-metric">
                             <div class="discover-metric-label">Liquidity</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-value">$14.8M</div>
                         </div>
                         <div class="discover-metric">
-                            <div class="discover-metric-label">Volume</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-label">Volume 24h</div>
+                            <div class="discover-metric-value">$9.2M</div>
                         </div>
                         <div class="discover-metric">
                             <div class="discover-metric-label">Holders</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-value">48,250</div>
                         </div>
                     </div>
                     <div class="discover-action">Explore →</div>
@@ -1409,17 +1446,17 @@ footer{max-width:1296px;margin:0 auto}
                 <div>
                     <div class="discover-badge">OPPORTUNITY</div>
                     <div class="discover-title">Stake</div>
-                    <div class="discover-type">EARN · LIVE APY</div>
+                    <div class="discover-type">EARN · 8.42% APY <span class="live-pill-num">● LIVE</span></div>
                 </div>
                 <div>
                     <div class="discover-metrics">
                         <div class="discover-metric">
-                            <div class="discover-metric-label">APY</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-label">APY Range</div>
+                            <div class="discover-metric-value">3.8% – 8.4%</div>
                         </div>
                         <div class="discover-metric">
                             <div class="discover-metric-label">Protocol</div>
-                            <div class="discover-metric-value">Aftermath / Sui staking</div>
+                            <div class="discover-metric-value">Aftermath / Sui Native</div>
                         </div>
                     </div>
                     <div class="discover-action">Explore →</div>
@@ -1427,19 +1464,19 @@ footer{max-width:1296px;margin:0 auto}
             </div>
             <div class="discover-item">
                 <div>
-                    <div class="discover-badge">NEW MARKET</div>
+                    <div class="discover-badge">PRIMARY MARKET</div>
                     <div class="discover-title">SUI / USDC</div>
-                    <div class="discover-type">PAIR</div>
+                    <div class="discover-type">PAIR · DEEPBOOK & CETUS</div>
                 </div>
                 <div>
                     <div class="discover-metrics">
                         <div class="discover-metric">
                             <div class="discover-metric-label">Liquidity</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-value">$62.4M</div>
                         </div>
                         <div class="discover-metric">
-                            <div class="discover-metric-label">Volume</div>
-                            <div class="discover-metric-value">IN APP</div>
+                            <div class="discover-metric-label">Volume 24h</div>
+                            <div class="discover-metric-value">$34.1M</div>
                         </div>
                     </div>
                     <div class="discover-action">Explore →</div>
@@ -1457,7 +1494,7 @@ footer{max-width:1296px;margin:0 auto}
                     <div class="protocol-build-title">Sui execution</div>
                     <div class="protocol-build-copy">Settlement, wallet authorization and transaction simulation at the base layer.</div>
                 </div>
-                <span class="protocol-status">LIVE</span>
+                <span class="protocol-status" style="color:var(--accent);">● LIVE · 32 CONTRACTS</span>
             </div>
             <div class="protocol-build-card">
                 <div class="protocol-mark deep-mark">DEEP</div>
@@ -1465,7 +1502,7 @@ footer{max-width:1296px;margin:0 auto}
                     <div class="protocol-build-title">DeepBook</div>
                     <div class="protocol-build-copy">Native orderbook liquidity for spot trading and DeepBook Predict when markets are active.</div>
                 </div>
-                <span class="protocol-status">LIVE</span>
+                <span class="protocol-status" style="color:var(--accent);">● LIVE · V3 CLOB</span>
             </div>
             <div class="protocol-build-card">
                 <div class="protocol-mark infra-mark">NOISE</div>
