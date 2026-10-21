@@ -332,7 +332,7 @@ async function predictRouter(req, res, url, action) {
   try {
     if (action === 'markets' && req.method === 'GET') {
       const r = await withBreaker('deepbook-predict', () =>
-        cached('dbp:markets', 20_000, () => A.getMarkets()));
+        cached('dbp:markets', 8_000, () => A.getMarkets()));
       return r;
     }
     if (action === 'market' && req.method === 'GET') {

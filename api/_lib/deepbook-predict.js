@@ -138,9 +138,8 @@ export const deepbookPredictAdapter = {
         message: 'DeepBook Predict markets temporarily unavailable',
       });
     }
-    // Attribute each market id to its underlying via deterministic resolution.
-    const markets = [];
-    for (const m of active || []) {
+    // Attribute each market id to its underlying via parallel deterministic resolution.
+    const markets = await Promise.all((active || []).map(async (m) => {
       let underlying = null;
       for (const u of underlyings) {
         try {
@@ -151,7 +150,14 @@ export const deepbookPredictAdapter = {
           }
         } catch { /* try next underlying */ }
       }
-      markets.push({
+      const tradable = underlying != null && !m.mintPaused && Number(m.expiryMs) > Date.now();
+      let probability = null;
+      if (tradable && m.referencePrice != null) {
+        try {
+          probability = await c.read.price({ underlying, expiryMs: m.expiryMs, strike: 'reference', side: 'up' });
+        } catch { /* reference price seeding */ }
+      }
+      return {
         id: m.id,
         underlying, // null if unattributable — UI shows the id, never a guessed asset
         expiryMs: String(m.expiryMs),
@@ -161,9 +167,10 @@ export const deepbookPredictAdapter = {
         tickSize: m.tickSize,
         admissionTickSize: m.admissionTickSize,
         referencePrice: m.referencePrice,
-        tradable: underlying != null && !m.mintPaused && Number(m.expiryMs) > Date.now(),
-      });
-    }
+        probability: probability ? norm(probability) : null,
+        tradable,
+      };
+    }));
     return {
       underlyings,
       markets: norm(markets),
@@ -267,6 +274,29 @@ export const deepbookPredictAdapter = {
         updatedAt: new Date().toISOString(),
       };
     } catch (e) {
+      if (/not found/i.test(e?.message || '')) {
+        try {
+          const price = await c.read.price({ underlying, expiryMs: BigInt(expiryMs), strike: m.strike ?? 'reference', side: m.side });
+          const prob = m.side === 'down' ? Number(price.down) : Number(price.up);
+          const qVal = Number(quantity);
+          const premiumEst = +(qVal * prob).toFixed(4);
+          const feeEst = +(Math.max(0.01, premiumEst * 0.015)).toFixed(4);
+          return {
+            quote: {
+              premium: premiumEst,
+              entryProbability: prob,
+              quantity: qVal,
+              totalCost: +(premiumEst + feeEst).toFixed(4),
+              tradingFee: feeEst,
+              requiresAccountSetup: true,
+              feesExact: false,
+            },
+            market: { underlying, expiryMs: String(expiryMs), side: m.side, strike: m.strike ?? { lower: m.lower, upper: m.upper } },
+            source: 'DeepBook Predict SDK (live probability estimate — setup account to execute)',
+            updatedAt: new Date().toISOString(),
+          };
+        } catch {}
+      }
       console.error('[deepbook-predict] quoteMint failed:', String(e?.message || e).slice(0, 300));
       throw Object.assign(new Error('QUOTE_FAILED'), { code: 'QUOTE_FAILED', message: String(e?.message || e).slice(0, 300) });
     }
@@ -568,6 +598,9 @@ export const deepbookPredictAdapter = {
       const raw = await c.read.plpBalance(wallet);
       return { raw: String(raw ?? 0n), source: 'DeepBook Predict SDK (read.plpBalance)', updatedAt: new Date().toISOString() };
     } catch (e) {
+      if (/not found/i.test(e?.message || '')) {
+        return { raw: '0', source: 'DeepBook Predict SDK', updatedAt: new Date().toISOString() };
+      }
       throw Object.assign(new Error('PROVIDER_UNAVAILABLE'), { code: 'PROVIDER_UNAVAILABLE', message: 'PLP balance unavailable' });
     }
   },
@@ -604,8 +637,11 @@ export const deepbookPredictAdapter = {
     const c = predictClient();
     try {
       const bal = await c.read.balance(wallet);
-      return { balance: norm(bal), asset: 'USDC', source: 'DeepBook Predict SDK (read.balance)', updatedAt: new Date().toISOString() };
+      return { exists: true, balance: norm(bal), asset: 'USDC', source: 'DeepBook Predict SDK (read.balance)', updatedAt: new Date().toISOString() };
     } catch (e) {
+      if (/not found/i.test(e?.message || '')) {
+        return { exists: false, balance: 0, asset: 'USDC', note: 'Account wrapper not created yet. Use Setup Account or Deposit.', source: 'DeepBook Predict SDK', updatedAt: new Date().toISOString() };
+      }
       throw Object.assign(new Error('PROVIDER_UNAVAILABLE'), { code: 'PROVIDER_UNAVAILABLE', message: 'Predict balance unavailable' });
     }
   },
