@@ -1091,6 +1091,25 @@
             grid-template-columns: 245px 1.4fr 280px 290px;
             gap: 16px;
             align-items: start;
+            transition: grid-template-columns 0.2s ease;
+        }
+        .spot-grid.markets-hidden {
+            grid-template-columns: 1.6fr 280px 290px;
+        }
+        .spot-grid.markets-hidden #spotMarketsCol {
+            display: none !important;
+        }
+        .spot-grid.chart-expanded {
+            grid-template-columns: 1fr;
+        }
+        .spot-grid.chart-expanded #spotMarketsCol {
+            display: none !important;
+        }
+        .spot-grid.chart-expanded #spotChartCol {
+            grid-column: 1 / -1;
+        }
+        .spot-grid.chart-expanded #spotChartSurface {
+            height: 560px !important;
         }
         #spotMarketsList .route-card {
             padding: 9px 12px;
@@ -1103,6 +1122,20 @@
         #spotMarketsList .route-card-val {
             font-size: 13px;
             white-space: nowrap;
+        }
+        .price-flash-up {
+            animation: flashGreen 0.6s ease-out;
+        }
+        .price-flash-down {
+            animation: flashRed 0.6s ease-out;
+        }
+        @keyframes flashGreen {
+            0% { background: rgba(0, 255, 136, 0.4); color: #fff; }
+            100% { background: transparent; }
+        }
+        @keyframes flashRed {
+            0% { background: rgba(255, 51, 68, 0.4); color: #fff; }
+            100% { background: transparent; }
         }
         .chart-tf-btn {
             background: transparent;
@@ -1129,8 +1162,14 @@
             .spot-grid {
                 grid-template-columns: 200px 1fr 280px;
             }
+            .spot-grid.markets-hidden {
+                grid-template-columns: 1fr 280px;
+            }
             .spot-grid .spot-order-entry-col {
                 grid-column: span 3;
+            }
+            .spot-grid.markets-hidden .spot-order-entry-col {
+                grid-column: span 2;
             }
         }
         @media (max-width: 1100px) {
@@ -1977,37 +2016,60 @@
 
             <!-- ── VIEW 2: DEEPBOOK & PREDICT ── -->
             <section class="app-view" id="view-spot">
-                <div class="section-tag">02 · CENTRAL LIMIT ORDER BOOK & PREDICTIONS</div>
-                <h1 class="section-title">DeepBook v3 & Predict. <span>Institutional Liquidity.</span></h1>
-                <p class="section-desc">On-chain CLOB trading with maker rebates, plus per-expiry Predict range markets settling $1 per contract in range.</p>
-
-                <div class="sub-tabs-bar">
-                    <button class="filter-btn active" id="btnSubSpot" onclick="setDeepbookViewMode('spot')">SPOT ORDERBOOK (CLOB)</button>
-                    <button class="filter-btn" id="btnSubPredict" onclick="setDeepbookViewMode('predict')">PREDICTION MARKETS (PREDICT)</button>
+                <!-- Compact Header: saves ~120px vertical space so the trading terminal fits in the viewport -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <span class="section-tag" style="margin:0; font-size:11px;">02 · DEEPBOOK V3 & PREDICTIONS</span>
+                        <div class="sub-tabs-bar" style="margin:0; padding:0; border:none; gap:6px;">
+                            <button class="filter-btn active" id="btnSubSpot" onclick="setDeepbookViewMode('spot')">SPOT CLOB</button>
+                            <button class="filter-btn" id="btnSubPredict" onclick="setDeepbookViewMode('predict')">PREDICTIONS</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px; font-size:11px; font-family:'Space Grotesk',monospace; color:var(--text-dim);">
+                        <span style="color:var(--green);">● 0.00% MAKER FEE</span>
+                        <span style="color:var(--line);">|</span>
+                        <span>INSTANT SETTLEMENT</span>
+                        <span style="color:var(--line);">|</span>
+                        <span id="spotRefreshBadge" style="color:var(--accent);">● LIVE 2.5s</span>
+                    </div>
                 </div>
 
                 <!-- Spot CLOB Interface -->
                 <div id="deepbookSpotSection">
                     <!-- Top Ticker Stats Ribbon -->
-                    <div class="spot-ticker-ribbon" style="display:flex; justify-content:space-between; align-items:center; background:rgba(18,18,18,0.85); border:1px solid var(--line); border-radius:8px; padding:12px 18px; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                            <span style="font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; color:#fff;" id="spotTickerPair">SUI / USDC</span>
-                            <span class="badge-pill badge-best" style="font-size:10px;">DEEPBOOK V3 CLOB</span>
-                            <div style="font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--green);" id="spotTickerPrice">$0.9982</div>
+                    <div class="spot-ticker-ribbon" style="display:flex; justify-content:space-between; align-items:center; background:rgba(18,18,18,0.85); border:1px solid var(--line); border-radius:8px; padding:10px 16px; margin-bottom:14px; flex-wrap:wrap; gap:12px;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <!-- Pair dropdown trigger -->
+                            <div style="position:relative; display:inline-block;">
+                                <button id="btnSpotPairSelect" onclick="toggleSpotMarketsMenu(event)" style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:rgba(255,255,255,0.06); padding:6px 12px; border-radius:6px; border:1px solid var(--line); color:#fff; font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:700;">
+                                    <span id="spotTickerPair">SUI / USDC</span>
+                                    <span style="color:var(--text-dim); font-size:10px;">▼</span>
+                                </button>
+                                <!-- Floating quick markets popover -->
+                                <div id="spotQuickMarketsMenu" style="display:none; position:absolute; top:calc(100% + 6px); left:0; width:280px; max-height:380px; overflow-y:auto; background:#121212; border:1px solid var(--line); border-radius:8px; box-shadow:0 12px 32px rgba(0,0,0,0.85); z-index:150; padding:10px;">
+                                    <input type="text" id="spotQuickSearch" placeholder="Search markets…" oninput="filterQuickMarkets(this.value)" style="width:100%; background:#0a0a0a; border:1px solid var(--line); border-radius:4px; padding:6px 10px; color:#fff; font-size:12px; margin-bottom:8px; font-family:'Space Grotesk',monospace;" />
+                                    <div id="spotQuickMarketsList" style="display:flex; flex-direction:column; gap:4px;"></div>
+                                </div>
+                            </div>
+                            <button class="filter-btn" id="btnToggleMarketsSidebar" onclick="toggleSpotMarketsSidebar()" style="padding:5px 10px; font-size:11px;" title="Toggle markets sidebar to expand chart">
+                                <span id="marketsToggleIcon">◀ Hide Markets</span>
+                            </button>
+                            <span class="badge-pill badge-best" style="font-size:10px;">DEEPBOOK V3</span>
+                            <div style="font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--green); transition:color 0.2s;" id="spotTickerPrice">$0.9982</div>
                             <span style="font-family:'Space Grotesk',monospace; font-size:12px; color:var(--green); font-weight:600;" id="spotTickerChange">+4.82% 24h</span>
                         </div>
-                        <div style="display:flex; gap:18px; font-size:11.5px; font-family:'Space Grotesk',monospace; color:var(--text-dim); flex-wrap:wrap;">
+                        <div style="display:flex; gap:16px; font-size:11.5px; font-family:'Space Grotesk',monospace; color:var(--text-dim); flex-wrap:wrap;">
                             <div>24H HIGH: <b style="color:#fff;" id="spotTickerHigh">$1.0420</b></div>
                             <div>24H LOW: <b style="color:#fff;" id="spotTickerLow">$0.9610</b></div>
                             <div>24H VOL: <b style="color:#fff;" id="spotTickerVol">42.8M SUI ($42.7M)</b></div>
-                            <div>MAKER REBATE: <b style="color:var(--green);">0.00% FEE</b></div>
+                            <div>MAKER: <b style="color:var(--green);">0.00%</b></div>
                             <div>STATUS: <b style="color:var(--accent);" id="spotTickerStatus">● LIVE RPC</b></div>
                         </div>
                     </div>
 
-                    <div class="spot-grid">
+                    <div class="spot-grid" id="spotGridContainer">
                         <!-- Column 1: Markets List -->
-                        <div class="panel" style="padding:14px;">
+                        <div class="panel" id="spotMarketsCol" style="padding:14px;">
                             <div class="panel-label" style="margin-bottom:10px;">ACTIVE MARKETS</div>
                             <div style="display:flex; flex-direction:column; gap:6px; max-height:510px; overflow-y:auto;" id="spotMarketsList">
                                 <div class="route-card selected" data-pool="SUI_USDC">
@@ -2021,7 +2083,7 @@
                         </div>
 
                         <!-- Column 2: Candlestick & Volume Chart -->
-                        <div class="panel" style="padding:14px; min-width:0; overflow:hidden;">
+                        <div class="panel" id="spotChartCol" style="padding:14px; min-width:0; overflow:hidden;">
                             <div class="panel-header" style="flex-wrap:wrap; gap:8px; margin-bottom:8px;">
                                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                                     <span class="panel-label">LIVE CLOB CHART</span>
@@ -2038,6 +2100,9 @@
                                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                                     <button class="chart-tf-btn active" id="btnChartCandles" onclick="setChartType('candles')">🕯 Candles</button>
                                     <button class="chart-tf-btn" id="btnChartLine" onclick="setChartType('line')">📈 Line</button>
+                                    <button class="chart-tf-btn active" id="btnChartEma" onclick="toggleEmaOverlay()">📐 EMA</button>
+                                    <button class="chart-tf-btn" id="btnChartReset" onclick="resetChartZoom()" title="Reset zoom and pan">↺ Reset</button>
+                                    <button class="chart-tf-btn" id="btnChartExpand" onclick="toggleChartExpand()" title="Expand chart full width">⛶ Expand</button>
                                     <button class="filter-btn active" id="btnProviderNative" onclick="setChartProvider('native')" style="padding:2px 8px; font-size:10px;">Native CLOB</button>
                                     <button class="filter-btn" id="btnProviderTV" onclick="setChartProvider('tv')" style="padding:2px 8px; font-size:10px;">TradingView Pro</button>
                                 </div>
@@ -2050,12 +2115,15 @@
                                 <span>L: <b style="color:#fff;" id="hudL">—</b></span>
                                 <span>C: <b style="color:var(--green);" id="hudC">—</b></span>
                                 <span>VOL: <b style="color:#fff;" id="hudV">—</b></span>
-                                <span style="color:#ffcc00;">EMA(9): <b id="hudEma9">—</b></span>
-                                <span style="color:#00ddff;">EMA(21): <b id="hudEma21">—</b></span>
+                                <span id="hudEmaWrap" style="display:inline-flex; gap:10px;">
+                                    <span style="color:#ffcc00;">EMA(9): <b id="hudEma9">—</b></span>
+                                    <span style="color:#00ddff;">EMA(21): <b id="hudEma21">—</b></span>
+                                </span>
+                                <span style="margin-left:auto; font-size:10px; color:var(--text-dim);" id="chartZoomHint">Scroll: Zoom | Drag: Pan</span>
                             </div>
 
                             <!-- Chart Surface -->
-                            <div style="position:relative; width:100%; height:450px; background:rgba(8,8,8,0.75); border:1px solid var(--line); border-radius:6px; overflow:hidden;">
+                            <div id="spotChartSurface" style="position:relative; width:100%; height:460px; background:rgba(8,8,8,0.75); border:1px solid var(--line); border-radius:6px; overflow:hidden;">
                                 <canvas id="spotCandleCanvas" style="width:100%; height:100%; display:block; cursor:crosshair;"></canvas>
                                 <div id="tradingviewEmbedWrap" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; background:#0a0a0a;">
                                     <iframe id="tvIframe" style="width:100%; height:100%; border:none;" src="about:blank"></iframe>
@@ -3579,7 +3647,24 @@
         'WETH': 'ETHUSDT',
         'ETH': 'ETHUSDT',
         'BTC': 'BTCUSDT',
-        'WBTC': 'BTCUSDT'
+        'WBTC': 'BTCUSDT',
+        'XBTC': 'BTCUSDT',
+        'LZWBTC': 'BTCUSDT'
+    };
+    const GATE_KLINES_MAP = {
+        'DEEP': 'DEEP_USDT',
+        'WAL': 'WAL_USDT',
+        'NS': 'NS_USDT',
+        'CETUS': 'CETUS_USDT',
+        'SUI': 'SUI_USDT'
+    };
+    const GATE_TF_MAP = {
+        '1m': '1m',
+        '5m': '5m',
+        '15m': '15m',
+        '1H': '1h',
+        '4H': '4h',
+        '1D': '1d'
     };
     const BINANCE_TF_MAP = {
         '1m': '1m',
@@ -3600,6 +3685,9 @@
     let _chartHoverIdx = -1;
     let _chartCrosshair = null;
     let _fetchKlinesSeq = 0;
+    let _chartVisibleCount = 65;
+    let _chartPanOffset = 0;
+    let _showEma = true;
 
     const TF_MINUTES = {
         '1m': 1,
@@ -3609,6 +3697,92 @@
         '4H': 240,
         '1D': 1440
     };
+
+    function resetChartZoom() {
+        _chartVisibleCount = 65;
+        _chartPanOffset = 0;
+        renderSpotChart();
+    }
+
+    function toggleEmaOverlay() {
+        _showEma = !_showEma;
+        const btn = $('btnChartEma');
+        if (btn) btn.className = 'chart-tf-btn' + (_showEma ? ' active' : '');
+        const wrap = $('hudEmaWrap');
+        if (wrap) wrap.style.display = _showEma ? 'inline-flex' : 'none';
+        renderSpotChart();
+    }
+
+    function toggleChartExpand() {
+        const grid = $('spotGridContainer');
+        const btn = $('btnChartExpand');
+        if (!grid) return;
+        grid.classList.toggle('chart-expanded');
+        const isExp = grid.classList.contains('chart-expanded');
+        if (btn) btn.textContent = isExp ? '⛶ Collapse' : '⛶ Expand';
+        setTimeout(renderSpotChart, 60);
+    }
+
+    function toggleSpotMarketsSidebar() {
+        const grid = $('spotGridContainer');
+        const icon = $('marketsToggleIcon');
+        if (!grid) return;
+        grid.classList.toggle('markets-hidden');
+        const isHidden = grid.classList.contains('markets-hidden');
+        if (icon) icon.textContent = isHidden ? '▶ Show Markets' : '◀ Hide Markets';
+        try { localStorage.setItem('noise_spot_markets_hidden', isHidden ? '1' : '0'); } catch {}
+        setTimeout(renderSpotChart, 60);
+    }
+
+    function toggleSpotMarketsMenu(e) {
+        if (e) e.stopPropagation();
+        const menu = $('spotQuickMarketsMenu');
+        if (!menu) return;
+        const isShown = menu.style.display === 'block';
+        menu.style.display = isShown ? 'none' : 'block';
+        if (!isShown) {
+            renderQuickMarketsList();
+            setTimeout(() => { if ($('spotQuickSearch')) $('spotQuickSearch').focus(); }, 50);
+        }
+    }
+
+    function filterQuickMarkets(q) {
+        renderQuickMarketsList(q);
+    }
+
+    function renderQuickMarketsList(filter = '') {
+        const box = $('spotQuickMarketsList');
+        if (!box) return;
+        const q = String(filter || '').toLowerCase().trim();
+        const rows = Object.entries(_spotMarketPrices).map(([pool, px]) => {
+            const parts = pool.split('_');
+            return { pool, base: parts[0], quote: parts.slice(1).join('_') || 'USDC', px };
+        }).filter(r => !q || r.pool.toLowerCase().includes(q) || r.base.toLowerCase().includes(q));
+
+        if (!rows.length) {
+            box.innerHTML = '<div style="color:var(--text-dim); font-size:11px; padding:10px; text-align:center;">No matching markets</div>';
+            return;
+        }
+        box.innerHTML = rows.map(r => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; border-radius:4px; cursor:pointer; background:${r.pool === _spotPool ? 'rgba(0,255,136,0.1)' : 'transparent'}; font-size:12px;"
+                 onclick="selectSpotPool('${r.pool}', '${r.quote}'); toggleSpotMarketsMenu();"
+                 onmouseenter="this.style.background='rgba(255,255,255,0.06)'"
+                 onmouseleave="this.style.background='${r.pool === _spotPool ? 'rgba(0,255,136,0.1)' : 'transparent'}'">
+                <span style="font-weight:600; color:#fff;">${r.base} <span style="color:var(--text-dim); font-size:10px;">/ ${r.quote}</span></span>
+                <span style="font-family:'Space Grotesk',monospace; color:var(--green);">${fmtPx(r.px)}</span>
+            </div>
+        `).join('');
+    }
+
+    document.addEventListener('click', (e) => {
+        const menu = $('spotQuickMarketsMenu');
+        const btn = $('btnSpotPairSelect');
+        if (menu && menu.style.display === 'block') {
+            if (!menu.contains(e.target) && (!btn || !btn.contains(e.target))) {
+                menu.style.display = 'none';
+            }
+        }
+    });
 
     function setChartTf(tf, btn) {
         _chartTf = tf;
@@ -3657,61 +3831,98 @@
         const tvInterval = _chartTf === '1m' ? '1' : (_chartTf === '5m' ? '5' : (_chartTf === '15m' ? '15' : (_chartTf === '1H' ? '60' : (_chartTf === '4H' ? '240' : 'D'))));
         const iframe = $('tvIframe');
         if (iframe) {
-            iframe.src = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(sym)}&interval=${tvInterval}&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=0a0a0a&theme=dark&style=1&timezone=Etc%2FUTC`;
+            // hidesidetoolbar=0 gives user full drawing panel (lines, fib, shapes, text, zoom)
+            iframe.src = `https://s.tradingview.com/widgetembed/?symbol=${encodeURIComponent(sym)}&interval=${tvInterval}&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=0a0a0a&theme=dark&style=1&timezone=Etc%2FUTC`;
         }
     }
 
     async function tryFetchRealKlines(base, targetPx) {
-        const sym = BINANCE_KLINES_MAP[base];
-        if (!sym) return false;
-        const bTf = BINANCE_TF_MAP[_chartTf] || '15m';
+        const b = String(base || '').toUpperCase().trim();
         const mySeq = ++_fetchKlinesSeq;
-        try {
-            const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${bTf}&limit=65`);
-            if (!res.ok) return false;
-            const rows = await res.json();
-            if (mySeq !== _fetchKlinesSeq) return false;
-            if (!Array.isArray(rows) || !rows.length) return false;
-            
-            const rawCandles = rows.map(r => ({
-                time: Number(r[0]),
-                open: parseFloat(r[1]),
-                high: parseFloat(r[2]),
-                low: parseFloat(r[3]),
-                close: parseFloat(r[4]),
-                volume: parseFloat(r[5])
-            }));
 
-            const lastClose = rawCandles[rawCandles.length - 1].close;
-            const factor = (targetPx && targetPx > 0 && lastClose > 0) ? (targetPx / lastClose) : 1;
-            
-            for (const c of rawCandles) {
-                if (factor !== 1) {
-                    c.open *= factor;
-                    c.high *= factor;
-                    c.low *= factor;
-                    c.close *= factor;
+        // 1. Try Gate.io first for Sui tokens (DEEP, WAL, NS) - CORS enabled, full OHLCV
+        if (GATE_KLINES_MAP[b]) {
+            const sym = GATE_KLINES_MAP[b];
+            const tf = GATE_TF_MAP[_chartTf] || '15m';
+            try {
+                const res = await fetch(`https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${sym}&interval=${tf}&limit=90`);
+                if (res.ok) {
+                    const rows = await res.json();
+                    if (mySeq === _fetchKlinesSeq && Array.isArray(rows) && rows.length >= 5) {
+                        const rawCandles = rows.map(r => ({
+                            time: Number(r[0]) * 1000,
+                            open: parseFloat(r[5]),
+                            high: parseFloat(r[3]),
+                            low: parseFloat(r[4]),
+                            close: parseFloat(r[2]),
+                            volume: parseFloat(r[6])
+                        }));
+                        applyCandles(rawCandles, targetPx);
+                        return true;
+                    }
                 }
+            } catch (e) {
+                console.log('Gate.io klines notice:', e.message);
             }
-            if (targetPx && targetPx > 0) {
-                rawCandles[rawCandles.length - 1].close = targetPx;
-            }
-
-            calcEma(rawCandles, 9, 'ema9');
-            calcEma(rawCandles, 21, 'ema21');
-            _chartCandles = rawCandles;
-            if (_chartProvider === 'native') renderSpotChart();
-            return true;
-        } catch (e) {
-            return false;
         }
+
+        // 2. Try Binance for majors (SUI, CETUS, ETH/BETH, BTC/WBTC)
+        if (BINANCE_KLINES_MAP[b]) {
+            const sym = BINANCE_KLINES_MAP[b];
+            const tf = BINANCE_TF_MAP[_chartTf] || '15m';
+            try {
+                const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=90`);
+                if (res.ok) {
+                    const rows = await res.json();
+                    if (mySeq === _fetchKlinesSeq && Array.isArray(rows) && rows.length >= 5) {
+                        const rawCandles = rows.map(r => ({
+                            time: Number(r[0]),
+                            open: parseFloat(r[1]),
+                            high: parseFloat(r[2]),
+                            low: parseFloat(r[3]),
+                            close: parseFloat(r[4]),
+                            volume: parseFloat(r[5])
+                        }));
+                        applyCandles(rawCandles, targetPx);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.log('Binance klines notice:', e.message);
+            }
+        }
+        return false;
+    }
+
+    function applyCandles(rawCandles, targetPx) {
+        if (!rawCandles || !rawCandles.length) return;
+        const lastClose = rawCandles[rawCandles.length - 1].close;
+        const factor = (targetPx && targetPx > 0 && lastClose > 0) ? (targetPx / lastClose) : 1;
+        if (factor !== 1) {
+            for (const c of rawCandles) {
+                c.open *= factor;
+                c.high *= factor;
+                c.low *= factor;
+                c.close *= factor;
+            }
+        }
+        if (targetPx && targetPx > 0) {
+            const last = rawCandles[rawCandles.length - 1];
+            last.close = targetPx;
+            last.high = Math.max(last.high, targetPx);
+            last.low = Math.min(last.low, targetPx);
+        }
+        calcEma(rawCandles, 9, 'ema9');
+        calcEma(rawCandles, 21, 'ema21');
+        _chartCandles = rawCandles;
+        if (_chartProvider === 'native') renderSpotChart();
     }
 
     function generateCandlesForActivePool(forceRegen = false, targetPx = null) {
         const base = spotBaseAsset();
         const curPx = (targetPx && targetPx > 0) ? targetPx : getActivePoolPrice();
         _currentSpotPrice = curPx;
-        const count = 65;
+        const count = 75;
         const mins = TF_MINUTES[_chartTf] || 15;
         const stepMs = mins * 60 * 1000;
         const now = Date.now();
@@ -3726,21 +3937,25 @@
             }
         }
 
+        // Seamless continuous backwards walk from curPx — eliminates the artificial last-candle spike completely!
         const candles = [];
-        let p = curPx * (1 - (Math.random() * 0.03 - 0.015));
+        let p = curPx;
         const volBase = Math.min(curPx * 8000, 500000) * Math.sqrt(mins);
 
-        for (let i = count - 1; i >= 0; i--) {
+        for (let i = 0; i < count; i++) {
             const time = now - i * stepMs;
             const volatility = p * (0.0025 + (Math.min(mins, 60) * 0.0001));
-            const change = (Math.random() - 0.495) * volatility * 2.0;
-            const open = p;
-            const close = (i === 0) ? curPx : Math.max(open * 0.85, open + change);
-            const high = Math.max(open, close) + Math.random() * volatility * 0.8;
-            const low = Math.max(curPx * 0.5, Math.min(open, close) - Math.random() * volatility * 0.8);
-            const volume = volBase * (0.4 + Math.random() * 1.4);
-            candles.push({ time, open, high, low, close, volume });
-            p = close;
+            const seed = Math.sin((time / stepMs) * 12.9898 + (base.charCodeAt(0) || 1) * 78.233) * 43758.5453;
+            const rnd = seed - Math.floor(seed);
+            const rnd2 = (seed * 1.5) - Math.floor(seed * 1.5);
+            const change = (rnd - 0.495) * volatility * 1.5;
+            const close = p;
+            const open = Math.max(close * 0.85, close - change);
+            const high = Math.max(open, close) + rnd2 * volatility * 0.5;
+            const low = Math.max(close * 0.5, Math.min(open, close) - (1 - rnd2) * volatility * 0.5);
+            const volume = volBase * (0.5 + rnd * 1.0);
+            candles.unshift({ time, open, high, low, close, volume });
+            p = open;
         }
 
         calcEma(candles, 9, 'ema9');
@@ -3812,8 +4027,16 @@
             generateCandlesForActivePool(true);
         }
 
-        const candles = _chartCandles;
-        if (!candles.length) return;
+        const total = _chartCandles.length;
+        if (!total) return;
+
+        // Apply interactive Zoom and Pan
+        const visibleCount = Math.min(total, Math.max(15, _chartVisibleCount));
+        const maxOffset = Math.max(0, total - visibleCount);
+        const panOffset = Math.max(0, Math.min(maxOffset, _chartPanOffset));
+        const startIndex = total - visibleCount - panOffset;
+        const endIndex = total - panOffset;
+        const candles = _chartCandles.slice(startIndex, endIndex);
 
         const rightMargin = 68;
         const bottomMargin = 24;
@@ -3922,24 +4145,26 @@
             }
         }
 
-        ctx.lineWidth = 1.2;
-        ctx.strokeStyle = '#ffcc00';
-        ctx.beginPath();
-        for (let i = 0; i < candleCount; i++) {
-            const x = i * candleSlotW + candleSlotW / 2;
-            const y = getY(candles[i].ema9);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
+        if (_showEma) {
+            ctx.lineWidth = 1.2;
+            ctx.strokeStyle = '#ffcc00';
+            ctx.beginPath();
+            for (let i = 0; i < candleCount; i++) {
+                const x = i * candleSlotW + candleSlotW / 2;
+                const y = getY(candles[i].ema9);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
 
-        ctx.strokeStyle = '#00ddff';
-        ctx.beginPath();
-        for (let i = 0; i < candleCount; i++) {
-            const x = i * candleSlotW + candleSlotW / 2;
-            const y = getY(candles[i].ema21);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            ctx.strokeStyle = '#00ddff';
+            ctx.beginPath();
+            for (let i = 0; i < candleCount; i++) {
+                const x = i * candleSlotW + candleSlotW / 2;
+                const y = getY(candles[i].ema21);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
         }
-        ctx.stroke();
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         ctx.textAlign = 'center';
@@ -4018,24 +4243,78 @@
         const canvas = $('spotCandleCanvas');
         if (!canvas || canvas._listenersAttached) return;
         canvas._listenersAttached = true;
+
+        let isDragging = false;
+        let dragStartX = 0;
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                // Zoom in
+                _chartVisibleCount = Math.max(18, _chartVisibleCount - 4);
+            } else {
+                // Zoom out
+                _chartVisibleCount = Math.min(_chartCandles.length || 120, _chartVisibleCount + 4);
+            }
+            renderSpotChart();
+        }, { passive: false });
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                if (canvas) canvas.style.cursor = 'crosshair';
+            }
+        });
+
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const rightMargin = 64;
+            const rightMargin = 68;
             const chartW = rect.width - rightMargin;
+
+            if (isDragging) {
+                const dx = e.clientX - dragStartX;
+                const candleSlotW = chartW / Math.max(15, _chartVisibleCount);
+                const shift = Math.round(dx / candleSlotW);
+                if (shift !== 0) {
+                    const maxOffset = Math.max(0, _chartCandles.length - _chartVisibleCount);
+                    _chartPanOffset = Math.max(0, Math.min(maxOffset, _chartPanOffset + shift));
+                    dragStartX = e.clientX;
+                    renderSpotChart();
+                }
+                return;
+            }
+
             if (x >= 0 && x <= chartW && _chartCandles.length) {
-                const idx = Math.min(_chartCandles.length - 1, Math.max(0, Math.floor(x / (chartW / _chartCandles.length))));
-                _chartHoverIdx = idx;
+                const total = _chartCandles.length;
+                const visibleCount = Math.min(total, Math.max(15, _chartVisibleCount));
+                const maxOffset = Math.max(0, total - visibleCount);
+                const panOffset = Math.max(0, Math.min(maxOffset, _chartPanOffset));
+                const startIndex = total - visibleCount - panOffset;
+
+                const candleSlotW = chartW / visibleCount;
+                const localIdx = Math.min(visibleCount - 1, Math.max(0, Math.floor(x / candleSlotW)));
+                _chartHoverIdx = startIndex + localIdx;
                 _chartCrosshair = { x, y };
                 renderSpotChart();
             }
         });
+
         canvas.addEventListener('mouseleave', () => {
-            _chartHoverIdx = -1;
-            _chartCrosshair = null;
-            renderSpotChart();
+            if (!isDragging) {
+                _chartHoverIdx = -1;
+                _chartCrosshair = null;
+                renderSpotChart();
+            }
         });
+
         window.addEventListener('resize', () => {
             if (_activeTab === 'spot' && _chartProvider === 'native') renderSpotChart();
         });
@@ -4176,8 +4455,15 @@
         updateSpotTotal();
 
         if (mid > 0) {
+            const oldPx = _currentSpotPrice;
             _currentSpotPrice = mid;
             _spotMarketPrices[_spotPool] = mid;
+            const priceEl = $('spotTickerPrice');
+            if (priceEl && oldPx && Math.abs(mid - oldPx) > 0.000001) {
+                priceEl.classList.remove('price-flash-up', 'price-flash-down');
+                void priceEl.offsetWidth;
+                priceEl.classList.add(mid >= oldPx ? 'price-flash-up' : 'price-flash-down');
+            }
             updateSpotTickerBar(mid, spotBaseAsset());
             if (_chartCandles && _chartCandles.length) {
                 const last = _chartCandles[_chartCandles.length - 1];
@@ -4215,6 +4501,11 @@
         if (mid > 0) updateSpotTickerBar(mid, base);
     }
     async function fetchSpotBook() {
+        const badge = $('spotRefreshBadge');
+        if (badge) {
+            badge.style.opacity = '0.35';
+            setTimeout(() => { if (badge) badge.style.opacity = '1'; }, 200);
+        }
         try {
             const res = await fetch('/api/trade/orderbook?pool=' + encodeURIComponent(_spotPool) + '&ticks=6');
             const data = await res.json();
@@ -6393,15 +6684,24 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         initChartMouseListeners();
         generateCandlesForActivePool(true);
 
+        try {
+            if (localStorage.getItem('noise_spot_markets_hidden') === '1') {
+                const grid = $('spotGridContainer');
+                const icon = $('marketsToggleIcon');
+                if (grid) grid.classList.add('markets-hidden');
+                if (icon) icon.textContent = '▶ Show Markets';
+            }
+        } catch {}
+
         const initialView = new URLSearchParams(location.search).get('view') || new URLSearchParams(location.search).get('tab') || location.hash.replace('#', '');
         if (initialView && $('view-' + initialView)) {
             const tabBtn = document.querySelector('.nav-tab[data-view="' + initialView + '"]');
             if (tabBtn) tabBtn.click();
         }
 
-        setInterval(fetchLivePrices, 30000);
-        setInterval(fetchSpotBook, 10000);
-        setInterval(fetchSpotMarkets, 30000);
+        setInterval(fetchLivePrices, 6000);
+        setInterval(fetchSpotBook, 2500);
+        setInterval(fetchSpotMarkets, 15000);
         setInterval(fetchPredictBoard, 20000);
         setInterval(predictCountdownTick, 1000);
     });

@@ -74,7 +74,7 @@ export default handler(async (req, res, url) => {
     /* ---------- market discovery (never hardcoded client-side) ---------- */
     if (action === 'markets') {
       const rows = await withBreaker('deepbook', () =>
-        cached('db:spot:markets', 20_000, () => deepbookAdapter.getMarkets()));
+        cached('db:spot:markets', 8_000, () => deepbookAdapter.getMarkets()));
       const KNOWN = new Set(knownPoolKeys());
       return {
         markets: rows.map((r) => ({
@@ -143,8 +143,8 @@ export default handler(async (req, res, url) => {
       const ticks = Math.min(Math.max(1, Number(url.searchParams.get('ticks') || 10)), 25);
       try {
         const book = await withBreaker('deepbook', () =>
-          cached(`db:ob:${pool}:${ticks}`, 5_000, () => deepbookAdapter.getOrderBook(pool, ticks)));
-        return { ...book, staleAfterMs: 15_000 };
+          cached(`db:ob:${pool}:${ticks}`, 2_000, () => deepbookAdapter.getOrderBook(pool, ticks)));
+        return { ...book, staleAfterMs: 6_000 };
       } catch (e) {
         if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
         return err('PROVIDER_UNAVAILABLE', 'DeepBook order book temporarily unavailable. [Retry]', 502);
