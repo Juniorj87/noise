@@ -57,6 +57,25 @@ async function gatedBuild(buildResult, wallet) {
   return { txBytes: buildResult.txBytes, simulation: sim, simulationStatus: 'success', gasEst: gasEstOf(sim) };
 }
 
+/* Build → fail-closed simulation → response for the newer spot actions.
+ * A builder that returns { error } never reaches the wallet. */
+async function unsignedBuild(buildFn, wallet, note) {
+  const built = await buildFn();
+  if (built?.error) {
+    throw Object.assign(new Error(built.error), { code: built.error });
+  }
+  const g = await gatedBuild(built, wallet);
+  return { ok: true, ...built, ...g, simulationStatus: 'success', note };
+}
+
+function buildErr(e) {
+  const code = e.code || 'BUILD_FAILED';
+  const status = code === 'TRADING_ACCOUNT_REQUIRED' ? 409
+    : (code === 'SIMULATION_FAILED' ? 400
+      : (/INVALID|UNKNOWN|REQUIRED|UNSUPPORTED|BELOW/.test(code) ? 400 : 502));
+  return err(code, String(e.message || e).slice(0, 240), status);
+}
+
 export default handler(async (req, res, url) => {
   const segs = url.pathname.split('/').filter(Boolean);
   let action = segs.pop();
@@ -195,6 +214,96 @@ export default handler(async (req, res, url) => {
       }
     }
 
+    /* ---------- balance-manager capital + per-pool account state ---------- */
+    if (action === 'account') {
+      const wallet = requireQuery(url, 'wallet');
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market') || 'SUI_USDC';
+      const managerId = url.searchParams.get('manager') || url.searchParams.get('managerId') || null;
+      try {
+        return await withBreaker('deepbook', () =>
+          cached(`db:acct:${wallet}:${managerId || 'all'}:${pool}`, 10_000,
+            () => deepbookAdapter.getAccount({ wallet, market: pool, managerId })));
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('PROVIDER_UNAVAILABLE', 'Trading account temporarily unavailable. [Retry]', 502);
+      }
+    }
+
+    /* ---------- full pool state (fees, next epoch, quorum, flags) ---------- */
+    if (action === 'pool-info') {
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market') || 'SUI_USDC';
+      try {
+        return await withBreaker('deepbook', () =>
+          cached(`db:pool:${pool}`, 30_000, () => deepbookAdapter.getPoolInfo(pool)));
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('PROVIDER_UNAVAILABLE', 'Pool info temporarily unavailable. [Retry]', 502);
+      }
+    }
+
+    /* ---------- single order state ---------- */
+    if (action === 'order') {
+      const wallet = requireQuery(url, 'wallet');
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market');
+      const orderId = url.searchParams.get('orderId');
+      if (!pool || orderId == null) return err('INVALID_REQUEST', 'pool and orderId are required.', 400);
+      try {
+        return await deepbookAdapter.getOrderStatus(wallet, pool, orderId);
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('PROVIDER_UNAVAILABLE', 'Order state temporarily unavailable. [Retry]', 502);
+      }
+    }
+
+    /* ---------- DEEP fee needed for an order ---------- */
+    if (action === 'deep-required') {
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market') || 'SUI_USDC';
+      const quantity = Number(url.searchParams.get('quantity') || 0);
+      const price = Number(url.searchParams.get('price') || 0);
+      if (!(quantity > 0) || !(price > 0)) return err('INVALID_AMOUNT', 'quantity and price must be > 0.');
+      try {
+        return await deepbookAdapter.getOrderDeepRequired(pool, quantity, price);
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('PROVIDER_UNAVAILABLE', 'DEEP fee quote temporarily unavailable. [Retry]', 502);
+      }
+    }
+
+    /* ---------- direct-swap quote (pool, no BalanceManager) ---------- */
+    if (action === 'swap-quote') {
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market') || 'SUI_USDC';
+      const side = (url.searchParams.get('side') || 'BASE_TO_QUOTE').toUpperCase();
+      const amount = Number(url.searchParams.get('amount') || 0);
+      if (!(amount > 0)) return err('INVALID_AMOUNT', 'amount must be > 0.');
+      try {
+        return await withBreaker('deepbook', () =>
+          cached(`db:swapq:${pool}:${side}:${amount}`, 3_000,
+            () => deepbookAdapter.quoteSwap({ market: pool, side, amount })));
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('QUOTE_FAILED', String(e.message || e).slice(0, 200), 502);
+      }
+    }
+
+    /* ---------- referral state ---------- */
+    if (action === 'referral') {
+      const wallet = requireQuery(url, 'wallet');
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      const pool = url.searchParams.get('pool') || url.searchParams.get('market') || 'SUI_USDC';
+      const managerId = url.searchParams.get('manager') || url.searchParams.get('managerId') || null;
+      const referral = url.searchParams.get('referral') || null;
+      try {
+        return await withBreaker('deepbook', () =>
+          cached(`db:ref:${wallet}:${managerId || 'all'}:${pool}:${referral || ''}`, 20_000,
+            () => deepbookAdapter.getReferral({ wallet, market: pool, managerId, referral })));
+      } catch (e) {
+        if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${pool}.`, 400);
+        return err('PROVIDER_UNAVAILABLE', 'Referral state temporarily unavailable. [Retry]', 502);
+      }
+    }
+
     /* ---------- builds (POST): market | limit | cancel | setup-account ---------- */
     if (req.method !== 'POST') return err('INVALID_REQUEST', 'Unknown trade action.', 404);
     const b = await readJson(req);
@@ -282,6 +391,184 @@ export default handler(async (req, res, url) => {
       } catch (e) {
         if (e.code === 'UNKNOWN_MARKET') return err('UNKNOWN_MARKET', `Unknown market ${market}.`, 400);
         return err('BUILD_FAILED', String(e.message || e).slice(0, 200), 502);
+      }
+    }
+
+    /* ---------- capital management (deposit / withdraw / withdraw-all) ---------- */
+    if (action === 'deposit' || action === 'withdraw' || action === 'withdraw-all') {
+      const { wallet } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!b.coin) return err('INVALID_COIN', 'coin is required (e.g. SUI, USDC, DEEP).', 400);
+      try {
+        if (action === 'deposit') {
+          return await unsignedBuild(
+            () => deepbookAdapter.buildDeposit({ wallet, managerId: b.managerId, coin: b.coin, amount: b.amount }),
+            wallet,
+            'Unsigned deposit — the owner signature moves coins into the BalanceManager.');
+        }
+        const all = action === 'withdraw-all';
+        return await unsignedBuild(
+          () => deepbookAdapter.buildWithdraw({
+            wallet, managerId: b.managerId, coin: b.coin, amount: b.amount,
+            all, recipient: b.recipient,
+          }),
+          wallet,
+          all
+            ? 'Unsigned withdraw-all — the full manager balance moves to the recipient.'
+            : 'Unsigned withdrawal — funds leave the BalanceManager to the recipient.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- modify an open order ---------- */
+    if (action === 'modify') {
+      const { wallet, market, orderId, quantity } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market || orderId == null) return err('INVALID_REQUEST', 'market and orderId are required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildModifyOrder({ wallet, market, orderId, quantity, managerId: b.managerId }),
+          wallet,
+          'Unsigned modify-order PTB — only the remaining quantity changes.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- batch / all-order cancel ---------- */
+    if (action === 'cancel-orders') {
+      const { wallet, market } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      const orderIds = Array.isArray(b.orderIds) ? b.orderIds : (b.orderId != null ? [b.orderId] : []);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildCancelOrders({
+            wallet, market, orderIds, all: b.all === true, managerId: b.managerId, live: b.live !== false,
+          }),
+          wallet,
+          b.all === true
+            ? 'Unsigned cancel-all PTB — stops every open order in this pool.'
+            : 'Unsigned batch cancel — unknown/filled ids are skipped by the live-order builder.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- settled balances + maker rebates ---------- */
+    if (action === 'withdraw-settled') {
+      const { wallet, market } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildWithdrawSettled({ wallet, market, managerId: b.managerId }),
+          wallet,
+          'Unsigned withdraw-settled PTB — moves settled fills into the manager balance.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+    if (action === 'claim-rebates') {
+      const { wallet, market } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildClaimRebates({ wallet, market, managerId: b.managerId }),
+          wallet,
+          'Unsigned rebate claim — maker rebates settle into the manager.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- pool referrals (mint / set / update / claim) ---------- */
+    if (action === 'mint-referral') {
+      const { wallet, market, multiplier } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildMintReferral({ wallet, market, multiplier }),
+          wallet,
+          'Unsigned mint-referral — multiplier must be 0.1–2.0 in 0.1 steps.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+    if (action === 'set-referral') {
+      const { wallet, market } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildSetReferral({ wallet, market, managerId: b.managerId, referral: b.referral || null }),
+          wallet,
+          b.referral ? 'Unsigned set-referral — attaches the referral to this BalanceManager.' : 'Unsigned unset-referral — clears the manager referral for this pool.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+    if (action === 'update-referral') {
+      const { wallet, market, referral, multiplier } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market || !referral) return err('INVALID_REQUEST', 'market and referral are required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildUpdateReferralMultiplier({ wallet, market, referral, multiplier }),
+          wallet,
+          'Unsigned referral-multiplier update (0.1–2.0 in 0.1 steps).');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+    if (action === 'claim-referral') {
+      const { wallet, market, referral } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market || !referral) return err('INVALID_REQUEST', 'market and referral are required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildClaimReferralRewards({ wallet, market, referral }),
+          wallet,
+          'Unsigned referral-reward claim — base, quote and DEEP rewards go to the wallet.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- DEEP governance staking ---------- */
+    if (action === 'stake' || action === 'unstake') {
+      const { wallet, market } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => (action === 'stake'
+            ? deepbookAdapter.buildStake({ wallet, market, amount: b.amount, managerId: b.managerId })
+            : deepbookAdapter.buildUnstake({ wallet, market, managerId: b.managerId })),
+          wallet,
+          action === 'stake'
+            ? 'Unsigned DEEP stake — staked DEEP improves taker fees/maker rebates in this pool.'
+            : 'Unsigned DEEP unstake — releases the manager stake in this pool.');
+      } catch (e) {
+        return buildErr(e);
+      }
+    }
+
+    /* ---------- direct spot swap (no BalanceManager) ---------- */
+    if (action === 'swap') {
+      const { wallet, market, side, amount, minOut, deepAmount } = b;
+      if (!isWalletAddress(wallet)) return err('INVALID_WALLET', 'Provide a valid 0x… wallet.', 400);
+      if (!market) return err('INVALID_REQUEST', 'market is required.', 400);
+      try {
+        return await unsignedBuild(
+          () => deepbookAdapter.buildSwap({ wallet, market, side, amount, minOut, deepAmount }),
+          wallet,
+          'Unsigned direct pool swap — minOut is enforced on-chain.');
+      } catch (e) {
+        return buildErr(e);
       }
     }
 

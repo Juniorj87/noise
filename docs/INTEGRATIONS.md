@@ -23,7 +23,7 @@ Verified against `shared/registry.js`, `api/_lib/*` builders, and the UI on 2026
 | Kai | Strategy vaults | Vault state, share math | Deposit / redeem + journey entries (registry note predates the Kai SDK integration) | LIVE |
 | Bucket | Lending data, stable swaps | Markets, positions, PSM pools | PSM swap build; broader lending via reads | PARTIAL |
 | STEAMM | Dual-asset liquidity pools | Pools, events | LP deposit / withdraw PTBs (advanced UI; excluded from single-asset flows by design) | LIVE |
-| DeepBook V3 spot | Order-book trading | Markets, L2 book, open orders | Spot orders via user BalanceManager + simulation | LIVE |
+| DeepBook V3 spot | Order-book trading | Markets (incl. HBTC_USDC), L2 book, open orders, manager capital, settled/rebate/referral state, pool governance params | Limit/market orders, modify, batch/all cancel, deposits/withdrawals, settled withdrawal, rebate + referral claims, direct swaps, DEEP stake/unstake — all via user BalanceManager + simulation | LIVE |
 | DeepBook Predict | Prediction markets | Market discovery, status | Mint / redeem / claim + simulation | LIVE |
 | DeepBook margin | Margin trading | Preflight reads | Builders exist but are unwired (no API route); UI tab hidden | COMING SOON |
 | Wormhole Connect (self-hosted widget) | Bridging | Widget routes | In-widget (provider-side); no signed end-to-end transfer performed by the team | PARTIAL |

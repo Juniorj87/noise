@@ -49,7 +49,7 @@ export async function handleRequest(req, res) {
   if (pathname === '/api/capital' || pathname === '/api/notifications' || pathname.startsWith('/api/capital/') || pathname.startsWith('/api/notifications/')) return capitalHandler(req, res);
   if (pathname === '/api/prices' || pathname === '/api/prices-info' || pathname.startsWith('/api/prices/')) return pricesHandler(req, res);
   if (pathname === '/api/quote' || pathname === '/api/quotes' || pathname.startsWith('/api/quote/') || pathname.startsWith('/api/quotes/')) return quoteHandler(req, res);
-  if (pathname === '/api/sui' || pathname === '/api/suins' || pathname.startsWith('/api/sui/') || pathname.startsWith('/api/suins/')) return suiHandler(req, res);
+  if (pathname === '/api/sui' || pathname === '/api/suins' || pathname === '/api/token' || pathname.startsWith('/api/sui/') || pathname.startsWith('/api/suins/') || pathname.startsWith('/api/token/')) return suiHandler(req, res);
   if (pathname === '/api/swap' || pathname.startsWith('/api/swap/')) return swapHandler(req, res);
   if (pathname.startsWith('/api/trade')) return tradeHandler(req, res);
   if (pathname.startsWith('/api/earn')) return earnHandler(req, res);

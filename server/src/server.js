@@ -2,6 +2,7 @@ import referralsLiveHandler from '../../api/_lib/handlers/referrals-live.js';
 import aiHandlerCanonical from '../../api/_lib/handlers/ai.js';
 import journeyHandler from '../../api/_lib/handlers/journey.js';
 import quoteHandler from '../../api/_lib/handlers/quote.js';
+import suiHandler from '../../api/_lib/handlers/sui.js';
 import kaiHandler from '../../api/_lib/handlers/kai.js';
 // NOISE HUB API — plain Node http router, zero framework deps.
 import { COIN_DECIMALS, decimalToRaw, positiveU64 } from '../../shared/execution-math.js';
@@ -1309,6 +1310,7 @@ const server = createServer(async (req, res) => {
     if(url.pathname.startsWith('/api/journey/'))return journeyHandler(req,res);
     if(url.pathname.startsWith('/api/kai/'))return kaiHandler(req,res);
     if(['/api/quote','/api/quotes'].includes(url.pathname))return quoteHandler(req,res);
+    if(url.pathname==='/api/token')return suiHandler(req,res);
     if(url.pathname==='/api/trade/markets'){const{default:trade}=await import('../../api/_lib/handlers/trade.js');return trade(req,res);}
     const key = req.method + ' ' + url.pathname;
     let handler = routes[key];

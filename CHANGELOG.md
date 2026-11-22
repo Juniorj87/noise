@@ -2,6 +2,10 @@
 
 Derived from Git history. Only shipped, verifiable changes are listed.
 
+## 2026-11-21
+
+- DeepBook spot brought up to the current mainnet surface: client pinned to core v9 (`0xbca0cefe…`), newest mainnet pool HBTC_USDC registered (HBTC, 8 decimals), plus new API actions for manager deposit/withdraw (incl. withdraw-all), order modify, single/batch/cancel-all, settled withdrawal, maker rebates, pool referrals (mint/set/update/claim), direct pool swaps, order DEEP-fee quote and DEEP governance stake/unstake. Every write is dry-run gated before the wallet sees bytes; no UI changes.
+
 ## 2026-10-10
 
 - Strict request-body contract: malformed JSON → `400 INVALID_JSON`, oversize → `413 PAYLOAD_TOO_LARGE`, aborted uploads settle without hanging; covered by unit + live-HTTP regression tests.

@@ -2,25 +2,38 @@
 // GET /api/quotes — Cetus + Aftermath + Turbos compared by effective output (§7-8).
 import { COIN_DECIMALS, decimalToRaw } from '../../../shared/execution-math.js';
 import { handler } from '../http.js';
-import { cetusAdapter, aftermathAdapter, compareRoutes, coinType, deepLink } from '../adapters.js';
+import { cetusAdapter, aftermathAdapter, compareRoutes, coinType, deepLink, STRUCT_TAG } from '../adapters.js';
 import { feeBreakdown } from '../services.js';
 import { cached, withBreaker } from '../util.js';
 import { turbosFeeQuote as turbosQuote } from '../protocol-execution.js';
 import { venueConfig } from '../../../shared/routed-venues.js';
 import { swapProviders } from '../../../shared/swap-providers.js';
 
+// Imported coins are quoted by full struct tag; curated ones by symbol.
+const normAsset = (v) => { const s = String(v || '').trim(); return STRUCT_TAG.test(s) ? s : s.toUpperCase(); };
+function assetDecimals(asset, url, param) {
+  const known = COIN_DECIMALS[asset.toUpperCase()];
+  if (known != null) return known;
+  const raw = url.searchParams.get(param);
+  const d = Number(raw);
+  if (raw != null && Number.isInteger(d) && d >= 0 && d <= 18) return d;
+  throw Object.assign(new Error('Imported coin types must include ' + param + ' (on-chain decimals).'), { code: 'INVALID_QUOTE_REQUEST' });
+}
+
 export default handler(async (req, res, url) => {
-  const from = (url.searchParams.get('from') || '').toUpperCase();
-  const to = (url.searchParams.get('to') || '').toUpperCase();
+  const from = normAsset(url.searchParams.get('from'));
+  const to = normAsset(url.searchParams.get('to'));
   const amountText = url.searchParams.get('amount') || '';
   const amount = Number(amountText);
-  const decimals = COIN_DECIMALS[from];
+  let decimals;
   if (!from || !to || !(amount > 0)) {
     return { error: 'INVALID_QUOTE_REQUEST', message: 'Provide from, to and a positive amount.', status: 400 };
   }
   let amountMist;
   try {
     coinType(from); coinType(to);
+    decimals = assetDecimals(from, url, 'fromDecimals');
+    assetDecimals(to, url, 'toDecimals');
     if (url.searchParams.has('decimals') && Number(url.searchParams.get('decimals')) !== decimals) throw Object.assign(new Error('Asset decimals do not match chain metadata.'), { code: 'INVALID_QUOTE_REQUEST' });
     amountMist = decimalToRaw(amountText, decimals);
   } catch (e) { return { error: e.code || 'INVALID_QUOTE_REQUEST', message: e.message, status: 400 }; }

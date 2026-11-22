@@ -2,9 +2,9 @@ import { turbosSwapBuild } from '../protocol-execution.js';
 import { venueConfig } from '../../../shared/routed-venues.js';
 // POST /api/swap — build the PTB (Cetus fastRouterSwap) + devInspect simulation.
 // Backend NEVER signs: wallet receives txBytes only (spec §23, §24).
-import { positiveU64 } from '../../../shared/execution-math.js';
+import { positiveU64, COIN_DECIMALS } from '../../../shared/execution-math.js';
 import { handler, readJson } from '../http.js';
-import { cetusAdapter, simulate, coinType } from '../adapters.js';
+import { cetusAdapter, simulate, coinType, STRUCT_TAG } from '../adapters.js';
 import { isWalletAddress, feeConfig } from '../services.js';
 import { withBreaker } from '../util.js';
 import { calculateFeeBreakdown } from '../fee-engine.js';
@@ -12,16 +12,27 @@ import { aftermathSwapBuild, normalizeLendingError } from '../lending.js';
 
 // Base units per whole token — the fee leg is carved from the input coin, so
 // the human-readable fee MUST be denominated in the input asset, not dollars.
-const ASSET_DECIMALS = { SUI: 9, USDC: 6, DEEP: 6, CETUS: 9, NAVX: 9 };
-function toHumanAmount(baseUnits, asset) {
-  const decimals = ASSET_DECIMALS[String(asset || '').toUpperCase()] ?? 9;
+const normAsset = (v) => { const s = String(v || '').trim(); return STRUCT_TAG.test(s) ? s : s.toUpperCase(); };
+function decimalCount(asset, provided) {
+  const known = COIN_DECIMALS[String(asset || '').toUpperCase()];
+  if (known != null) return known;
+  const d = Number(provided);
+  if (Number.isInteger(d) && d >= 0 && d <= 18) return d;
+  throw Object.assign(new Error('Imported coin types must include on-chain decimals.'), { code: 'INVALID_BUILD_REQUEST' });
+}
+function toHumanAmount(baseUnits, decimals) {
   return String(Number(baseUnits) / 10 ** decimals);
 }
 
 export default handler(async (req) => {
   if (req.method !== 'POST') return { error: 'INVALID_REQUEST', message: 'POST required.', status: 400 };
   const b = await readJson(req);
-  const { from, to, sender, slippage = 0.01 } = b;
+  const from = normAsset(b.from);
+  const to = normAsset(b.to);
+  const { sender, slippage = 0.01 } = b;
+  let fromDecimals;
+  try { fromDecimals = decimalCount(from, b.fromDecimals); decimalCount(to, b.toDecimals); }
+  catch (e) { return { error: e.code, message: e.message, status: 400 }; }
   let amountMist;
   try { amountMist = String(positiveU64(b.amountMist)); }
   catch (e) { return { error: 'INVALID_AMOUNT', message: e.message, status: 400 }; }
@@ -38,8 +49,8 @@ export default handler(async (req) => {
       const cfg = await feeConfig().catch(() => ({ swapBps: 2 }));
       const r = await withBreaker(selectedProvider, () => (selectedProvider === 'turbos' ? turbosSwapBuild : aftermathSwapBuild)({
         wallet: sender,
-        fromType: coinType(String(from).toUpperCase()),
-        toType: coinType(String(to).toUpperCase()),
+        fromType: coinType(from),
+        toType: coinType(to),
         amountMist: String(amountMist),
         slippage: Number(slippage),
         feeBps: Number(cfg.swapBps || 0),
@@ -57,7 +68,7 @@ export default handler(async (req) => {
       return {
         provider: selectedProvider === 'turbos' ? 'Turbos' : 'Aftermath', amountOut: String(r.meta?.amountOut ?? 0),
         txBytes: r.txBytes, simulation: sim, simulationStatus: 'success', gasEst, feeCollected: r.meta?.feeCollected || null,
-        feeBreakdown: { platformFee: r.meta?.feeCollected ? toHumanAmount(r.meta.feeCollected.amountMist, from) : '0', platformFeeAsset: String(from).toUpperCase(), networkFee: gasEst == null ? null : String(Number(gasEst) / 1e9), networkFeeAsset: 'SUI' },
+        feeBreakdown: { platformFee: r.meta?.feeCollected ? toHumanAmount(r.meta.feeCollected.amountMist, fromDecimals) : '0', platformFeeAsset: from, networkFee: gasEst == null ? null : String(Number(gasEst) / 1e9), networkFeeAsset: 'SUI' },
         builtAt: new Date().toISOString(),
       };
     } catch (e) {
@@ -67,7 +78,7 @@ export default handler(async (req) => {
   }
   try {
     venueConfig(b.provider);
-    const { router, txBytes, feeCollected, provider } = await withBreaker('cetus', () => cetusAdapter.buildSwap({ from: String(from).toUpperCase(), to: String(to).toUpperCase(), amountMist, sender, slippage, venue: b.provider }));
+    const { router, txBytes, feeCollected, provider } = await withBreaker('cetus', () => cetusAdapter.buildSwap({ from, to, amountMist, sender, slippage, venue: b.provider }));
     const sim = await simulate(txBytes, sender).catch((e) => ({ error: 'SIMULATION_FAILED', detail: String(e.message || e).slice(0, 200) }));
     if (!sim || sim.error || sim?.effects?.status?.status !== 'success') {
       return { error: 'SIMULATION_FAILED', message: 'On-chain dry run failed: ' + String(sim?.detail || sim?.effects?.status?.error || 'failed').slice(0, 200) + ' — nothing was sent to your wallet.', status: 400 };
@@ -92,11 +103,11 @@ export default handler(async (req) => {
       amount: router.amountOut || '0',
       asset: to,
     });
-    const feeAsset = String(from).toUpperCase();
+    const feeAsset = from;
     // feeCollected.amountMist is the raw on-chain leg (base units of the input
     // coin). Report it in whole input-token units so it is comparable with the
     // engine estimate and never mislabelled as USD.
-    const feeHuman = feeCollected ? toHumanAmount(feeCollected.amountMist, feeAsset) : '0';
+    const feeHuman = feeCollected ? toHumanAmount(feeCollected.amountMist, fromDecimals) : '0';
     if (!feeCollected) {
       feeBreakdown.platformFee = '0';
       feeBreakdown.platformFeeAsset = feeAsset;

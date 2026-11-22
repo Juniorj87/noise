@@ -24,6 +24,16 @@ export const ACTION_CAPABILITIES = {
   market_order: cap('LIVE', 'LIVE', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech' }),
   cancel_order: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech' }),
   setup_trading_account: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech' }),
+  spot_deposit: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'BalanceManager deposit PTB; dry-run gate runs before signing. Funded-wallet E2E still unproven.' }),
+  spot_withdraw: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'BalanceManager withdraw / withdraw-all PTB; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  modify_order: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Remaining-quantity modify PTB; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  cancel_orders: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Single, batch and cancel-all PTBs; live-order variants skip unknown ids. Funded-wallet E2E still unproven.' }),
+  withdraw_settled: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Settled-fill withdrawal PTB; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  claim_rebates: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Maker-rebate claim PTB; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  spot_referral: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Pool referral mint/set/update/claim PTBs (multiplier 0.1–2.0); dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  spot_swap: cap('LIVE', 'LIVE', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'Direct pool swap (no BalanceManager) with on-chain minOut; live quote from the pool. Funded-wallet E2E still unproven.' }),
+  deep_stake: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'DEEP stake PTB for pool fee/rebate benefits; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
+  deep_unstake: cap('LIVE', '—', 'LIVE', 'LIVE', 'LIVE', { provider: 'DeepBook', url: 'https://deepbook.tech', note: 'DEEP unstake PTB; dry-run gate before signing. Funded-wallet E2E still unproven.' }),
 
   // Data / quote readable, but no verified build in Noise.
   liquidity: cap('LIVE', 'LIVE', 'LIVE', 'LIVE', 'LIVE', {provider:'Aftermath / STEAMM',url:'https://aftermath.finance',note:'Real LP deposit/withdraw builders; live pool metadata, slippage minima, successful dry-run required before wallet signing. Cetus CLMM LP is not wired.'}),

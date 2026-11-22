@@ -67,6 +67,12 @@ export const MAINNET_ASSETS = Object.freeze([
     "source": "Mysten DeepBook SDK mainnet coin registry"
   },
   {
+    "symbol": "HBTC",
+    "coinType": "0xd30fb3f8914efdbeb7b8e85fae1d65dc584b44a1281f66737b92bb9f03a59d06::btc::BTC",
+    "decimals": 8,
+    "source": "Hashi BTC mainnet coin (DeepBook HBTC_USDC pool base asset)"
+  },
+  {
     "symbol": "USDT",
     "coinType": "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT",
     "decimals": 6,

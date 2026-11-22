@@ -330,9 +330,19 @@
         /* ── Swap & Bridge Two-Column Grid ── */
         .swap-grid {
             display: grid;
-            grid-template-columns: 460px 1fr;
+            grid-template-columns: 460px minmax(0, 1fr);
             gap: 32px;
-            align-items: start;
+            align-items: stretch;
+        }
+        .swap-grid > .panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        #swapSubView #routeCardsContainer {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
         }
         @media (max-width: 1024px) {
             .swap-grid { grid-template-columns: 1fr; }
@@ -1088,10 +1098,48 @@
         /* ── Spot Grid & Mobile Breakpoints ── */
         .spot-grid {
             display: grid;
-            grid-template-columns: 245px 1.4fr 280px 290px;
+            grid-template-columns: 245px minmax(0, 1.4fr) 275px 285px;
             gap: 16px;
-            align-items: start;
+            align-items: stretch;
             transition: grid-template-columns 0.2s ease;
+        }
+        /* Equal-height terminal columns: no staircase between chart, ladder and entry */
+        .spot-grid > .panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        #spotBookRows {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        #spotMarketsList {
+            flex: 1 1 auto;
+            max-height: none !important;
+            min-height: 0;
+        }
+        #spotEntryPanes {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .spot-pane-empty {
+            color: var(--text-dim);
+            font-size: 11.5px;
+            font-family: 'Space Grotesk', monospace;
+            padding: 10px 0;
+        }
+        .spot-mini-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            margin-bottom: 6px;
+            font-family: 'Space Grotesk', monospace;
+            font-size: 11px;
         }
         .spot-grid.markets-hidden {
             grid-template-columns: 1.6fr 280px 290px;
@@ -1110,6 +1158,9 @@
         }
         .spot-grid.chart-expanded #spotChartSurface {
             height: 560px !important;
+        }
+        .spot-grid.chart-expanded #spotChartCol {
+            display: flex;
         }
         #spotMarketsList .route-card {
             padding: 9px 12px;
@@ -1158,26 +1209,40 @@
             background: rgba(0, 255, 136, 0.08);
             border-color: rgba(0, 255, 136, 0.3);
         }
-        @media (max-width: 1440px) {
+        @media (max-width: 1500px) {
             .spot-grid {
-                grid-template-columns: 200px 1fr 280px;
+                grid-template-columns: 200px minmax(0, 1fr) 245px 260px;
+                gap: 12px;
             }
             .spot-grid.markets-hidden {
-                grid-template-columns: 1fr 280px;
-            }
-            .spot-grid .spot-order-entry-col {
-                grid-column: span 3;
-            }
-            .spot-grid.markets-hidden .spot-order-entry-col {
-                grid-column: span 2;
+                grid-template-columns: minmax(0, 1fr) 245px 260px;
             }
         }
-        @media (max-width: 1100px) {
+        @media (max-width: 1180px) {
+            .spot-grid {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                align-items: stretch;
+            }
+            .spot-grid.markets-hidden {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            }
+            #spotChartCol {
+                grid-column: 1 / -1;
+            }
+            .spot-grid .spot-order-entry-col {
+                grid-column: 1 / -1;
+            }
+            .spot-grid.markets-hidden .spot-order-entry-col {
+                grid-column: 1 / -1;
+            }
+        }
+        @media (max-width: 900px) {
             .spot-grid {
                 grid-template-columns: 1fr;
             }
+            #spotChartCol,
             .spot-grid .spot-order-entry-col {
-                grid-column: span 1;
+                grid-column: 1 / -1;
             }
         }
         @media (max-width: 768px) {
@@ -1615,6 +1680,7 @@
                                         <option value="NAVX">NAVX</option>
                                         <option value="IKA">IKA</option>
                                         <option value="XBTC">XBTC</option>
+                                        <option value="HBTC">hBTC</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1624,7 +1690,7 @@
                                 </div>
                             </div>
                             <div class="input-bottom">
-                                <span id="swapPayUsdLabel">~$1.05 USD</span>
+                                <span id="swapPayUsdLabel">≈$ —</span>
                                 <span style="cursor:pointer; color:var(--accent);" onclick="setSwapMax()">USE MAX</span>
                             </div>
                         </div>
@@ -1641,7 +1707,7 @@
                                 <span>BALANCE: <b id="swapReceiveBalLabel">—</b></span>
                             </div>
                             <div class="input-row">
-                                <input type="text" id="swapToAmt" class="amount-num" value="1.047" readonly placeholder="0.0">
+                                <input type="text" id="swapToAmt" class="amount-num" value="" readonly placeholder="0.0">
                                 <div class="token-select-wrap">
                                     <select id="swapToToken" onchange="onTokenPairChange()">
                                         <option value="USDC">USDC</option>
@@ -1654,6 +1720,7 @@
                                         <option value="NAVX">NAVX</option>
                                         <option value="IKA">IKA</option>
                                         <option value="XBTC">XBTC</option>
+                                        <option value="HBTC">hBTC</option>
                                         <option value="afSUI">afSUI</option>
                                         <option value="haSUI">haSUI</option>
                                         <option value="vSUI">vSUI</option>
@@ -1663,8 +1730,11 @@
                                 </div>
                             </div>
                             <div class="input-bottom">
-                                <span id="swapReceiveUsdLabel">~$1.05 USD</span>
-                                <span id="swapExchangeRate">1 SUI = 1.047 USDC</span>
+                                <span id="swapReceiveUsdLabel">≈$ —</span>
+                                <span id="swapExchangeRate">1 SUI = — USDC</span>
+                            </div>
+                            <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+                                <button class="filter-btn" style="padding:3px 10px; font-size:10px;" onclick="openImportToken()" title="Trade any Sui coin by its contract address">＋ IMPORT TOKEN CONTRACT</button>
                             </div>
                         </div>
 
@@ -1672,19 +1742,19 @@
                         <div class="route-summary-pill">
                             <div class="route-summary-row">
                                 <span>Selected Route</span>
-                                <b id="summaryRouteName" style="color:var(--accent);">Noise Optimal (Auto-Split)</b>
+                                <b id="summaryRouteName" style="color:var(--accent);">No live quote</b>
                             </div>
                             <div class="route-summary-row">
-                                <span>Price Impact</span>
-                                <b id="summaryImpact" style="color:var(--green);">< 0.05%</b>
+                                <span>Quote Fetched</span>
+                                <b id="summaryQuoteAt" style="color:var(--green);">—</b>
                             </div>
                             <div class="route-summary-row">
                                 <span>Minimum Received</span>
-                                <b id="summaryMinReceived">1.047 USDC (0% slip)</b>
+                                <b id="summaryMinReceived">—</b>
                             </div>
                             <div class="route-summary-row">
                                 <span>Est. Network Fee</span>
-                                <b>~0.0028 SUI</b>
+                                <b>from dry run</b>
                             </div>
                         </div>
 
@@ -1711,18 +1781,18 @@
                         <div class="metrics-grid-3">
                             <div class="metric-cell">
                                 <div class="metric-cell-lbl">TOTAL VOLUME ROUTED</div>
-                                <div class="metric-cell-val">$142.8M</div>
-                                <div class="metric-cell-sub">+18% this week</div>
+                                <div class="metric-cell-val">—</div>
+                                <div class="metric-cell-sub">no verified aggregate source</div>
                             </div>
                             <div class="metric-cell">
                                 <div class="metric-cell-lbl">USER GAS SAVINGS</div>
-                                <div class="metric-cell-val">$64,200</div>
-                                <div class="metric-cell-sub">via batch execution</div>
+                                <div class="metric-cell-val">—</div>
+                                <div class="metric-cell-sub">not tracked on-chain</div>
                             </div>
                             <div class="metric-cell">
-                                <div class="metric-cell-lbl">AVG FILL LATENCY</div>
-                                <div class="metric-cell-val">420ms</div>
-                                <div class="metric-cell-sub">Sui sub-second finality</div>
+                                <div class="metric-cell-lbl">FINALITY</div>
+                                <div class="metric-cell-val">Sui L1</div>
+                                <div class="metric-cell-sub">sub-second consensus, network property</div>
                             </div>
                         </div>
                     </div>
@@ -2056,14 +2126,14 @@
                                 <span id="marketsToggleIcon">◀ Hide Markets</span>
                             </button>
                             <span class="badge-pill badge-best" style="font-size:10px;">DEEPBOOK V3</span>
-                            <div style="font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--green); transition:color 0.2s;" id="spotTickerPrice">$0.9982</div>
-                            <span style="font-family:'Space Grotesk',monospace; font-size:12px; color:var(--green); font-weight:600;" id="spotTickerChange">+4.82% 24h</span>
+                            <div style="font-family:'Space Grotesk',monospace; font-size:18px; font-weight:700; color:var(--green); transition:color 0.2s;" id="spotTickerPrice">—</div>
+                            <span style="font-family:'Space Grotesk',monospace; font-size:12px; color:var(--green); font-weight:600;" id="spotTickerChange">24H —</span>
                         </div>
                         <div style="display:flex; gap:16px; font-size:11.5px; font-family:'Space Grotesk',monospace; color:var(--text-dim); flex-wrap:wrap;">
-                            <div>24H HIGH: <b style="color:#fff;" id="spotTickerHigh">$1.0420</b></div>
-                            <div>24H LOW: <b style="color:#fff;" id="spotTickerLow">$0.9610</b></div>
-                            <div>24H VOL: <b style="color:#fff;" id="spotTickerVol">42.8M SUI ($42.7M)</b></div>
-                            <div>MAKER: <b style="color:var(--green);">0.00%</b></div>
+                            <div>24H HIGH: <b style="color:#fff;" id="spotTickerHigh">—</b></div>
+                            <div>24H LOW: <b style="color:#fff;" id="spotTickerLow">—</b></div>
+                            <div>24H VOL: <b style="color:#fff;" id="spotTickerVol">—</b></div>
+                            <div>MAKER: <b style="color:var(--green);" id="spotTickerMaker">—</b></div>
                             <div>STATUS: <b style="color:var(--accent);" id="spotTickerStatus">● LIVE RPC</b></div>
                         </div>
                     </div>
@@ -2072,7 +2142,7 @@
                         <!-- Column 1: Markets List -->
                         <div class="panel" id="spotMarketsCol" style="padding:14px;">
                             <div class="panel-label" style="margin-bottom:10px;">ACTIVE MARKETS</div>
-                            <div style="display:flex; flex-direction:column; gap:6px; max-height:510px; overflow-y:auto;" id="spotMarketsList">
+                            <div style="display:flex; flex-direction:column; gap:6px; max-height:510px; overflow-y:auto; min-height:120px;" id="spotMarketsList">
                                 <div class="route-card selected" data-pool="SUI_USDC">
                                     <div class="route-card-left">
                                         <div class="route-card-name">SUI / USDC</div>
@@ -2124,7 +2194,7 @@
                             </div>
 
                             <!-- Chart Surface -->
-                            <div id="spotChartSurface" style="position:relative; width:100%; height:460px; background:rgba(8,8,8,0.75); border:1px solid var(--line); border-radius:6px; overflow:hidden;">
+                            <div id="spotChartSurface" style="position:relative; width:100%; flex:1 1 auto; min-height:420px; background:rgba(8,8,8,0.75); border:1px solid var(--line); border-radius:6px; overflow:hidden;">
                                 <canvas id="spotCandleCanvas" style="width:100%; height:100%; display:block; cursor:crosshair;"></canvas>
                                 <div id="tradingviewEmbedWrap" style="position:absolute; top:0; left:0; width:100%; height:100%; display:none; background:#0a0a0a;">
                                     <iframe id="tvIframe" style="width:100%; height:100%; border:none;" src="about:blank"></iframe>
@@ -2143,7 +2213,7 @@
                                 <span style="text-align:right;" id="spotSizeHdr">SIZE (SUI)</span>
                                 <span style="text-align:right;" id="spotTotalHdr">TOTAL (USDC)</span>
                             </div>
-                            <div id="spotBookRows" style="display:flex; flex-direction:column; gap:3px; font-family:'Space Grotesk',monospace; font-size:11.5px; min-height:430px;">
+                            <div id="spotBookRows" style="display:flex; flex-direction:column; gap:3px; font-family:'Space Grotesk',monospace; font-size:11.5px; min-height:430px; flex:1 1 auto;">
                                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; color:var(--red); background:rgba(255,51,68,0.04); padding:3px 0; cursor:pointer;" onclick="pickSpotPrice(1.0478)">
                                     <span>1.0478</span><span style="text-align:right;">18,400</span><span style="text-align:right;">19,279.52</span>
                                 </div>
@@ -2170,33 +2240,90 @@
 
                         <!-- Column 4: Place Order Panel -->
                         <div class="panel spot-order-entry-col" style="padding:14px;">
-                            <div class="panel-header">
+                            <div class="panel-header" style="margin-bottom:10px;">
                                 <span class="panel-label">ORDER ENTRY</span>
                                 <div style="display:flex; gap:4px;">
                                     <button class="filter-btn active" style="padding:3px 8px;" id="orderSideBuy" onclick="setSpotOrderSide('buy')">BUY</button>
                                     <button class="filter-btn" style="padding:3px 8px;" id="orderSideSell" onclick="setSpotOrderSide('sell')">SELL</button>
                                 </div>
                             </div>
-                            <div class="input-card" style="margin-bottom:10px;">
-                                <div class="input-top"><span>PRICE</span><span id="spotPriceAsset">USDC</span></div>
-                                <input type="number" id="spotPriceInput" class="amount-num" value="1.0468" step="0.0001" oninput="updateSpotTotal()">
+                            <div style="display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;">
+                                <button class="filter-btn active" id="spotTabOrder" style="padding:3px 8px; font-size:10px;" onclick="setSpotEntryTab('order')">TRADE</button>
+                                <button class="filter-btn" id="spotTabOrders" style="padding:3px 8px; font-size:10px;" onclick="setSpotEntryTab('orders')">ORDERS <span id="spotOpenOrdersCount">0</span></button>
+                                <button class="filter-btn" id="spotTabFunds" style="padding:3px 8px; font-size:10px;" onclick="setSpotEntryTab('funds')">FUNDS</button>
                             </div>
-                            <div class="input-card" style="margin-bottom:10px;">
-                                <div class="input-top"><span>AMOUNT</span><span id="spotAmtAsset">SUI</span></div>
-                                <input type="number" id="spotAmtInput" class="amount-num" value="50" step="any" oninput="updateSpotTotal()">
+                            <div id="spotEntryPanes" style="flex:1 1 auto; min-height:0;">
+                                <!-- TRADE pane -->
+                                <div id="spotEntryOrderPane">
+                                    <div style="display:flex; gap:4px; margin-bottom:8px;">
+                                        <button class="chart-tf-btn active" id="spotTypeLimit" onclick="setSpotOrderType('LIMIT')">LIMIT</button>
+                                        <button class="chart-tf-btn" id="spotTypeMarket" onclick="setSpotOrderType('MARKET')">MARKET</button>
+                                        <button class="chart-tf-btn" id="spotBtnDeepFee" style="margin-left:auto;" title="DEEP fee required for this order" onclick="refreshSpotDeepFee()">DEEP FEE</button>
+                                    </div>
+                                    <div class="input-card" style="margin-bottom:10px;" id="spotPriceCard">
+                                        <div class="input-top"><span>PRICE</span><span id="spotPriceAsset">USDC</span></div>
+                                        <input type="number" id="spotPriceInput" class="amount-num" value="1.0468" step="0.0001" oninput="updateSpotTotal()">
+                                    </div>
+                                    <div class="input-card" style="margin-bottom:10px;">
+                                        <div class="input-top"><span>AMOUNT</span><span id="spotAmtAsset">SUI</span></div>
+                                        <input type="number" id="spotAmtInput" class="amount-num" value="50" step="any" oninput="updateSpotTotal()">
+                                    </div>
+                                    <!-- Quick Percentage Selectors -->
+                                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:12px;">
+                                        <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.25)">25%</button>
+                                        <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.50)">50%</button>
+                                        <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.75)">75%</button>
+                                        <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(1.00)">100%</button>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; color:var(--text-dim); font-family:'Space Grotesk',monospace;">
+                                        <span>ORDER VALUE:</span>
+                                        <b id="spotTotalVal" style="color:#fff;">$52.34 USDC</b>
+                                    </div>
+                                    <div class="panel-label" id="spotDeepFeeLbl" style="margin-bottom:8px; font-size:10px; min-height:13px;"></div>
+                                    <button class="exec-btn" onclick="executeSpotOrder()">PLACE DEEPBOOK ORDER</button>
+                                </div>
+                                <!-- OPEN ORDERS pane -->
+                                <div id="spotEntryOrdersPane" style="display:none;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:6px;">
+                                        <span class="panel-label" id="spotOrdersLbl" style="font-size:10px;">OPEN ORDERS</span>
+                                        <div style="display:flex; gap:2px;">
+                                            <button class="chart-tf-btn" onclick="fetchSpotOrders()" title="Refresh open orders">⟳</button>
+                                            <button class="chart-tf-btn" onclick="cancelSpotOrder(null, true)" title="Cancel every open order in this pool">CANCEL ALL</button>
+                                        </div>
+                                    </div>
+                                    <div id="spotOrdersList" style="overflow-y:auto; max-height:430px;">
+                                        <div class="spot-pane-empty">Connect wallet to load open orders.</div>
+                                    </div>
+                                </div>
+                                <!-- FUNDS pane -->
+                                <div id="spotEntryFundsPane" style="display:none;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <span class="panel-label" style="font-size:10px;">BALANCE MANAGER</span>
+                                        <button class="chart-tf-btn" onclick="fetchSpotAccount()" title="Refresh account">⟳</button>
+                                    </div>
+                                    <div id="spotFundsBalances" class="spot-pane-empty">Connect wallet to load your trading account.</div>
+                                    <div class="input-card" style="margin:10px 0 8px;">
+                                        <div class="input-top"><span>COIN</span><span id="spotFundsManagerLbl" style="font-size:9px;">—</span></div>
+                                        <select id="spotFundsCoin" style="width:100%; background:transparent; border:none; color:#fff; font-size:13px; outline:none;">
+                                            <option value="USDC">USDC</option>
+                                            <option value="SUI">SUI</option>
+                                            <option value="DEEP">DEEP</option>
+                                            <option value="HBTC">hBTC</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-card" style="margin-bottom:8px;">
+                                        <div class="input-top"><span>AMOUNT</span><span>WALLET → MANAGER</span></div>
+                                        <input type="number" id="spotFundsAmt" class="amount-num" placeholder="0.0" step="any">
+                                    </div>
+                                    <button class="exec-btn" style="margin-bottom:6px;" onclick="spotFundsAction('deposit')">DEPOSIT</button>
+                                    <button class="exec-btn" style="margin-bottom:6px; background:transparent; border:1px solid var(--line);" onclick="spotFundsAction('withdraw')">WITHDRAW</button>
+                                    <button class="exec-btn" style="margin-bottom:6px; background:transparent; border:1px solid var(--line);" onclick="spotFundsAction('withdraw-all')">WITHDRAW ALL</button>
+                                    <div style="display:flex; gap:6px;">
+                                        <button class="filter-btn" style="flex:1; padding:5px 4px; font-size:9.5px;" onclick="spotFundsAction('withdraw-settled')">SETTLED</button>
+                                        <button class="filter-btn" style="flex:1; padding:5px 4px; font-size:9.5px;" onclick="spotFundsAction('claim-rebates')">REBATES</button>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Quick Percentage Selectors -->
-                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:12px;">
-                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.25)">25%</button>
-                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.50)">50%</button>
-                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(0.75)">75%</button>
-                                <button class="filter-btn" style="padding:3px 0; font-size:10px; text-align:center;" onclick="setSpotQuickPct(1.00)">100%</button>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:16px; color:var(--text-dim); font-family:'Space Grotesk',monospace;">
-                                <span>ORDER VALUE:</span>
-                                <b id="spotTotalVal" style="color:#fff;">$52.34 USDC</b>
-                            </div>
-                            <button class="exec-btn" onclick="executeSpotOrder()">PLACE DEEPBOOK ORDER</button>
                         </div>
                     </div>
                 </div>
@@ -2464,14 +2591,14 @@
             <section class="app-view" id="view-leaderboard">
                 <div class="section-tag">06 · ON-CHAIN REPUTATION</div>
                 <h1 class="section-title">Leaderboard. <span>Verified Receipts.</span></h1>
-                <p class="section-desc">Confirmed on-chain activity on Sui Mainnet. Only verified digests submitted through Noise execute pipelines count toward rank.</p>
+                <p class="section-desc">Ranked from verified Noise accounting only — referral attributions and confirmed revenue entries in PostgreSQL. Volume ranking is not available while no verified on-chain volume source exists.</p>
 
                 <!-- User Rank Banner -->
                 <div class="panel" style="margin-bottom:24px; background:rgba(0, 102, 255, 0.04); border-color:rgba(0, 102, 255, 0.25);">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
                         <div>
                             <div style="font-size:11px; color:var(--accent); font-family:'Space Grotesk',monospace; letter-spacing:1px; margin-bottom:4px;">YOUR PROFILE STATUS</div>
-                            <div style="font-size:16px; font-weight:600;" id="userRankStatus">Connect wallet to view your personal ranking and verified volume.</div>
+                            <div style="font-size:16px; font-weight:600;" id="userRankStatus">Connect wallet to view your personal ranking and verified earnings.</div>
                         </div>
                         <div style="display:flex; gap:12px;" id="userRankMetrics">
                             <!-- Populated when wallet connects -->
@@ -2480,9 +2607,10 @@
                 </div>
 
                 <div class="filter-bar">
-                    <button class="filter-btn active" onclick="setLeaderboardPeriod('ALL', this)">ALL TIME</button>
-                    <button class="filter-btn" onclick="setLeaderboardPeriod('30D', this)">LAST 30 DAYS</button>
-                    <button class="filter-btn" onclick="setLeaderboardPeriod('7D', this)">LAST 7 DAYS</button>
+                    <button class="filter-btn active" onclick="setLeaderboardPeriod('all', this)">ALL TIME</button>
+                    <button class="filter-btn" onclick="setLeaderboardPeriod('month', this)">LAST 30 DAYS</button>
+                    <button class="filter-btn" onclick="setLeaderboardPeriod('week', this)">LAST 7 DAYS</button>
+                    <span class="panel-label" id="leaderboardMeta" style="margin-left:auto; font-size:10px;">Verified source · loading…</span>
                 </div>
 
                 <div class="table-wrap">
@@ -2491,11 +2619,10 @@
                             <tr>
                                 <th>RANK</th>
                                 <th>WALLET</th>
-                                <th>POINTS</th>
-                                <th>CONFIRMED TXS</th>
-                                <th>VOLUME ($)</th>
-                                <th>SWAPS</th>
-                                <th>TIER</th>
+                                <th>REFERRALS</th>
+                                <th>ACTIVE</th>
+                                <th>ELIGIBLE REVENUE</th>
+                                <th>EARNED</th>
                             </tr>
                         </thead>
                         <tbody id="leaderboardTableBody">
@@ -2808,7 +2935,7 @@
                                     </div>
                                     <div style="display:flex; justify-content:space-between; padding-bottom:6px; border-bottom:1px solid var(--line);">
                                         <span style="color:var(--text-dim);">SUI Price</span>
-                                        <span style="color:#fff; font-family:'Space Grotesk',monospace;">$1.047 (+4.8%)</span>
+                                        <span id="aiCtxSuiPrice" style="color:#fff; font-family:'Space Grotesk',monospace;">— (no live feed)</span>
                                     </div>
                                     <div style="display:flex; justify-content:space-between; padding-bottom:6px; border-bottom:1px solid var(--line);">
                                         <span style="color:var(--text-dim);">Connected Wallet</span>
@@ -2816,11 +2943,11 @@
                                     </div>
                                     <div style="display:flex; justify-content:space-between; padding-bottom:6px; border-bottom:1px solid var(--line);">
                                         <span style="color:var(--text-dim);">Active Tasks</span>
-                                        <span id="aiCtxTasksCount" style="color:var(--accent); font-family:'Space Grotesk',monospace;">4 Running</span>
+                                        <span id="aiCtxTasksCount" style="color:var(--accent); font-family:'Space Grotesk',monospace;">0 Running</span>
                                     </div>
                                     <div style="display:flex; justify-content:space-between;">
-                                        <span style="color:var(--text-dim);">Total Volume Routed</span>
-                                        <span style="color:#fff; font-family:'Space Grotesk',monospace;">$48.6M</span>
+                                        <span style="color:var(--text-dim);" title="No verified aggregate volume source">Total Volume Routed</span>
+                                        <span style="color:var(--text-dim); font-family:'Space Grotesk',monospace;">—</span>
                                     </div>
                                 </div>
                             </div>
@@ -2918,14 +3045,38 @@
     let isRealWallet = false;
     let _walletBalances = { 'SUI': 0, 'USDC': 0, 'USDT': 0 };
     // Verified input-token decimals (mirrors shared/assets.js mainnet registry)
-    const TOKEN_DECIMALS = { SUI: 9, USDC: 6, USDT: 6, WAL: 9, DEEP: 6, NS: 6, CETUS: 9, NAVX: 9, IKA: 9, XBTC: 8, WETH: 8, WBTC: 8, afSUI: 9, haSUI: 9, vSUI: 9 };
+    const TOKEN_DECIMALS = { SUI: 9, USDC: 6, USDT: 6, WAL: 9, DEEP: 6, NS: 6, CETUS: 9, NAVX: 9, IKA: 9, XBTC: 8, HBTC: 8, WETH: 8, WBTC: 8, afSUI: 9, haSUI: 9, vSUI: 9 };
     let _tokenDec = {};
+    // User-imported coins (contract → on-chain metadata). Quote/build only work
+    // when the routers actually return liquidity; nothing is assumed.
+    const CUSTOM_TOKENS_KEY = 'noise:customTokens';
+    let _customTokens = [];
+    const COIN_TYPE_RE = /^0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+$/;
+    function normCoinType(t) { return String(t || '').trim().toLowerCase().replace(/^0x0+/, '0x'); }
+    function customToken(sym) { return _customTokens.find(t => t.symbol === sym) || null; }
+    function assetParam(sym) { const t = customToken(sym); return t ? t.coinType : sym; }
+    function assetDecimalsQuery(sym, param) { const t = customToken(sym); return t ? '&' + param + '=' + encodeURIComponent(t.decimals) : ''; }
+    function loadCustomTokens() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(CUSTOM_TOKENS_KEY) || '[]');
+            if (Array.isArray(raw)) _customTokens = raw.filter(t => t && COIN_TYPE_RE.test(t.coinType || '') && /^[A-Z0-9._-]{1,20}$/.test(t.symbol || '') && Number.isInteger(t.decimals) && t.decimals >= 0 && t.decimals <= 18);
+        } catch { _customTokens = []; }
+        for (const t of _customTokens) TOKEN_DECIMALS[t.symbol] = t.decimals;
+    }
     function tokenDecimals(sym) {
         if (_tokenDec[sym] != null) return _tokenDec[sym];
+        const ct = customToken(sym);
+        if (ct) return ct.decimals;
         if (TOKEN_DECIMALS[sym] != null) return TOKEN_DECIMALS[sym];
         return null;
     }
-    let _selectedRoute = 'noise';
+    // Live swap quote state — route outputs come only from /api/quotes.
+    const SWAP_SLIPPAGE = 0.005;
+    let _selectedRoute = null;
+    let _swapQuotes = null; // { key, routes, providers, failed, error, at }
+    let _swapQuoteSeq = 0;
+    let _swapQuoteTimer = null;
+    const _livePriceAt = {}; // symbol → timestamp of a real feed update
     let _activeTab = 'swap';
     let _selectedBridgeVenue = 'wormhole';
 
@@ -2980,6 +3131,7 @@
         'NAVX': 0.120,
         'IKA': 0.080,
         'XBTC': 64800.0,
+        'HBTC': 64800.0,
         'WBTC': 64800.0,
         'BTC': 64800.0,
         'LZWBTC': 64800.0,
@@ -3049,8 +3201,12 @@
             TOKEN_PRICES['afSUI'] = px * 1.071;
             TOKEN_PRICES['haSUI'] = px * 1.073;
             TOKEN_PRICES['vSUI'] = px * 1.068;
+            const at = Date.now();
+            for (const s of ['SUI', 'afSUI', 'haSUI', 'vSUI']) _livePriceAt[s] = at;
             const el = $('mktPriceSUI');
             if (el) el.textContent = '$' + px.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 4 });
+            const ctx = $('aiCtxSuiPrice');
+            if (ctx) ctx.textContent = '$' + px.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 4 });
         };
         try {
             const res = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=SUIUSDT');
@@ -3070,10 +3226,11 @@
                 TOKEN_PRICES['WETH'] = ethPx;
                 TOKEN_PRICES['BETH'] = ethPx;
                 TOKEN_PRICES['ETH'] = ethPx;
+                for (const s of ['WETH', 'BETH', 'ETH']) _livePriceAt[s] = Date.now();
             }
         } catch (e) { console.log('ETH feed notice:', e.message); }
         // Top Sui tokens + WBTC — each feed independent, one failure never blocks the rest
-        const BIN_SPOT = { WAL: 'WALUSDT', DEEP: 'DEEPUSDT', NS: 'NSUSDT', CETUS: 'CETUSUSDT', NAVX: 'NAVXUSDT', IKA: 'IKAUSDT', XBTC: 'BTCUSDT', WBTC: 'BTCUSDT' };
+        const BIN_SPOT = { WAL: 'WALUSDT', DEEP: 'DEEPUSDT', NS: 'NSUSDT', CETUS: 'CETUSUSDT', NAVX: 'NAVXUSDT', IKA: 'IKAUSDT', XBTC: 'BTCUSDT', HBTC: 'BTCUSDT', WBTC: 'BTCUSDT' };
         for (const [sym, pair] of Object.entries(BIN_SPOT)) {
             try {
                 const r = await fetch('https://api.binance.com/api/v3/ticker/price?symbol=' + pair);
@@ -3081,9 +3238,11 @@
                 if (d && d.price) {
                     const px = parseFloat(d.price);
                     TOKEN_PRICES[sym] = px;
-                    if (sym === 'WBTC') {
+                    _livePriceAt[sym] = Date.now();
+                    if (sym === 'WBTC' || sym === 'HBTC') {
                         TOKEN_PRICES['BTC'] = px;
                         TOKEN_PRICES['LZWBTC'] = px;
+                        _livePriceAt['BTC'] = _livePriceAt['LZWBTC'] = Date.now();
                     }
                 }
             } catch (e) { console.log(sym + ' feed notice:', e.message); }
@@ -3099,6 +3258,8 @@
             (data.markets || []).forEach(m => {
                 if (m.market === 'SUI_USDC' && m.last > 0) applySui(Number(m.last));
                 if (m.market === 'DEEP_USDC' && m.last > 0) {
+                    TOKEN_PRICES['DEEP'] = Number(m.last);
+                    _livePriceAt['DEEP'] = Date.now();
                     const el = $('mktPriceDEEP');
                     if (el) el.textContent = '$' + Number(m.last).toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 4 });
                 }
@@ -3146,6 +3307,9 @@
                     else if (coin.toLowerCase().includes('::vsui::vsui')) { sym = 'vSUI'; dec = 9; }
                     else if (coin.toLowerCase().includes('::weth::weth')) { sym = 'WETH'; dec = 8; }
                     else if (coin.toLowerCase().includes('::wbtc::wbtc')) { sym = 'WBTC'; dec = 8; }
+                    else if (coin.toLowerCase().includes('::btc::btc')) { sym = 'HBTC'; dec = await coinDecimals(coin, 8); }
+                    const imported = _customTokens.find(t => normCoinType(t.coinType) === normCoinType(coin));
+                    if (imported) { sym = imported.symbol; dec = imported.decimals; }
 
                     const amt = Number(item.totalBalance) / Math.pow(10, dec);
                     _walletBalances[sym] = amt;
@@ -3163,18 +3327,67 @@
     }
 
     // Swap token universe — balances shown inside the dropdown itself
-    const TOKEN_LIST = ['SUI', 'USDC', 'USDT', 'WAL', 'DEEP', 'NS', 'CETUS', 'NAVX', 'IKA', 'XBTC', 'afSUI', 'haSUI', 'vSUI', 'WETH', 'WBTC'];
+    const TOKEN_LIST = ['SUI', 'USDC', 'USDT', 'WAL', 'DEEP', 'NS', 'CETUS', 'NAVX', 'IKA', 'XBTC', 'HBTC', 'afSUI', 'haSUI', 'vSUI', 'WETH', 'WBTC'];
+    function tokenDisplayName(sym) { return sym === 'HBTC' ? 'hBTC' : sym; }
     function refreshSwapTokenOptions() {
+        const syms = TOKEN_LIST.concat(_customTokens.map(t => t.symbol));
         ['swapFromToken', 'swapToToken'].forEach(id => {
             const sel = $(id);
             if (!sel) return;
             const cur = sel.value;
-            sel.innerHTML = TOKEN_LIST.map(sym => {
+            sel.innerHTML = syms.map(sym => {
                 const b = (wallet && _walletBalances[sym] != null) ? (' · ' + _walletBalances[sym].toLocaleString(undefined, { maximumFractionDigits: 4 })) : '';
-                return '<option value="' + sym + '">' + sym + b + '</option>';
+                const imported = customToken(sym);
+                return '<option value="' + sym + '"' + (imported ? ' title="' + esc(imported.coinType) + '"' : '') + '>' + tokenDisplayName(sym) + b + '</option>';
             }).join('');
-            if (TOKEN_LIST.includes(cur)) sel.value = cur;
+            if (syms.includes(cur)) sel.value = cur;
         });
+    }
+    function openImportToken() {
+        $('modalContainer').innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal-card">
+                <div class="modal-title">IMPORT TOKEN BY CONTRACT</div>
+                <div class="modal-desc">Paste the full Sui coin type. Noise reads symbol and decimals from on-chain metadata; routes appear only if a quote provider actually has liquidity.</div>
+                <input id="importTokenType" class="amount-num" style="width:100%; font-size:12px; margin-bottom:10px;" placeholder="0x…::module::COIN" spellcheck="false" autocomplete="off">
+                <div id="importTokenStatus" style="font-size:11px; color:var(--text-dim); min-height:16px; margin-bottom:12px;"></div>
+                <button class="exec-btn" id="importTokenBtn" onclick="submitImportToken()">READ ON-CHAIN METADATA</button>
+                <button class="modal-close-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>`;
+        setTimeout(() => { const i = $('importTokenType'); if (i) i.focus(); }, 50);
+    }
+    async function submitImportToken() {
+        const input = $('importTokenType');
+        const status = $('importTokenStatus');
+        const btn = $('importTokenBtn');
+        const type = String((input && input.value) || '').trim();
+        if (!COIN_TYPE_RE.test(type)) { if (status) status.textContent = 'Enter a full coin type: 0x…::module::TYPE.'; return; }
+        if (_customTokens.some(t => normCoinType(t.coinType) === normCoinType(type))) { if (status) status.textContent = 'This contract is already imported.'; return; }
+        if (status) status.textContent = 'Reading on-chain coin metadata…';
+        if (btn) btn.disabled = true;
+        try {
+            const r = await fetch('/api/token?type=' + encodeURIComponent(type));
+            const d = await r.json();
+            if (!r.ok || d.error) throw new Error(d.message || d.error || ('HTTP ' + r.status));
+            const sym = String(d.symbol || '').trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '');
+            if (!sym) throw new Error('On-chain symbol is empty.');
+            if (TOKEN_DECIMALS[sym] != null || _customTokens.some(t => t.symbol === sym)) {
+                throw new Error('Symbol ' + sym + ' is already listed for another coin — refusing to shadow it.');
+            }
+            _customTokens.push({ symbol: sym, name: String(d.name || sym), decimals: Number(d.decimals), coinType: type });
+            TOKEN_DECIMALS[sym] = Number(d.decimals);
+            try { localStorage.setItem(CUSTOM_TOKENS_KEY, JSON.stringify(_customTokens)); } catch {}
+            refreshSwapTokenOptions();
+            if ($('swapToToken')) $('swapToToken').value = sym;
+            closeModal();
+            toast('Imported ' + sym + ' — quoting routes if liquidity exists.');
+            onTokenPairChange();
+        } catch (e) {
+            if (status) status.textContent = 'Import failed: ' + (e.message || e);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     }
     function updateBalanceLabels() {
         const fromToken = $('swapFromToken').value;
@@ -3319,73 +3532,182 @@
         </div>`;
     }
 
-    // ── SWAP CALCULATION & ROUTE COMPARISON ENGINE ──
-    const ROUTES_INFO = [
-        { id: 'noise', name: 'Noise Optimal Route', desc: 'DeepBook v3 + Cetus Multi-Split', factor: 1.0000, badge: 'BEST' },
-        { id: '7k', name: '7k Aggregator', desc: 'Dynamic Multi-Hop Engine', factor: 0.9994, badge: '-0.06%' },
-        { id: 'aftermath', name: 'Aftermath Finance', desc: 'Smart Router v2 Liquidity', factor: 0.9991, badge: '-0.09%' },
-        { id: 'cetus', name: 'Cetus Protocol', desc: 'CLMM Concentrated Liquidity', factor: 0.9985, badge: '-0.15%' },
-        { id: 'deepbook', name: 'DeepBook v3', desc: 'Direct On-Chain CLOB Match', factor: 0.9982, badge: '-0.18%' },
-        { id: 'mmt', name: 'Momentum (MMT)', desc: 'Tick-Optimized AMM Liquidity', factor: 0.9979, badge: '-0.21%' },
-        { id: 'turbos', name: 'Turbos Finance', desc: 'Dynamic Range Concentrated AMM', factor: 0.9975, badge: '-0.25%' },
-        { id: 'flowx', name: 'FlowX Finance', desc: 'Multi-Pool Ecosystem AMM', factor: 0.9968, badge: '-0.32%' }
-    ];
+    // ── SWAP QUOTES: only provider-quoted routes, never invented factors ──
+    function swapQuoteKey() {
+        const from = $('swapFromToken') ? $('swapFromToken').value : '';
+        const to = $('swapToToken') ? $('swapToToken').value : '';
+        const amt = $('swapFromAmt') ? (parseFloat($('swapFromAmt').value) || 0) : 0;
+        return amt > 0 && from && to && from !== to ? from + '|' + to + '|' + amt : '';
+    }
 
-    function recalcSwap() {
+    function providerId(q) {
+        const s = String((q && q.provider) || '').toLowerCase();
+        if (s.includes('aftermath')) return 'aftermath';
+        if (s.includes('turbos')) return 'turbos';
+        if (s.includes('cetus')) return 'cetus';
+        return s.split(/\s+/)[0] || 'route';
+    }
+
+    function livePrice(sym) {
+        const px = TOKEN_PRICES[sym];
+        return _livePriceAt[sym] && Number(px) > 0 ? Number(px) : null;
+    }
+
+    const USD_PEGGED = { USDC: 1, USDT: 1, AUSD: 1, SUIUSDE: 1, USDSUI: 1, WUSDT: 1, WUSDC: 1 };
+    function usdText(amount, sym) {
+        const px = livePrice(sym) ?? USD_PEGGED[sym] ?? null;
+        if (px == null || !(amount > 0)) return '≈$ — (no live price)';
+        return '≈$ ' + (amount * px).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function routeOut(route) {
+        const to = $('swapToToken').value;
+        const dec = tokenDecimals(to);
+        const raw = Number(route && route.amountOut);
+        if (!Number.isFinite(raw) || !(raw > 0) || dec == null) return null;
+        return raw / Math.pow(10, dec);
+    }
+
+    function routeOutText(route) {
+        const out = routeOut(route);
+        return out == null ? '—' : out.toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' ' + $('swapToToken').value;
+    }
+
+    function providerReason(reason) {
+        const map = {
+            SELECT_VENUE_FOR_QUOTE: 'no live quote in this round',
+            USE_TRADE_ORDERBOOK: 'use Trade order book',
+            PROVIDER_UNAVAILABLE: 'provider unreachable',
+            NO_ROUTE: 'no executable route'
+        };
+        return map[reason] || String(reason || 'unavailable').toLowerCase().replace(/_/g, ' ');
+    }
+
+    function renderSwapRoutes() {
+        const container = $('routeCardsContainer');
+        if (!container) return;
+        const toToken = $('swapToToken').value;
+        const key = swapQuoteKey();
+        const note = (html) => '<div style="padding:14px; font-size:12px; color:var(--text-dim); line-height:1.5;">' + html + '</div>';
+        if (!key) { container.innerHTML = note('Enter an amount to request live provider quotes.'); return; }
+        const q = _swapQuotes;
+        if (!q || q.key !== key) { container.innerHTML = note('Requesting live quotes from Cetus, Aftermath and Turbos…'); return; }
+        if (!q.routes.length) {
+            container.innerHTML = note('<span style="color:var(--amber)">No provider returned a quote for this pair and amount.</span>' +
+                (q.error ? '<br>' + esc(q.error) : ''));
+            return;
+        }
+        const bestRaw = Number(q.routes[0].amountOut);
+        const rows = q.routes.map((r, i) => {
+            const id = providerId(r);
+            const out = routeOut(r);
+            const outStr = routeOutText(r);
+            const delta = i === 0 || !(bestRaw > 0) ? null : ((Number(r.amountOut) / bestRaw) - 1) * 100;
+            const sub = i === 0 ? 'Best quoted output' : (delta != null && Number.isFinite(delta) ? delta.toFixed(2) + '% vs best' : 'Quoted output');
+            const isSelected = id === _selectedRoute;
+            return '<div class="route-card ' + (isSelected ? 'selected' : '') + '" onclick="selectSwapRoute(\'' + id + '\')">' +
+                '<div class="route-card-left">' +
+                    '<div class="route-card-name">' +
+                        '<span>' + esc(r.provider || id) + '</span>' +
+                        (i === 0 ? '<span class="badge-pill badge-best">BEST</span>' : '') +
+                        (isSelected ? '<span class="badge-pill badge-sel">SELECTED</span>' : '') +
+                    '</div>' +
+                    '<div class="route-card-desc">Live quote · ' + (r.routeProviders && r.routeProviders.length ? esc(r.routeProviders.join(' + ')) : 'on-chain route') + '</div>' +
+                '</div>' +
+                '<div class="route-card-right">' +
+                    '<div class="route-card-val">' + outStr + '</div>' +
+                    '<div class="route-card-sub">' + sub + '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+        const quotedIds = q.routes.map(providerId);
+        const unavailable = (q.providers || []).filter(p => !quotedIds.includes(p.id) && !p.available);
+        const rowsUn = unavailable.map(p =>
+            '<div class="route-card" style="opacity:0.55; cursor:default;">' +
+                '<div class="route-card-left">' +
+                    '<div class="route-card-name"><span>' + esc(p.name || p.id) + '</span></div>' +
+                    '<div class="route-card-desc">' + esc(providerReason(p.reason)) + '</div>' +
+                '</div>' +
+                '<div class="route-card-right"><div class="route-card-val">—</div><div class="route-card-sub">not quoted</div></div>' +
+            '</div>').join('');
+        container.innerHTML = rows + rowsUn;
+    }
+
+    function paintSwapSummary() {
         const fromToken = $('swapFromToken').value;
         const toToken = $('swapToToken').value;
         const fromAmt = parseFloat($('swapFromAmt').value) || 0;
+        const q = _swapQuotes && _swapQuotes.key === swapQuoteKey() ? _swapQuotes : null;
+        const active = q ? (q.routes.find(r => providerId(r) === _selectedRoute) || q.routes[0]) : null;
+        const out = active ? routeOut(active) : null;
 
-        const pFrom = TOKEN_PRICES[fromToken] || 1;
-        const pTo = TOKEN_PRICES[toToken] || 1;
-        const baseRate = pFrom / pTo;
-
-        // Dynamic USD for pay:
-        const usdPay = fromAmt * pFrom;
-        $('swapPayUsdLabel').textContent = '~$ ' + usdPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD';
-
-        // Render Right Side Route Cards
-        const container = $('routeCardsContainer');
-        if (container) {
-            container.innerHTML = ROUTES_INFO.map((r, i) => {
-                const outVal = fromAmt * baseRate * r.factor;
-                const isSelected = r.id === _selectedRoute;
-                const outStr = outVal.toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' ' + toToken;
-                return '<div class="route-card ' + (isSelected ? 'selected' : '') + '" onclick="selectSwapRoute(\'' + r.id + '\')">' +
-                    '<div class="route-card-left">' +
-                        '<div class="route-card-name">' +
-                            '<span>' + esc(r.name) + '</span>' +
-                            (i === 0 ? '<span class="badge-pill badge-best">BEST</span>' : '') +
-                            (isSelected ? '<span class="badge-pill badge-sel">SELECTED</span>' : '') +
-                        '</div>' +
-                        '<div class="route-card-desc">' + esc(r.desc) + '</div>' +
-                    '</div>' +
-                    '<div class="route-card-right">' +
-                        '<div class="route-card-val">' + outStr + '</div>' +
-                        '<div class="route-card-sub">' + (i === 0 ? 'Optimal Net Output' : r.badge) + '</div>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
+        $('swapToAmt').value = out != null ? out.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '';
+        $('swapReceiveUsdLabel').textContent = out != null ? usdText(out, toToken) : '≈$ —';
+        $('swapPayUsdLabel').textContent = usdText(fromAmt, fromToken);
+        $('swapExchangeRate').textContent = out != null && fromAmt > 0
+            ? '1 ' + fromToken + ' = ' + (out / fromAmt).toFixed(6) + ' ' + toToken
+            : '1 ' + fromToken + ' = — ' + toToken;
+        $('summaryRouteName').textContent = active ? (active.provider + ' (quoted)') : 'No live quote';
+        $('summaryQuoteAt').textContent = q ? new Date(q.at).toLocaleTimeString() + ' · ' + q.routes.length + ' live' : '—';
+        $('summaryMinReceived').textContent = out != null
+            ? (out * (1 - SWAP_SLIPPAGE)).toLocaleString(undefined, { maximumFractionDigits: 4 }) + ' ' + toToken + ' (' + (SWAP_SLIPPAGE * 100).toFixed(1) + '% slippage)'
+            : '—';
+        const btn = $('swapSubmitBtn');
+        if (btn) {
+            const ready = Boolean(active && out != null);
+            btn.textContent = ready ? 'EXECUTE SWAP VIA NOISE' : 'AWAITING LIVE QUOTE';
+            btn.style.opacity = ready ? '' : '0.55';
         }
+    }
 
-        // Active Route Output calculation
-        const activeRouteObj = ROUTES_INFO.find(r => r.id === _selectedRoute) || ROUTES_INFO[0];
-        const activeOut = fromAmt * baseRate * activeRouteObj.factor;
-        $('swapToAmt').value = activeOut > 0 ? activeOut.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '0.0';
+    function recalcSwap() {
+        renderSwapRoutes();
+        paintSwapSummary();
+        scheduleSwapQuotes();
+    }
 
-        const usdReceive = activeOut * pTo;
-        $('swapReceiveUsdLabel').textContent = '~$ ' + usdReceive.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USD';
-        $('swapExchangeRate').textContent = '1 ' + fromToken + ' = ' + (baseRate * activeRouteObj.factor).toFixed(4) + ' ' + toToken;
+    function scheduleSwapQuotes() {
+        clearTimeout(_swapQuoteTimer);
+        const key = swapQuoteKey();
+        if (!key) { _swapQuotes = null; _selectedRoute = null; return; }
+        _swapQuoteTimer = setTimeout(fetchSwapQuotes, 350);
+    }
 
-        $('summaryRouteName').textContent = activeRouteObj.name;
-        $('summaryMinReceived').textContent = activeOut.toFixed(4) + ' ' + toToken + ' (0% slip)';
+    async function fetchSwapQuotes() {
+        const key = swapQuoteKey();
+        if (!key) return;
+        const [from, to, amt] = key.split('|');
+        const seq = ++_swapQuoteSeq;
+        let next;
+        try {
+            const r = await fetch('/api/quotes?from=' + encodeURIComponent(assetParam(from)) + '&to=' + encodeURIComponent(assetParam(to)) + '&amount=' + encodeURIComponent(amt) + assetDecimalsQuery(from, 'fromDecimals') + assetDecimalsQuery(to, 'toDecimals'));
+            const d = await r.json();
+            if (seq !== _swapQuoteSeq || key !== swapQuoteKey()) return;
+            if (d && d.error && !Array.isArray(d.routes)) throw new Error(d.message || d.error);
+            next = {
+                key, at: Date.now(),
+                routes: Array.isArray(d.routes) ? d.routes : [],
+                providers: Array.isArray(d.providers) ? d.providers : [],
+                failed: Array.isArray(d.failed) ? d.failed : [],
+                error: d && d.error ? (d.message || d.error) : null
+            };
+        } catch (e) {
+            if (seq !== _swapQuoteSeq) return;
+            next = { key, at: Date.now(), routes: [], providers: [], failed: [], error: e.message || 'quote request failed' };
+        }
+        _swapQuotes = next;
+        const ids = next.routes.map(providerId);
+        if (!_selectedRoute || !ids.includes(_selectedRoute)) _selectedRoute = ids[0] || null;
+        renderSwapRoutes();
+        paintSwapSummary();
     }
 
     function selectSwapRoute(routeId) {
         _selectedRoute = routeId;
-        recalcSwap();
-        const obj = ROUTES_INFO.find(r => r.id === routeId);
-        toast('Route selected: ' + (obj ? obj.name : routeId));
+        renderSwapRoutes();
+        paintSwapSummary();
+        const obj = _swapQuotes && _swapQuotes.routes.find(r => providerId(r) === routeId);
+        toast('Route selected: ' + (obj ? obj.provider : routeId));
     }
 
     // ── DEEPBOOK & PREDICT VIEW MODES ──
@@ -3812,9 +4134,11 @@
         }
     }
     function updateSpotTotal() {
-        const p = parseFloat($('spotPriceInput').value) || 0;
+        const typed = parseFloat($('spotPriceInput').value) || 0;
+        const p = _spotOrderType === 'MARKET' ? (getActivePoolPrice() || 0) : typed;
         const a = parseFloat($('spotAmtInput').value) || 0;
         $('spotTotalVal').textContent = '$' + (p * a).toFixed(2) + ' ' + (typeof _spotQuote !== 'undefined' ? _spotQuote : 'USDC');
+        if (_spotOrderType === 'LIMIT' && $('spotPriceInput').value) refreshSpotDeepFee();
     }
     // Click a ladder level to fill the order price
     function pickSpotPrice(price) {
@@ -3846,16 +4170,6 @@
         const base = spotBaseAsset();
         if (TOKEN_PRICES[base] && TOKEN_PRICES[base] > 0) return TOKEN_PRICES[base];
         return 1.0;
-    }
-
-    function getRealistic24hVol(price, base) {
-        if (base === 'SUI') return '42.8M SUI ($42.7M)';
-        if (base === 'DEEP') return '428.5M DEEP ($8.4M)';
-        if (base === 'CETUS') return '140.2M CETUS ($3.2M)';
-        if (base === 'WAL') return '5.1M WAL ($1.9M)';
-        if (price > 1000) return (1200000 / price).toFixed(1) + ' ' + base + ' ($1.2M)';
-        if (price > 10) return Math.round(450000 / price).toLocaleString() + ' ' + base + ' ($450K)';
-        return Math.round(180000 / (price || 1)).toLocaleString() + ' ' + base + ' ($180K)';
     }
 
     const TV_SYMBOL_MAP = {
@@ -4152,6 +4466,9 @@
             last.close = targetPx;
             last.high = Math.max(last.high, targetPx);
             last.low = Math.min(last.low, targetPx);
+            // Keep the body inside the wick so the live tick never paints a
+            // distorted last candle.
+            last.open = Math.min(Math.max(last.open, last.low), last.high);
         }
         calcEma(rawCandles, 9, 'ema9');
         calcEma(rawCandles, 21, 'ema21');
@@ -4217,22 +4534,71 @@
         }
     }
 
+    // Real 24h stats for the base asset (Binance spot). No multipliers, no invented
+    // volume — when there is no venue/pair we render an honest dash.
+    const SPOT_BINANCE_PAIR = { SUI: 'SUIUSDT', DEEP: 'DEEPUSDT', WAL: 'WALUSDT', CETUS: 'CETUSUSDT', NAVX: 'NAVXUSDT', NS: 'NSUSDT', IKA: 'IKAUSDT', XBTC: 'BTCUSDT', HBTC: 'BTCUSDT', WBTC: 'BTCUSDT' };
+    let _spot24h = {};
+
+    function fmtCompactUsd(n) {
+        if (!(n > 0)) return '—';
+        if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+        if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+        if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
+        return '$' + n.toFixed(0);
+    }
+
+    function renderSpot24h(stats, base) {
+        const chg = $('spotTickerChange');
+        if (chg) {
+            if (stats && Number.isFinite(stats.change)) {
+                const sign = stats.change >= 0 ? '+' : '';
+                chg.textContent = sign + stats.change.toFixed(2) + '% 24h';
+                chg.style.color = stats.change >= 0 ? 'var(--green)' : 'var(--red)';
+            } else {
+                chg.textContent = '24H —';
+                chg.style.color = 'var(--text-dim)';
+            }
+        }
+        if ($('spotTickerHigh')) $('spotTickerHigh').textContent = stats ? fmtPx(stats.high) : '—';
+        if ($('spotTickerLow')) $('spotTickerLow').textContent = stats ? fmtPx(stats.low) : '—';
+        if ($('spotTickerVol')) {
+            if (stats) {
+                const baseVol = stats.volBase > 0 ? stats.volBase.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' ' + base + ' · ' : '';
+                $('spotTickerVol').textContent = baseVol + fmtCompactUsd(stats.vol);
+            } else {
+                $('spotTickerVol').textContent = '—';
+            }
+        }
+    }
+
+    async function fetchSpot24hStats(base) {
+        if (!['USDC', 'USDT'].includes(_spotQuote)) { renderSpot24h(null, base); return; }
+        const cached = _spot24h[base];
+        if (cached && Date.now() - cached.at < 60_000) { renderSpot24h(cached, base); return; }
+        const pair = SPOT_BINANCE_PAIR[base];
+        if (!pair) { renderSpot24h(null, base); return; }
+        try {
+            const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=' + pair);
+            const d = await r.json();
+            if (!d || d.lastPrice == null) throw new Error('no 24h data');
+            const stats = {
+                change: Number(d.priceChangePercent), high: Number(d.highPrice), low: Number(d.lowPrice),
+                vol: Number(d.quoteVolume), volBase: Number(d.volume), at: Date.now()
+            };
+            if (!Number.isFinite(stats.high) || !(stats.high > 0)) throw new Error('bad 24h data');
+            _spot24h[base] = stats;
+            renderSpot24h(stats, base);
+        } catch (e) {
+            renderSpot24h(null, base);
+        }
+    }
+
     function updateSpotTickerBar(price, base) {
         if (!price || price <= 0) price = getActivePoolPrice();
         _currentSpotPrice = price;
         if ($('spotTickerPair')) $('spotTickerPair').textContent = base + ' / ' + _spotQuote;
         if ($('spotTickerPrice')) $('spotTickerPrice').textContent = fmtPx(price);
-        
-        const delta = ((price - (price * 0.965)) / (price * 0.965) * 100);
-        const sign = delta >= 0 ? '+' : '';
-        const color = delta >= 0 ? 'var(--green)' : 'var(--red)';
-        if ($('spotTickerChange')) {
-            $('spotTickerChange').textContent = sign + delta.toFixed(2) + '% 24h';
-            $('spotTickerChange').style.color = color;
-        }
-        if ($('spotTickerHigh')) $('spotTickerHigh').textContent = fmtPx(price * 1.042);
-        if ($('spotTickerLow')) $('spotTickerLow').textContent = fmtPx(price * 0.958);
-        if ($('spotTickerVol')) $('spotTickerVol').textContent = getRealistic24hVol(price, base);
+        fetchSpot24hStats(base);
 
         const statusEl = $('spotTickerStatus');
         if (statusEl) {
@@ -4361,6 +4727,8 @@
             }
             ctx.strokeStyle = '#0066ff';
             ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
             ctx.stroke();
         } else {
             for (let i = 0; i < candleCount; i++) {
@@ -4369,24 +4737,30 @@
                 const isBull = c.close >= c.open;
                 const color = isBull ? '#00ff88' : '#ff3344';
 
+                const yHigh = getY(c.high);
+                const yLow = getY(c.low);
+                // Sub-pixel positions + a constant body width keep candles
+                // evenly spaced instead of snapping to a visible staircase.
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 1;
+                ctx.lineWidth = Math.max(0.75, Math.min(1.5, candleW * 0.16));
                 ctx.beginPath();
-                ctx.moveTo(Math.round(x), Math.round(getY(c.high)));
-                ctx.lineTo(Math.round(x), Math.round(getY(c.low)));
+                ctx.moveTo(x, yHigh);
+                ctx.lineTo(x, yLow);
                 ctx.stroke();
 
                 const yOpen = getY(c.open);
                 const yClose = getY(c.close);
                 const bTop = Math.min(yOpen, yClose);
-                const bHeight = Math.max(1.5, Math.abs(yClose - yOpen));
+                const bHeight = Math.max(1, Math.abs(yClose - yOpen));
 
                 ctx.fillStyle = color;
-                ctx.fillRect(Math.round(x - candleW / 2), Math.round(bTop), Math.round(candleW), Math.round(bHeight));
+                ctx.fillRect(x - candleW / 2, bTop, candleW, bHeight);
             }
         }
 
         if (_showEma) {
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
             ctx.lineWidth = 1.2;
             ctx.strokeStyle = '#ffcc00';
             ctx.beginPath();
@@ -4601,6 +4975,8 @@
         else renderSpotChart();
 
         fetchSpotBook();
+        if (typeof _spotEntryTab !== 'undefined' && _spotEntryTab === 'orders') fetchSpotOrders();
+        if (typeof _spotEntryTab !== 'undefined' && _spotEntryTab === 'funds') fetchSpotAccount();
     }
     // All live DeepBook pools — never a hardcoded pair list
     async function fetchSpotMarkets() {
@@ -4762,55 +5138,247 @@
     }
     let _pendingSpot = null;
     let _pendingSpotSetup = null;
+    let _pendingSpotAction = null;
+    let _spotOrderType = 'LIMIT';
+    let _spotEntryTab = 'order';
+    let _spotManagerId = null;
+
+    function setSpotOrderType(type) {
+        _spotOrderType = type === 'MARKET' ? 'MARKET' : 'LIMIT';
+        const l = $('spotTypeLimit'), m = $('spotTypeMarket'), card = $('spotPriceCard');
+        if (l) l.className = 'chart-tf-btn' + (_spotOrderType === 'LIMIT' ? ' active' : '');
+        if (m) m.className = 'chart-tf-btn' + (_spotOrderType === 'MARKET' ? ' active' : '');
+        if (card) card.style.opacity = _spotOrderType === 'MARKET' ? '0.45' : '1';
+        const inp = $('spotPriceInput');
+        if (inp) inp.disabled = _spotOrderType === 'MARKET';
+        const fee = $('spotDeepFeeLbl');
+        if (fee && _spotOrderType === 'MARKET') fee.textContent = 'MARKET order fills against the live book';
+        updateSpotTotal();
+    }
+
+    async function refreshSpotDeepFee() {
+        const lbl = $('spotDeepFeeLbl');
+        if (!lbl) return;
+        if (_spotOrderType !== 'LIMIT') return;
+        const price = parseFloat($('spotPriceInput').value) || 0;
+        const qty = parseFloat($('spotAmtInput').value) || 0;
+        if (!(price > 0) || !(qty > 0)) { lbl.textContent = ''; return; }
+        try {
+            const r = await fetch('/api/trade/deep-required?pool=' + encodeURIComponent(_spotPool) + '&price=' + price + '&quantity=' + qty);
+            const d = await r.json();
+            if (d && !d.error) {
+                lbl.textContent = 'DEEP FEE · taker ' + Number(d.deepRequiredTaker || 0).toFixed(4) + ' / maker ' + Number(d.deepRequiredMaker || 0).toFixed(4);
+            } else {
+                lbl.textContent = d.error ? 'DEEP fee: ' + d.error : '';
+            }
+        } catch (e) { lbl.textContent = ''; }
+    }
+
+    function setSpotEntryTab(tab) {
+        _spotEntryTab = ['order', 'orders', 'funds'].includes(tab) ? tab : 'order';
+        const panes = { order: 'spotEntryOrderPane', orders: 'spotEntryOrdersPane', funds: 'spotEntryFundsPane' };
+        Object.entries(panes).forEach(([k, id]) => { const el = $(id); if (el) el.style.display = k === _spotEntryTab ? 'block' : 'none'; });
+        const btns = { order: 'spotTabOrder', orders: 'spotTabOrders', funds: 'spotTabFunds' };
+        Object.entries(btns).forEach(([k, id]) => { const el = $(id); if (el) el.className = 'filter-btn' + (k === _spotEntryTab ? ' active' : ''); });
+        if (_spotEntryTab === 'orders') fetchSpotOrders();
+        if (_spotEntryTab === 'funds') fetchSpotAccount();
+    }
+
+    function spotSymbolForCoin(coinType) {
+        const l = String(coinType || '').toLowerCase();
+        if (l.includes('::usdc::usdc')) return 'USDC';
+        if (l.endsWith('::sui::sui')) return 'SUI';
+        if (l.includes('::deep::deep')) return 'DEEP';
+        if (l.includes('::btc::btc')) return 'HBTC';
+        return String(coinType || '').split('::').pop() || '—';
+    }
+
     function executeSpotOrder() {
         if (!wallet) {
             toast('Connect wallet to trade on DeepBook.');
             openWalletPicker();
             return;
         }
-        const p = parseFloat($('spotPriceInput').value) || 0;
         const a = parseFloat($('spotAmtInput').value) || 0;
-        if (!(p > 0)) { toast('Enter a limit price above zero — click any ladder level.'); return; }
         if (!(a > 0)) { toast('Enter an amount above zero.'); return; }
+        let p = getActivePoolPrice();
+        if (_spotOrderType === 'LIMIT') {
+            p = parseFloat($('spotPriceInput').value) || 0;
+            if (!(p > 0)) { toast('Enter a limit price above zero — click any ladder level.'); return; }
+        }
         const base = spotBaseAsset();
-        _pendingSpot = { pool: _spotPool, side: _spotOrderSide.toUpperCase(), price: String(p), quantity: String(a) };
+        _pendingSpot = { pool: _spotPool, side: _spotOrderSide.toUpperCase(), type: _spotOrderType, price: String(p), quantity: String(a) };
         showReviewModal({
             title: 'DEEPBOOK v3 SPOT ORDER',
-            desc: 'Place on-chain ' + _spotOrderSide.toUpperCase() + ' order for ' + a + ' ' + base + ' @ ' + p + ' ' + _spotQuote,
+            desc: 'Place on-chain ' + _spotOrderType + ' ' + _spotOrderSide.toUpperCase() + ' order for ' + a + ' ' + base
+                + (_spotOrderType === 'LIMIT' ? ' @ ' + p + ' ' + _spotQuote : ' at the live book price'),
             details: [
                 { k: 'Market', v: _spotPool.replace('_', ' / ') },
+                { k: 'Type', v: _spotOrderType },
                 { k: 'Side', v: _spotOrderSide.toUpperCase() },
                 { k: 'Size', v: a + ' ' + base },
-                { k: 'Limit Price', v: p + ' ' + _spotQuote },
+                { k: 'Price', v: _spotOrderType === 'LIMIT' ? p + ' ' + _spotQuote : 'Market (live best price)' },
                 { k: 'Orderbook Protocol', v: 'DeepBook v3' }
             ],
             actionType: 'spot_order'
         });
     }
 
+    // ── OPEN ORDERS (real DeepBook book state) ──
+    async function fetchSpotOrders() {
+        const box = $('spotOrdersList');
+        if (!box) return;
+        if (!wallet) { box.innerHTML = '<div class="spot-pane-empty">Connect wallet to load open orders.</div>'; return; }
+        box.innerHTML = '<div class="spot-pane-empty">Loading open orders…</div>';
+        try {
+            const r = await fetch('/api/trade/orders?wallet=' + encodeURIComponent(wallet) + '&pool=' + encodeURIComponent(_spotPool));
+            const d = await r.json();
+            if (d.error) throw new Error(d.message || d.error);
+            renderSpotOrders(Array.isArray(d.orders) ? d.orders : [], d);
+        } catch (e) {
+            box.innerHTML = '<div class="spot-pane-empty" style="color:var(--amber);">' + esc(e.message || 'Could not load orders') + '</div>';
+        }
+    }
+
+    function renderSpotOrders(orders, meta) {
+        const box = $('spotOrdersList');
+        const cnt = $('spotOpenOrdersCount');
+        if (cnt) cnt.textContent = String(orders.length);
+        const lbl = $('spotOrdersLbl');
+        if (lbl) lbl.textContent = 'OPEN ORDERS · ' + _spotPool.replace('_', '/');
+        if (!box) return;
+        if (!orders.length) {
+            box.innerHTML = '<div class="spot-pane-empty">' + ((meta && meta.managerKnown === false) ? 'No trading account yet — place an order to create one.' : 'No open orders in this pool.') + '</div>';
+            return;
+        }
+        box.innerHTML = orders.map(o => {
+            const sideColor = o.side === 'BUY' ? 'var(--green)' : 'var(--red)';
+            const px = Number(o.price);
+            return '<div class="spot-mini-row" style="flex-direction:column; align-items:stretch; gap:6px;">' +
+                '<div style="display:flex; justify-content:space-between; gap:6px;">' +
+                    '<span style="color:' + sideColor + '; font-weight:700;">' + esc(o.side) + '</span>' +
+                    '<span>' + (px >= 1000 ? px.toFixed(2) : (px >= 1 ? px.toFixed(4) : px.toFixed(6))) + ' ' + esc(_spotQuote) + '</span>' +
+                    '<span>' + esc(String(o.remainingQuantity)) + ' / ' + esc(String(o.quantity)) + ' ' + esc(spotBaseAsset()) + '</span>' +
+                '</div>' +
+                '<div style="display:flex; gap:4px; align-items:center;">' +
+                    '<input type="number" id="spotOrdQty-' + esc(o.orderId) + '" placeholder="new qty" step="any" style="flex:1; min-width:0; background:#0a0a0a; border:1px solid var(--line); border-radius:4px; padding:4px 6px; color:#fff; font-size:11px;">' +
+                    '<button class="chart-tf-btn" onclick="modifySpotOrder(\'' + esc(o.orderId) + '\')">MODIFY</button>' +
+                    '<button class="chart-tf-btn" style="color:var(--red);" onclick="cancelSpotOrder(\'' + esc(o.orderId) + '\')">CANCEL</button>' +
+                '</div>' +
+                '<div style="font-size:9.5px; color:var(--text-dim);">order #' + esc(shortAddr(String(o.orderId))) + ' · ' + esc(o.status) + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function cancelSpotOrder(orderId, all) {
+        if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        const body = all ? { wallet, market: _spotPool, all: true } : { wallet, market: _spotPool, orderIds: [String(orderId)] };
+        requestSpotAction('/api/trade/cancel-orders', body,
+            all ? 'CANCEL ALL ORDERS' : 'CANCEL ORDER',
+            all ? 'Cancel every open order in ' + _spotPool + ' from your BalanceManager.' : 'Cancel order ' + String(orderId).slice(0, 12) + '… in ' + _spotPool,
+            [{ k: 'Market', v: _spotPool.replace('_', ' / ') }, { k: 'Scope', v: all ? 'ALL open orders' : '1 order' }]);
+    }
+
+    function modifySpotOrder(orderId) {
+        if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        const inp = $('spotOrdQty-' + orderId);
+        const qty = inp ? parseFloat(inp.value) || 0 : 0;
+        if (!(qty > 0)) { toast('Enter the new remaining quantity first.'); return; }
+        requestSpotAction('/api/trade/modify', { wallet, market: _spotPool, orderId: String(orderId), quantity: qty },
+            'MODIFY ORDER', 'Reduce the remaining quantity of order ' + String(orderId).slice(0, 12) + '…',
+            [{ k: 'Market', v: _spotPool.replace('_', ' / ') }, { k: 'New quantity', v: qty + ' ' + spotBaseAsset() }]);
+    }
+
+    // ── BALANCE MANAGER FUNDS (deposit / withdraw / settled / rebates) ──
+    async function fetchSpotAccount() {
+        const box = $('spotFundsBalances');
+        if (!box) return;
+        if (!wallet) { box.innerHTML = '<div class="spot-pane-empty">Connect wallet to load your trading account.</div>'; return; }
+        box.innerHTML = '<div class="spot-pane-empty">Loading BalanceManager…</div>';
+        try {
+            const r = await fetch('/api/trade/account?wallet=' + encodeURIComponent(wallet) + '&pool=' + encodeURIComponent(_spotPool));
+            const d = await r.json();
+            if (d.error) throw new Error(d.message || d.error);
+            _spotManagerId = (d.managers || [])[0] || null;
+            const mlbl = $('spotFundsManagerLbl');
+            if (mlbl) mlbl.textContent = _spotManagerId ? shortAddr(_spotManagerId) : 'NO MANAGER';
+            const rows = [];
+            const balances = d.balances || {};
+            Object.keys(balances).forEach(mid => {
+                Object.entries(balances[mid] || {}).forEach(([coin, val]) => {
+                    rows.push('<div class="spot-mini-row"><span>' + esc(spotSymbolForCoin(coin)) + '</span><b style="color:#fff;">' + Number(val).toLocaleString(undefined, { maximumFractionDigits: 4 }) + '</b></div>');
+                });
+            });
+            (d.accounts || []).forEach(a => {
+                const acct = a.account || {};
+                const settled = acct.settled_balances || acct.settledBalances;
+                if (settled && typeof settled === 'object' && Object.keys(settled).length) {
+                    rows.push('<div style="font-size:10px; color:var(--text-dim); margin:4px 0;">SETTLED · ' + esc(shortAddr(a.manager)) + '</div>');
+                    Object.entries(settled).forEach(([k, v]) => {
+                        if (Number(v) > 0) rows.push('<div class="spot-mini-row"><span>' + esc(k) + '</span><b>' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 }) + '</b></div>');
+                    });
+                }
+            });
+            box.innerHTML = rows.length ? rows.join('') : '<div class="spot-pane-empty">No manager balances yet. Deposit below to start trading.</div>';
+        } catch (e) {
+            box.innerHTML = '<div class="spot-pane-empty" style="color:var(--amber);">' + esc(e.message || 'Could not load account') + '</div>';
+        }
+    }
+
+    function spotFundsAction(kind) {
+        if (!wallet) { toast('Connect wallet first.'); openWalletPicker(); return; }
+        const url = '/api/trade/' + kind;
+        const details = [{ k: 'Market', v: _spotPool.replace('_', ' / ') }, { k: 'Manager', v: _spotManagerId ? shortAddr(_spotManagerId) : 'auto' }];
+        const body = { wallet, market: _spotPool, managerId: _spotManagerId || undefined };
+        let title = 'BALANCE MANAGER';
+        if (kind === 'deposit' || kind === 'withdraw' || kind === 'withdraw-all') {
+            const coin = $('spotFundsCoin').value;
+            const amt = parseFloat($('spotFundsAmt').value) || 0;
+            if (kind !== 'withdraw-all' && !(amt > 0)) { toast('Enter an amount above zero.'); return; }
+            body.coin = coin;
+            if (kind !== 'withdraw-all') body.amount = amt;
+            title = kind === 'deposit' ? 'DEPOSIT INTO MANAGER' : (kind === 'withdraw' ? 'WITHDRAW FROM MANAGER' : 'WITHDRAW ALL');
+            details.push({ k: 'Coin', v: coin });
+            if (kind !== 'withdraw-all') details.push({ k: 'Amount', v: amt + ' ' + coin });
+            details.push({ k: 'Recipient', v: kind === 'deposit' ? 'BalanceManager' : shortAddr(wallet) });
+        } else if (kind === 'withdraw-settled') {
+            title = 'WITHDRAW SETTLED';
+            details.push({ k: 'Action', v: 'Move settled fills into the manager' });
+        } else if (kind === 'claim-rebates') {
+            title = 'CLAIM MAKER REBATES';
+            details.push({ k: 'Action', v: 'Claim maker rebates for this pool' });
+        }
+        requestSpotAction(url, body, title, title + ' — builds an unsigned PTB after a dry-run, then your wallet signs.', details);
+    }
+
+    function requestSpotAction(url, body, title, desc, details) {
+        _pendingSpotAction = { url, body };
+        showReviewModal({ title, desc, details, actionType: 'spot_action' });
+    }
+
     // ── ALL 21 PROTOCOLS REGISTRY ──
     const ALL_PROTOCOLS = [
-        { id:'sui', name:'Sui Network', cat:'INFRASTRUCTURE', tvl:'$1.20B', status:'LIVE', desc:'L1 high-throughput settlement layer, object-centric data model, sub-second finality.', caps:['SETTLEMENT','RPC','BALANCES'], url:'https://sui.io', docs:'https://docs.sui.io' },
-        { id:'sui-native', name:'Sui Native Staking', cat:'STAKING', tvl:'$850M', status:'LIVE', desc:'Direct PoS delegation to verified validators with auto-compounding epoch rewards.', caps:['STAKE','UNSTAKE','VALIDATORS'], url:'https://sui.io', docs:'https://docs.sui.io' },
-        { id:'cetus', name:'Cetus Protocol', cat:'DEX', tvl:'$142.5M', status:'LIVE', desc:'Pioneering concentrated liquidity CLMM DEX and swap aggregator infrastructure.', caps:['SWAP','CLMM_LP','ROUTING'], url:'https://app.cetus.zone', docs:'https://cetus-1.gitbook.io/cetus-developer-docs' },
-        { id:'aftermath', name:'Aftermath Finance', cat:'DEX', tvl:'$78.2M', status:'LIVE', desc:'Smart router DEX aggregator, afSUI liquid staking, and multi-asset pools.', caps:['SWAP','ROUTER','afSUI','POOLS'], url:'https://aftermath.finance', docs:'https://docs.aftermath.finance' },
-        { id:'deepbook', name:'DeepBook v3', cat:'DEX', tvl:'$28.4M', status:'LIVE', desc:'Sui-native Central Limit Order Book (CLOB) offering sub-millisecond matching.', caps:['SPOT_CLOB','LIMIT','MARKET'], url:'https://deepbook.tech', docs:'https://docs.sui.io/standards/deepbookv3' },
-        { id:'deepbook-predict', name:'DeepBook Predict', cat:'DEX', tvl:'$8.2M', status:'LIVE', desc:'Decentralized binary prediction markets built directly on DeepBook liquidity.', caps:['PREDICT','SETTLEMENT'], url:'https://deepbook.tech', docs:'https://deepbook.tech' },
-        { id:'turbos', name:'Turbos Finance', cat:'DEX', tvl:'$22.8M', status:'LIVE', desc:'Non-custodial concentrated liquidity AMM backed by Jump Crypto and Mysten Labs.', caps:['SWAP','CONCENTRATED_LP'], url:'https://turbos.finance', docs:'https://turbos.finance' },
-        { id:'flowx', name:'FlowX Finance', cat:'DEX', tvl:'$12.5M', status:'LIVE', desc:'Comprehensive DEX aggregator pulling liquidity across all AMM pools on Sui.', caps:['SWAP','AGGREGATOR','FARMING'], url:'https://flowx.finance', docs:'https://docs.flowx.finance' },
-        { id:'momentum', name:'Momentum (MMT)', cat:'DEX', tvl:'$6.1M', status:'LIVE', desc:'Capital-efficient DEX on Sui (mmt.finance) with optimized tick math and aggregated liquidity.', caps:['SWAP','POOLS'], url:'https://www.mmt.finance', docs:'https://www.mmt.finance' },
-        { id:'bluefin-spot', name:'Bluefin Spot & Perps', cat:'DEX', tvl:'$34.0M', status:'LIVE', desc:'High-throughput orderbook exchange offering spot trading and perpetual futures.', caps:['SPOT','PERPS','ORDERBOOK'], url:'https://bluefin.io', docs:'https://bluefin.io' },
-        { id:'navi', name:'NAVI Protocol', cat:'LENDING', tvl:'$385.0M', status:'LIVE', desc:'The leading liquidity protocol on Sui for lending, borrowing, and yield generation.', caps:['SUPPLY','BORROW','LEVERAGE'], url:'https://naviprotocol.io', docs:'https://docs.naviprotocol.io' },
-        { id:'suilend', name:'Suilend', cat:'LENDING', tvl:'$198.5M', status:'LIVE', desc:'Institutional-grade money market developed by the Solend engineering team.', caps:['SUPPLY','BORROW','CAPSULES'], url:'https://suilend.fi', docs:'https://docs.suilend.fi' },
-        { id:'scallop', name:'Scallop Protocol', cat:'LENDING', tvl:'$168.0M', status:'LIVE', desc:'Next-gen peer-to-pool money market with sub-accounts and zero-fee flash loans.', caps:['SUPPLY','BORROW','FLASH_LOAN'], url:'https://scallop.io', docs:'https://docs.scallop.io' },
-        { id:'bucket', name:'Bucket Protocol', cat:'LENDING', tvl:'$42.1M', status:'LIVE', desc:'CDP protocol issuing BUCK stablecoin with 0% interest and low-fee PSM swaps.', caps:['BUCK_CDP','PSM_SWAP','STABLE'], url:'https://bucketprotocol.io', docs:'https://docs.bucketprotocol.io' },
-        { id:'haedal', name:'Haedal Protocol', cat:'STAKING', tvl:'$36.2M', status:'LIVE', desc:'Liquid staking protocol issuing haSUI with validator health scoring.', caps:['STAKE_haSUI','UNSTAKE','CLAIM'], url:'https://haedal.xyz', docs:'https://haedal.xyz' },
-        { id:'volo', name:'Volo', cat:'STAKING', tvl:'$24.1M', status:'LIVE', desc:'Liquid staking protocol issuing vSUI, backed by enterprise validator nodes.', caps:['STAKE_vSUI','UNSTAKE'], url:'https://volo.finance', docs:'https://sdk.naviprotocol.io/wallet-client/volo' },
-        { id:'springsui', name:'SpringSui', cat:'STAKING', tvl:'$18.9M', status:'LIVE', desc:'Native liquid staking framework implementing instant redemption via SIP-33.', caps:['STAKE_sSUI','SIP33_REDEEM'], url:'https://springsui.com', docs:'https://docs.suilend.fi/springsui' },
-        { id:'magma', name:'Magma Finance', cat:'STAKING', tvl:'—', status:'LIVE', desc:'Liquid staking protocol on Sui — stake SUI and stay liquid across DeFi venues.', caps:['STAKE','LIQUID_STAKING'], url:'https://magmafinance.io', docs:'https://magmafinance.io' },
-        { id:'kai', name:'Kai Finance', cat:'YIELD', tvl:'$15.6M', status:'LIVE', desc:'Automated yield optimizer and vault strategy protocol on top of Sui money markets.', caps:['VAULTS','AUTO_COMPOUND'], url:'https://kai.finance', docs:'https://kai.finance' },
-        { id:'steamm', name:'STEAMM', cat:'YIELD', tvl:'$9.2M', status:'LIVE', desc:'Smart dynamic AMM optimizing yield for liquidity providers using volatility curves.', caps:['DYNAMIC_AMM','YIELD_CURVE'], url:'https://suilend.fi', docs:'https://docs.suilend.fi/steamm' },
-        { id:'wormhole', name:'Wormhole / Portal', cat:'YIELD', tvl:'$95.0M', status:'LIVE', desc:'Cross-chain liquidity bridge connecting Sui with Ethereum, Solana, and Arbitrum.', caps:['BRIDGE','CROSS_CHAIN'], url:'https://portalbridge.com', docs:'https://docs.wormhole.com' }
+        { id:'sui', name:'Sui Network', cat:'INFRASTRUCTURE', status:'LIVE', desc:'L1 high-throughput settlement layer, object-centric data model, sub-second finality.', caps:['SETTLEMENT','RPC','BALANCES'], url:'https://sui.io', docs:'https://docs.sui.io' },
+        { id:'sui-native', name:'Sui Native Staking', cat:'STAKING', status:'LIVE', desc:'Direct PoS delegation to verified validators with auto-compounding epoch rewards.', caps:['STAKE','UNSTAKE','VALIDATORS'], url:'https://sui.io', docs:'https://docs.sui.io' },
+        { id:'cetus', name:'Cetus Protocol', cat:'DEX', status:'LIVE', desc:'Pioneering concentrated liquidity CLMM DEX and swap aggregator infrastructure.', caps:['SWAP','CLMM_LP','ROUTING'], url:'https://app.cetus.zone', docs:'https://cetus-1.gitbook.io/cetus-developer-docs' },
+        { id:'aftermath', name:'Aftermath Finance', cat:'DEX', status:'LIVE', desc:'Smart router DEX aggregator, afSUI liquid staking, and multi-asset pools.', caps:['SWAP','ROUTER','afSUI','POOLS'], url:'https://aftermath.finance', docs:'https://docs.aftermath.finance' },
+        { id:'deepbook', name:'DeepBook v3', cat:'DEX', status:'LIVE', desc:'Sui-native Central Limit Order Book (CLOB) offering sub-millisecond matching.', caps:['SPOT_CLOB','LIMIT','MARKET'], url:'https://deepbook.tech', docs:'https://docs.sui.io/standards/deepbookv3' },
+        { id:'deepbook-predict', name:'DeepBook Predict', cat:'DEX', status:'LIVE', desc:'Decentralized binary prediction markets built directly on DeepBook liquidity.', caps:['PREDICT','SETTLEMENT'], url:'https://deepbook.tech', docs:'https://deepbook.tech' },
+        { id:'turbos', name:'Turbos Finance', cat:'DEX', status:'LIVE', desc:'Non-custodial concentrated liquidity AMM backed by Jump Crypto and Mysten Labs.', caps:['SWAP','CONCENTRATED_LP'], url:'https://turbos.finance', docs:'https://turbos.finance' },
+        { id:'flowx', name:'FlowX Finance', cat:'DEX', status:'LIVE', desc:'Comprehensive DEX aggregator pulling liquidity across all AMM pools on Sui.', caps:['SWAP','AGGREGATOR','FARMING'], url:'https://flowx.finance', docs:'https://docs.flowx.finance' },
+        { id:'momentum', name:'Momentum (MMT)', cat:'DEX', status:'LIVE', desc:'Capital-efficient DEX on Sui (mmt.finance) with optimized tick math and aggregated liquidity.', caps:['SWAP','POOLS'], url:'https://www.mmt.finance', docs:'https://www.mmt.finance' },
+        { id:'bluefin-spot', name:'Bluefin Spot & Perps', cat:'DEX', status:'LIVE', desc:'High-throughput orderbook exchange offering spot trading and perpetual futures.', caps:['SPOT','PERPS','ORDERBOOK'], url:'https://bluefin.io', docs:'https://bluefin.io' },
+        { id:'navi', name:'NAVI Protocol', cat:'LENDING', status:'LIVE', desc:'The leading liquidity protocol on Sui for lending, borrowing, and yield generation.', caps:['SUPPLY','BORROW','LEVERAGE'], url:'https://naviprotocol.io', docs:'https://docs.naviprotocol.io' },
+        { id:'suilend', name:'Suilend', cat:'LENDING', status:'LIVE', desc:'Institutional-grade money market developed by the Solend engineering team.', caps:['SUPPLY','BORROW','CAPSULES'], url:'https://suilend.fi', docs:'https://docs.suilend.fi' },
+        { id:'scallop', name:'Scallop Protocol', cat:'LENDING', status:'LIVE', desc:'Next-gen peer-to-pool money market with sub-accounts and zero-fee flash loans.', caps:['SUPPLY','BORROW','FLASH_LOAN'], url:'https://scallop.io', docs:'https://docs.scallop.io' },
+        { id:'bucket', name:'Bucket Protocol', cat:'LENDING', status:'LIVE', desc:'CDP protocol issuing BUCK stablecoin with 0% interest and low-fee PSM swaps.', caps:['BUCK_CDP','PSM_SWAP','STABLE'], url:'https://bucketprotocol.io', docs:'https://docs.bucketprotocol.io' },
+        { id:'haedal', name:'Haedal Protocol', cat:'STAKING', status:'LIVE', desc:'Liquid staking protocol issuing haSUI with validator health scoring.', caps:['STAKE_haSUI','UNSTAKE','CLAIM'], url:'https://haedal.xyz', docs:'https://haedal.xyz' },
+        { id:'volo', name:'Volo', cat:'STAKING', status:'LIVE', desc:'Liquid staking protocol issuing vSUI, backed by enterprise validator nodes.', caps:['STAKE_vSUI','UNSTAKE'], url:'https://volo.finance', docs:'https://sdk.naviprotocol.io/wallet-client/volo' },
+        { id:'springsui', name:'SpringSui', cat:'STAKING', status:'LIVE', desc:'Native liquid staking framework implementing instant redemption via SIP-33.', caps:['STAKE_sSUI','SIP33_REDEEM'], url:'https://springsui.com', docs:'https://docs.suilend.fi/springsui' },
+        { id:'magma', name:'Magma Finance', cat:'STAKING', status:'LIVE', desc:'Liquid staking protocol on Sui — stake SUI and stay liquid across DeFi venues.', caps:['STAKE','LIQUID_STAKING'], url:'https://magmafinance.io', docs:'https://magmafinance.io' },
+        { id:'kai', name:'Kai Finance', cat:'YIELD', status:'LIVE', desc:'Automated yield optimizer and vault strategy protocol on top of Sui money markets.', caps:['VAULTS','AUTO_COMPOUND'], url:'https://kai.finance', docs:'https://kai.finance' },
+        { id:'steamm', name:'STEAMM', cat:'YIELD', status:'LIVE', desc:'Smart dynamic AMM optimizing yield for liquidity providers using volatility curves.', caps:['DYNAMIC_AMM','YIELD_CURVE'], url:'https://suilend.fi', docs:'https://docs.suilend.fi/steamm' },
+        { id:'wormhole', name:'Wormhole / Portal', cat:'YIELD', status:'LIVE', desc:'Cross-chain liquidity bridge connecting Sui with Ethereum, Solana, and Arbitrum.', caps:['BRIDGE','CROSS_CHAIN'], url:'https://portalbridge.com', docs:'https://docs.wormhole.com' }
     ];
 
     function renderProtocolsRegistry(filter = 'ALL') {
@@ -4838,7 +5406,7 @@
                 <div class="proto-desc">${esc(p.desc)}</div>
                 <div class="proto-meta-row">
                     <span>Ecosystem TVL:</span>
-                    <span>${esc(p.tvl)}</span>
+                    <span style="color:var(--text-dim);">— no verified feed</span>
                 </div>
                 <div class="proto-meta-row">
                     <span>Capabilities:</span>
@@ -4860,16 +5428,16 @@
 
     // ── EARN CARDS SECTION ──
     const EARN_ITEMS = [
-        { id: 'afsui', name: 'Aftermath afSUI', proto: 'Aftermath Finance', cat: 'STAKING', apy: '7.12%', tvl: '$78.4M', asset: 'SUI → afSUI', desc: 'Instant unstake liquidity, boosted validator commissions.', url: 'https://aftermath.finance' },
-        { id: 'hasui', name: 'Haedal haSUI', proto: 'Haedal Protocol', cat: 'STAKING', apy: '7.28%', tvl: '$36.2M', asset: 'SUI → haSUI', desc: 'Auto-compounding epoch rewards, verified node operators.', url: 'https://haedal.xyz' },
-        { id: 'ssui', name: 'SpringSui sSUI', proto: 'SpringSui / Suilend', cat: 'STAKING', apy: '7.41%', tvl: '$18.9M', asset: 'SUI → sSUI', desc: 'Instant redemption via SIP-33, zero lockup penalty.', url: 'https://springsui.com' },
-        { id: 'vsui', name: 'Volo vSUI', proto: 'Volo Finance', cat: 'STAKING', apy: '6.85%', tvl: '$24.1M', asset: 'SUI → vSUI', desc: 'Institutional grade validator set, enterprise SLA.', url: 'https://volo.finance' },
-        { id: 'native', name: 'Sui Native PoS', proto: 'Sui Network', cat: 'STAKING', apy: '3.35%', tvl: '$850.0M', asset: 'SUI Native', desc: 'Zero protocol fee, raw L1 consensus proof-of-stake.', url: 'https://sui.io' },
-        { id: 'navi_usdc', name: 'NAVI USDC Supply', proto: 'NAVI Protocol', cat: 'LENDING', apy: '9.82%', tvl: '$184.2M', asset: 'USDC Deposit', desc: 'Primary Sui money market, collateral eligible, high utilization.', url: 'https://naviprotocol.io' },
-        { id: 'suilend_usdc', name: 'Suilend USDC Supply', proto: 'Suilend', cat: 'LENDING', apy: '8.94%', tvl: '$92.1M', asset: 'USDC Deposit', desc: 'Isolated pool security, dynamic interest rate curves.', url: 'https://suilend.fi' },
-        { id: 'scallop_usdc', name: 'Scallop sUSDC', proto: 'Scallop', cat: 'LENDING', apy: '9.35%', tvl: '$86.5M', asset: 'USDC Supply', desc: 'Compound interest tokens, flash loan fee distribution.', url: 'https://scallop.io' },
-        { id: 'cetus_pool', name: 'Cetus SUI/USDC LP', proto: 'Cetus Protocol', cat: 'POOLS', apy: '24.80%', tvl: '$64.0M', asset: 'SUI + USDC', desc: 'Concentrated range CLMM fees + CETUS reward incentives.', url: 'https://app.cetus.zone' },
-        { id: 'turbos_pool', name: 'Turbos SUI/USDC LP', proto: 'Turbos Finance', cat: 'POOLS', apy: '21.60%', tvl: '$14.8M', asset: 'SUI + USDC', desc: 'Dynamic tick spacing, automated rebalancing vaults.', url: 'https://turbos.finance' }
+        { id: 'afsui', name: 'Aftermath afSUI', proto: 'Aftermath Finance', cat: 'STAKING', apy: '—', asset: 'SUI → afSUI', desc: 'Instant unstake liquidity, boosted validator commissions.', url: 'https://aftermath.finance' },
+        { id: 'hasui', name: 'Haedal haSUI', proto: 'Haedal Protocol', cat: 'STAKING', apy: '—', asset: 'SUI → haSUI', desc: 'Auto-compounding epoch rewards, verified node operators.', url: 'https://haedal.xyz' },
+        { id: 'ssui', name: 'SpringSui sSUI', proto: 'SpringSui / Suilend', cat: 'STAKING', apy: '—', asset: 'SUI → sSUI', desc: 'Instant redemption via SIP-33, zero lockup penalty.', url: 'https://springsui.com' },
+        { id: 'vsui', name: 'Volo vSUI', proto: 'Volo Finance', cat: 'STAKING', apy: '—', asset: 'SUI → vSUI', desc: 'Institutional grade validator set, enterprise SLA.', url: 'https://volo.finance' },
+        { id: 'native', name: 'Sui Native PoS', proto: 'Sui Network', cat: 'STAKING', apy: '—', asset: 'SUI Native', desc: 'Zero protocol fee, raw L1 consensus proof-of-stake.', url: 'https://sui.io' },
+        { id: 'navi_usdc', name: 'NAVI USDC Supply', proto: 'NAVI Protocol', cat: 'LENDING', apy: '—', asset: 'USDC Deposit', desc: 'Primary Sui money market, collateral eligible, high utilization.', url: 'https://naviprotocol.io' },
+        { id: 'suilend_usdc', name: 'Suilend USDC Supply', proto: 'Suilend', cat: 'LENDING', apy: '—', asset: 'USDC Deposit', desc: 'Isolated pool security, dynamic interest rate curves.', url: 'https://suilend.fi' },
+        { id: 'scallop_usdc', name: 'Scallop sUSDC', proto: 'Scallop', cat: 'LENDING', apy: '—', asset: 'USDC Supply', desc: 'Compound interest tokens, flash loan fee distribution.', url: 'https://scallop.io' },
+        { id: 'cetus_pool', name: 'Cetus SUI/USDC LP', proto: 'Cetus Protocol', cat: 'POOLS', apy: '—', asset: 'SUI + USDC', desc: 'Concentrated range CLMM fees + CETUS reward incentives.', url: 'https://app.cetus.zone' },
+        { id: 'turbos_pool', name: 'Turbos SUI/USDC LP', proto: 'Turbos Finance', cat: 'POOLS', apy: '—', asset: 'SUI + USDC', desc: 'Dynamic tick spacing, automated rebalancing vaults.', url: 'https://turbos.finance' }
     ];
     let _earnFilter = 'ALL';
     let _earnSearchQuery = '';
@@ -4927,11 +5495,11 @@
             <div class="earn-apy-box">
                 <div>
                     <div class="earn-apy-val">${esc(e.apy)}</div>
-                    <div style="font-size:10px; color:var(--green); font-family:'Space Grotesk',monospace;">ESTIMATED APY</div>
+                    <div style="font-size:10px; color:var(--green); font-family:'Space Grotesk',monospace;">${e.apy === '—' ? 'AWAITING LIVE FEED' : 'LIVE APY'}</div>
                 </div>
                 <div class="earn-apy-lbl">
-                    <div>TVL: <b>${esc(e.tvl)}</b></div>
-                    <div style="color:var(--text-dim);">Live Chain Metric</div>
+                    <div>TVL: <b style="color:var(--text-dim);">—</b></div>
+                    <div style="color:var(--text-dim);">no verified feed</div>
                 </div>
             </div>
             <div class="earn-details-list">
@@ -5126,39 +5694,81 @@
         }
     }
 
-    // ── LEADERBOARD DATA & RENDERING ──
-    const LEADERBOARD_USERS = [
-        { rank: 1, wallet: '0x8b2e3f1a0987c6d5e4f3a2b1', points: 194500, txs: 412, vol: 1845000, swaps: 340, tier: 'WHALE' },
-        { rank: 2, wallet: '0x3c9a1f872b64d5e1a0f983c2', points: 98200, txs: 289, vol: 924000, swaps: 215, tier: 'ALPHA' },
-        { rank: 3, wallet: '0xfa1298c430b91e5d7a6421f0', points: 68400, txs: 194, vol: 642000, swaps: 150, tier: 'POWER USER' },
-        { rank: 4, wallet: '0x6d910a42f3b8e7c150a98214', points: 44800, txs: 142, vol: 418000, swaps: 110, tier: 'POWER USER' },
-        { rank: 5, wallet: '0x18e472a9b3c0f1d827a46501', points: 29500, txs: 98, vol: 284000, swaps: 82, tier: 'TRADER' },
-        { rank: 6, wallet: '0xa0f93c2184d5e7b162a09148', points: 20400, txs: 76, vol: 192000, swaps: 64, tier: 'TRADER' },
-        { rank: 7, wallet: '0x49e172a083f4b6d51c902187', points: 13200, txs: 54, vol: 124000, swaps: 45, tier: 'EARLY BIRD' }
-    ];
+    // ── LEADERBOARD: verified Noise accounting only (no seeded rows) ──
+    let _leaderboardPeriod = 'all';
+
+    function moneyFmt(v) {
+        const n = Number(v || 0);
+        return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
 
     function renderLeaderboardView() {
         const tbody = $('leaderboardTableBody');
         if (!tbody) return;
-        tbody.innerHTML = LEADERBOARD_USERS.map(u => {
-            const rCls = u.rank === 1 ? 'rank-1' : (u.rank === 2 ? 'rank-2' : (u.rank === 3 ? 'rank-3' : ''));
-            return `
-            <tr>
-                <td class="rank-num ${rCls}">#${u.rank}</td>
-                <td style="font-family:'Space Grotesk',monospace; font-weight:600;">${shortAddr(u.wallet)}</td>
-                <td style="font-family:'Space Grotesk',monospace; color:var(--green); font-weight:700;">${u.points.toLocaleString()} PTS</td>
-                <td style="font-family:'Space Grotesk',monospace;">${u.txs}</td>
-                <td style="font-family:'Space Grotesk',monospace; font-weight:600;">$${u.vol.toLocaleString()}</td>
-                <td style="font-family:'Space Grotesk',monospace;">${u.swaps}</td>
-                <td><span class="badge-pill badge-sel">${u.tier}</span></td>
-            </tr>`;
-        }).join('');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:16px;">Loading verified leaderboard…</td></tr>';
+        const qs = '?period=' + encodeURIComponent(_leaderboardPeriod) + (wallet ? '&wallet=' + encodeURIComponent(wallet) : '');
+        fetch('/api/leaderboard' + qs)
+            .then(r => r.json())
+            .then(d => {
+                if (d && d.error) throw new Error(d.message || d.error);
+                const items = Array.isArray(d.items) ? d.items : [];
+                const meta = $('leaderboardMeta');
+                if (meta) {
+                    meta.textContent = 'Source: ' + (d.source || 'Noise accounting') +
+                        ' · ' + items.length + ' ranked · updated ' + new Date(d.updatedAt || Date.now()).toLocaleTimeString();
+                }
+                if (!items.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:18px;">No verified activity for this period yet. Rankings are built only from confirmed Noise accounting — nothing is seeded.</td></tr>';
+                } else {
+                    tbody.innerHTML = items.map(u => {
+                        const rCls = u.rank === 1 ? 'rank-1' : (u.rank === 2 ? 'rank-2' : (u.rank === 3 ? 'rank-3' : ''));
+                        return `
+                        <tr>
+                            <td class="rank-num ${rCls}">#${Number(u.rank) || '—'}</td>
+                            <td style="font-family:'Space Grotesk',monospace; font-weight:600;">${esc(u.wallet || '—')}</td>
+                            <td style="font-family:'Space Grotesk',monospace;">${Number(u.referred) || 0}</td>
+                            <td style="font-family:'Space Grotesk',monospace;">${Number(u.activeReferrals) || 0}</td>
+                            <td style="font-family:'Space Grotesk',monospace;">${moneyFmt(u.eligibleRevenue)}</td>
+                            <td style="font-family:'Space Grotesk',monospace; color:var(--green); font-weight:700;">${moneyFmt(u.earned)}</td>
+                        </tr>`;
+                    }).join('');
+                }
+                paintViewerRank(d.viewer);
+            })
+            .catch(e => {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--amber); padding:16px;">Leaderboard unavailable: ' + esc(e.message || 'API error') + '</td></tr>';
+                const meta = $('leaderboardMeta');
+                if (meta) meta.textContent = 'Source unavailable';
+            });
+    }
+
+    function paintViewerRank(viewer) {
+        const statusEl = $('userRankStatus');
+        const metricsEl = $('userRankMetrics');
+        if (!statusEl || !metricsEl) return;
+        if (!wallet) {
+            statusEl.textContent = 'Connect wallet to view your personal ranking and verified earnings.';
+            metricsEl.innerHTML = '';
+            return;
+        }
+        if (!viewer) {
+            statusEl.innerHTML = `Wallet: <b>${shortAddr(wallet)}</b> · <span style="color:var(--text-dim)">UNRANKED</span>`;
+            metricsEl.innerHTML = '<div class="net-pill">NO VERIFIED EARNINGS YET</div>';
+            return;
+        }
+        const ranked = viewer.rank != null;
+        statusEl.innerHTML = `Wallet: <b>${shortAddr(wallet)}</b> · Status: ` +
+            (ranked ? `<span style="color:var(--green)">RANK #${viewer.rank} of ${viewer.total}</span>` : '<span style="color:var(--text-dim)">UNRANKED</span>');
+        metricsEl.innerHTML =
+            '<div class="net-pill">EARNED: ' + moneyFmt(viewer.earned) + '</div>' +
+            '<div class="net-pill">ACTIVE REFERRALS: ' + (Number(viewer.activeReferrals) || 0) + '</div>';
     }
 
     function setLeaderboardPeriod(p, btn) {
+        _leaderboardPeriod = ['week', 'month', 'all'].includes(p) ? p : 'all';
         document.querySelectorAll('#view-leaderboard .filter-btn').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
-        toast('Leaderboard filtered: ' + p);
+        renderLeaderboardView();
     }
 
     // ── PORTFOLIO & ACTIVITY RENDERING ──
@@ -5276,13 +5886,13 @@
 
     // ── NOISE AI ENGINE ──
     const AI_KNOWLEDGE = {
-        'afsui': 'Aftermath afSUI offers 7.12% APY with instant liquid redemption on Aftermath pools, avoiding the 1-epoch Sui unbonding queue.',
-        'hasui': 'Haedal haSUI offers 7.28% APY by routing delegations through community-voted validators with low commission rates.',
-        'deepbook': 'DeepBook v3 charges 0.02% maker fee rebates and sub-millisecond execution directly in Move smart contracts.',
+        'afsui': 'Aftermath afSUI is a liquid staking token with instant redemption on Aftermath pools, avoiding the 1-epoch Sui unbonding queue. The current APY is shown on the Earn page only when the live feed returns it.',
+        'hasui': 'Haedal haSUI routes delegations through community-voted validators with low commission rates. The current APY is shown on the Earn page only when the live feed returns it.',
+        'deepbook': 'DeepBook v3 is a native CLOB in Move; maker rebates and fees are read from the on-chain pool state, not hardcoded here.',
         'bridge': 'Noise Hub connects to Wormhole Portal and native Sui Bridge for instant cross-chain liquidity between Ethereum, Solana, and Sui.',
         'predict': 'DeepBook Predict runs per-expiry range markets (1- and 5-minute BTC windows): UP pays $1 per contract above the strike, DOWN at or below. 10 contracts per ticket, min 1 USDC premium, no trading in the final 10 seconds.',
         'swap': 'Noise Hub builds the real route server-side (Cetus aggregator, simulated before signing) and your wallet signs the exact bytes. Zero-amount and no-balance tickets are rejected before review.',
-        'lending': 'Top lending rates right now on Sui: NAVI Protocol (9.82% on USDC), Scallop (9.35% on USDC), Suilend (8.94% on USDC).',
+        'lending': 'NAVI, Scallop and Suilend are the lending venues wired in Noise. Rates move every block, and the app shows them only when a provider feed returns a value.',
         'mmt': 'Momentum (mmt.finance) is a capital-efficient DEX on Sui with optimized tick math — routed in the swap comparison and listed in Protocols.',
         'magma': 'Magma Finance (magmafinance.io) is a liquid staking protocol on Sui — listed in Protocols under Liquid Staking.'
     };
@@ -5307,141 +5917,15 @@
         updateAiKpis();
     }
 
-    const DEFAULT_AUTOMATIONS = [
-        {
-            id: 'auto-dca-1',
-            title: 'Weekly SUI DCA Accumulator',
-            category: 'dca',
-            frequency: 'weekly_mon',
-            protocol: 'cetus',
-            protocolName: 'Cetus CLMM DEX',
-            time: '09:00',
-            amount: 50,
-            asset: 'USDC',
-            slippage: 0.005,
-            gasCap: '0.005 SUI',
-            status: 'active',
-            nextRun: 'Mon 09:00 UTC',
-            lastRun: 'Oct 19, 09:00 UTC · Completed',
-            runsCount: 14,
-            dayOfWeek: 1,
-            hour: 9,
-            ptbCommands: [
-                'SplitCoins(Gas, [50_000_000 MIST])',
-                'MoveCall(cetus::router::swap_exact_input)',
-                'TransferObjects([SuiOutputCoin], Recipient)'
-            ]
-        },
-        {
-            id: 'auto-guard-2',
-            title: 'NAVI Collateral Health Factor Guardian',
-            category: 'sentinel',
-            frequency: 'condition_hf',
-            protocol: 'navi',
-            protocolName: 'NAVI Protocol',
-            time: '24/7 Continuous',
-            amount: 100,
-            asset: 'USDC',
-            slippage: 0.005,
-            gasCap: '0.008 SUI',
-            status: 'active',
-            nextRun: 'Sentinel Monitoring (HF: 2.45 · Safe)',
-            lastRun: '10 mins ago · Safe',
-            runsCount: 382,
-            dayOfWeek: 'all',
-            hour: 'all',
-            ptbCommands: [
-                'MoveCall(navi::lending::check_health_factor)',
-                'MoveCall(navi::lending::repay_debt_if_below_threshold)'
-            ]
-        },
-        {
-            id: 'auto-yield-3',
-            title: 'Cetus LP Yield Auto-Compounder',
-            category: 'yield',
-            frequency: 'weekly_sun',
-            protocol: 'springsui',
-            protocolName: 'SpringSui (sSUI)',
-            time: '18:00',
-            amount: 15,
-            asset: 'SUI',
-            slippage: 0.005,
-            gasCap: '0.006 SUI',
-            status: 'active',
-            nextRun: 'Sun 18:00 UTC',
-            lastRun: 'Oct 18, 18:00 UTC · +$24.80 sSUI',
-            runsCount: 8,
-            dayOfWeek: 0,
-            hour: 18,
-            ptbCommands: [
-                'MoveCall(cetus::clmm_pool::collect_fee)',
-                'MoveCall(springsui::liquid_staking::mint_sSUI)'
-            ]
-        },
-        {
-            id: 'auto-dip-4',
-            title: 'DeepBook v3 SUI Dip Sniper',
-            category: 'limit',
-            frequency: 'condition_price',
-            protocol: 'deepbook',
-            protocolName: 'DeepBook v3 CLOB',
-            time: 'Trigger: SUI < $1.00',
-            amount: 200,
-            asset: 'USDC',
-            slippage: 0.001,
-            gasCap: '0.004 SUI',
-            status: 'active',
-            nextRun: 'Waiting for Price Trigger (< $1.00)',
-            lastRun: 'Armed on-chain',
-            runsCount: 2,
-            dayOfWeek: 'all',
-            hour: 'all',
-            ptbCommands: [
-                'MoveCall(deepbook::clob_v3::place_limit_order)'
-            ]
-        }
-    ];
 
     let _automationsList = [];
     try {
         const stored = localStorage.getItem('nh:automations_v2');
-        _automationsList = stored ? JSON.parse(stored) : DEFAULT_AUTOMATIONS;
+        _automationsList = stored ? JSON.parse(stored) : [];
     } catch {
-        _automationsList = DEFAULT_AUTOMATIONS;
+        _automationsList = [];
     }
-
-    let _automationLogs = [
-        {
-            id: 'log-1',
-            title: 'Weekly SUI DCA Accumulator',
-            action: 'Swap 50 USDC → 47.75 SUI',
-            protocol: 'Cetus CLMM',
-            digest: '9F2xL8pZ7Q1vM5wK4bJ3nH6tG8sD1rY2aC5eW7xP4mQ9',
-            gas: '0.0028 SUI',
-            status: 'SUCCESS · CONFIRMED',
-            time: '24 hours ago'
-        },
-        {
-            id: 'log-2',
-            title: 'NAVI Collateral Sentinel',
-            action: 'Evaluated HF: 2.45 (Limit: 1.30 · Safe)',
-            protocol: 'NAVI Lending',
-            digest: '3B8yW4kR9tL1vP6mZ2xJ5nH7sG1dF8aC4eQ6xM9pK2rT',
-            gas: '0.0009 SUI',
-            status: 'DRY-RUN VERIFIED',
-            time: '10 mins ago'
-        },
-        {
-            id: 'log-3',
-            title: 'Cetus LP Auto-Compounder',
-            action: 'Harvested $24.80 yield → Staked to sSUI',
-            protocol: 'SpringSui',
-            digest: '7K4xM9pL2vR8tB1wZ5nH3sJ6dF9aC2eQ8xP1mK5rT4yW',
-            gas: '0.0034 SUI',
-            status: 'SUCCESS · CONFIRMED',
-            time: '2 days ago'
-        }
-    ];
+    let _automationLogs = [];
 
     function saveAutomationsList() {
         try {
@@ -5558,9 +6042,9 @@
             <div style="text-align:right;">
                 <span class="badge-pill badge-best" style="font-size:9.5px;">${esc(log.status)}</span>
                 <div style="margin-top:4px;">
-                    <a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(log.digest)}" target="_blank" style="color:var(--accent); font-family:'Space Grotesk',monospace; font-size:11px;">
+                    ${log.digest ? `<a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(log.digest)}" target="_blank" style="color:var(--accent); font-family:'Space Grotesk',monospace; font-size:11px;">
                         ${shortAddr(log.digest)} ↗
-                    </a>
+                    </a>` : '<span style="color:var(--text-dim); font-family:\'Space Grotesk\',monospace; font-size:11px;">no on-chain digest</span>'}
                 </div>
             </div>
         </div>`).join('');
@@ -5749,11 +6233,11 @@
         <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
             <div class="modal-card" style="max-width:540px;">
                 <div class="modal-title" style="display:flex; align-items:center; justify-content:space-between;">
-                    <span>ATOMIC MOVE PTB SIMULATOR</span>
-                    <span class="badge-pill badge-best">DRY-RUN GATEWAY</span>
+                    <span>ATOMIC MOVE PTB PLAN</span>
+                    <span class="badge-pill" style="border:1px solid var(--line);">PLAN PREVIEW</span>
                 </div>
                 <div class="modal-desc">
-                    Simulation dry-run verifies execution on Sui Mainnet RPC. Zero funds at risk.
+                    Reference trace of the intended steps. No transaction is built, signed or simulated at this point.
                 </div>
                 
                 <div style="margin-bottom:18px;">
@@ -5788,34 +6272,16 @@
                     </div>
                 </div>
 
-                <div style="background:rgba(0,255,136,0.06); border:1px solid rgba(0,255,136,0.25); border-radius:6px; padding:12px; margin-bottom:18px; font-size:12px; line-height:1.5;">
-                    <b style="color:var(--green);">✓ SIMULATION RESULT: SUCCESS</b><br>
-                    <span style="color:var(--text-dim);">Move VM Status: EXECUTABLE · Estimated Gas: ~0.00284 SUI ($0.0029) · Slippage Bound: Protected</span>
+                <div style="background:rgba(255,176,0,0.06); border:1px solid rgba(255,176,0,0.3); border-radius:6px; padding:12px; margin-bottom:18px; font-size:12px; line-height:1.5;">
+                    <b style="color:var(--amber);">REFERENCE PLAN ONLY — NOTHING WAS BUILT OR SIMULATED</b><br>
+                    <span style="color:var(--text-dim);">This preview draws the intended PTB shape. A real dry-run runs server-side only for strategies that have an executable builder and a connected wallet.</span>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
-                    <button class="wallet-btn" onclick="executeSimulatedPtbRecord('${esc(task.title || 'Simulated PTB')}')" style="padding:10px 22px;">Confirm & Run Dry-Run</button>
                     <button class="modal-close-btn" onclick="closeModal()">Close</button>
                 </div>
             </div>
         </div>`;
-    }
-
-    function executeSimulatedPtbRecord(title) {
-        const dummyDigest = '5F' + Math.random().toString(36).substring(2, 10).toUpperCase() + 'zK8pM' + Date.now().toString(36).toUpperCase();
-        _automationLogs.unshift({
-            id: 'log-' + Date.now(),
-            title: title || 'Simulated PTB Task',
-            action: 'Dry-run atomic execution verified',
-            protocol: 'Sui Mainnet RPC',
-            digest: dummyDigest,
-            gas: '0.0028 SUI',
-            status: 'DRY-RUN SUCCESS',
-            time: 'Just now'
-        });
-        closeModal();
-        toast('Dry-run simulation executed and recorded to audit log!');
-        renderAutomationLogs();
     }
 
     function quickFillAiPrompt(txt) {
@@ -5871,7 +6337,7 @@
         }
 
         // 3) Offline built-in knowledge
-        let ans = "I analyzed Sui Mainnet state: Cetus, Aftermath, and DeepBook v3 currently hold the highest liquidity for spot swaps. All 21 verified protocols have active contracts and healthy TVL. You can configure scheduled DCAs and health sentinels in the Strategy Planner tab above.";
+        let ans = "I can only quote what the connected providers return. Use the swap quote list for live Cetus, Aftermath and Turbos outputs; volumes and TVL are not available without a verified aggregate source. You can configure scheduled DCAs and health sentinels in the Strategy Planner tab above.";
         const low = q.toLowerCase();
         for (const [k, v] of Object.entries(AI_KNOWLEDGE)) {
             if (low.includes(k)) { ans = v; break; }
@@ -6386,7 +6852,55 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         </div>`;
     }
 
+    // Capability gate: an action that is not LIVE never reaches the signing review.
+    function showProviderGate(kind, cap) {
+        $('modalContainer').innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal-card">
+                <div class="modal-title">${esc(String(kind || 'action').toUpperCase())} NOT AVAILABLE IN NOISE</div>
+                <div class="modal-desc">Execution is not LIVE for this action (state: <b>${esc(String((cap && cap.execute) || '—'))}</b>). No transaction was built.</div>
+                <div style="font-size:12px; line-height:1.6; color:var(--text-dim); margin-bottom:18px;">${esc((cap && cap.note) || 'Continue on the provider — Noise never fills the gap with a simulated transaction.')}</div>
+                ${cap && cap.url ? `<a class="exec-btn" style="display:block; text-align:center; text-decoration:none;" href="${esc(cap.url)}" target="_blank" rel="noopener">OPEN PROVIDER ↗</a>` : ''}
+                <button class="modal-close-btn" onclick="closeModal()">Close</button>
+            </div>
+        </div>`;
+    }
+
     // ── REAL TRANSACTION EXECUTION ──
+    // ── DEEPBOOK DIRECT-SWAP FALLBACK (pool-native assets such as HBTC) ──
+    function deepBookPoolForPair(fromSymbol, toSymbol) {
+        const keys = Object.keys(_spotMarketPrices || {});
+        const direct = fromSymbol + '_' + toSymbol;
+        const reverse = toSymbol + '_' + fromSymbol;
+        if (keys.includes(direct) || direct === 'HBTC_USDC') return { pool: direct, side: 'BASE_TO_QUOTE' };
+        if (keys.includes(reverse) || reverse === 'HBTC_USDC') return { pool: reverse, side: 'QUOTE_TO_BASE' };
+        return null;
+    }
+
+    async function buildDeepBookSwap(fromSymbol, toSymbol, amount) {
+        const pair = deepBookPoolForPair(fromSymbol, toSymbol);
+        if (!pair) return { error: 'NO_ROUTE', message: 'No DeepBook v3 pool for ' + fromSymbol + '/' + toSymbol };
+        try {
+            const qRes = await fetch('/api/trade/swap-quote?pool=' + encodeURIComponent(pair.pool) +
+                '&side=' + pair.side + '&amount=' + encodeURIComponent(String(amount)));
+            const q = await qRes.json();
+            if (!q || q.error) return { error: (q && q.error) || 'QUOTE_FAILED', message: (q && q.message) || '' };
+            const quote = q.quote || {};
+            const out = Number(pair.side === 'BASE_TO_QUOTE' ? quote.quoteOut : quote.baseOut) || 0;
+            if (!(out > 0)) return { error: 'NO_LIQUIDITY', message: 'DeepBook pool returned no output for this size.' };
+            const minOut = out * 0.995;
+            const bRes = await fetch('/api/trade/swap', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet, market: pair.pool, side: pair.side, amount: Number(amount), minOut })
+            });
+            const b = await bRes.json();
+            if (!b || b.error || !b.txBytes) return { error: (b && b.error) || 'BUILD_FAILED', message: (b && (b.message || b.detail)) || '' };
+            return { ...b, txBytes: b.txBytes, amountOut: String(out), amountOutHuman: true, provider: 'DeepBook v3' };
+        } catch (e) {
+            return { error: 'BUILD_FAILED', message: String(e.message || e) };
+        }
+    }
+
     async function handleSwapAction() {
         if (!wallet) {
             toast('Connect wallet first.');
@@ -6401,17 +6915,26 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         if (fromToken === toToken) { toast('Pick two different tokens.'); return; }
         const bal = _walletBalances[fromToken] || 0;
         if (bal < fromAmt) { toast('Insufficient ' + fromToken + ' balance.'); return; }
-        const routeObj = ROUTES_INFO.find(r => r.id === _selectedRoute) || ROUTES_INFO[0];
-
+        const kind = 'swap';
+        const cap = (window.ACTION_CAPABILITIES || {})[kind];
+        if (cap && cap.execute !== 'LIVE') { showProviderGate(kind, cap); return; }
+        const q = _swapQuotes && _swapQuotes.key === swapQuoteKey() ? _swapQuotes : null;
+        const active = q ? (q.routes.find(r => providerId(r) === _selectedRoute) || q.routes[0]) : null;
+        const quotedOut = active ? routeOut(active) : null;
+        if (quotedOut == null) {
+            toast('No live quote for this pair and amount yet — wait for the route list.');
+            return;
+        }
         showReviewModal({
             title: 'REVIEW SWAP EXECUTION',
-            desc: `Aggregated swap: ${fromAmt} ${fromToken} → ${toAmt} ${toToken}`,
+            desc: `Quoted swap: ${fromAmt} ${fromToken} → ${quotedOut.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${toToken}`,
             details: [
                 { k: 'You Pay', v: `${fromAmt} ${fromToken}` },
-                { k: 'You Receive (est.)', v: `${toAmt} ${toToken}` },
-                { k: 'Route / Venue', v: routeObj.name },
-                { k: 'Max Slippage', v: '0%' },
-                { k: 'Est. Network Fee', v: '~0.0028 SUI' },
+                { k: 'Quoted Output', v: routeOutText(active) },
+                { k: 'Route / Venue', v: active.provider },
+                { k: 'Quote Age', v: Math.max(0, Math.round((Date.now() - q.at) / 1000)) + 's (live)' },
+                { k: 'Max Slippage', v: (SWAP_SLIPPAGE * 100).toFixed(1) + '%' },
+                { k: 'Network Fee', v: 'simulated before signing' },
                 { k: 'MEV Protection', v: 'Active (Direct RPC)' }
             ],
             actionType: 'swap'
@@ -6427,6 +6950,35 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
 
         try {
             let digest = null;
+
+            // Generic DeepBook manager action (deposit/withdraw/cancel/modify/settled/rebates):
+            // backend builds + dry-runs the PTB, the wallet only signs it.
+            if (actionType === 'spot_action' && _pendingSpotAction && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
+                const act = _pendingSpotAction;
+                _pendingSpotAction = null;
+                status.textContent = 'Building unsigned transaction…';
+                const bRes = await fetch(act.url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(act.body)
+                });
+                const built = await bRes.json();
+                if (!built || built.error || !built.txBytes) throw new Error((built && (built.error + (built.message ? ': ' + built.message : ''))) || 'BUILD_FAILED');
+                const { Transaction } = await import('@mysten/sui/transactions');
+                const tx = Transaction.from(built.txBytes);
+                status.textContent = 'Approve the transaction in your wallet…';
+                const res = await window.HubWallet.signAndExecute(tx);
+                digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
+                if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
+                status.innerHTML = `<span style="color:var(--green)">DeepBook transaction confirmed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                btn.textContent = 'Done';
+                toast('DeepBook transaction confirmed');
+                recordActivity('SPOT', act.url.split('/').pop(), digest);
+                setTimeout(closeModal, 2200);
+                fetchWalletBalances();
+                fetchSpotOrders();
+                fetchSpotAccount();
+                return;
+            }
 
             // Real Predict execution: build unsigned mint PTB server-side, sign in wallet
             if (actionType === 'predict' && _pendingPredict && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
@@ -6526,10 +7078,10 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
             // No trading account → offer the one-time setup first, then resume the order.
             if (actionType === 'spot_order' && _pendingSpot && isRealWallet && window.HubWallet && typeof window.HubWallet.signAndExecute === 'function') {
                 const so = _pendingSpot;
-                status.textContent = 'Building limit order…';
+                status.textContent = 'Building ' + (so.type || 'LIMIT').toLowerCase() + ' order…';
                 const bRes = await fetch('/api/trade/build', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wallet, market: so.pool, side: so.side, type: 'LIMIT', price: so.price, quantity: so.quantity })
+                    body: JSON.stringify({ wallet, market: so.pool, side: so.side, type: so.type || 'LIMIT', price: so.price, quantity: so.quantity })
                 });
                 const built = await bRes.json();
                 if (built.error || !built.txBytes) {
@@ -6560,14 +7112,14 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
                 }
                 _pendingSpot = null;
                 const gasSui = built.gasEst != null ? (Number(built.gasEst) / 1e9).toFixed(4) : null;
-                status.innerHTML = `Limit ${esc(so.side)} ${esc(so.quantity)} @ ${esc(so.price)}` +
+                status.innerHTML = `${esc(so.type || 'LIMIT')} ${esc(so.side)} ${esc(so.quantity)} @ ${so.type === 'MARKET' ? 'market' : esc(so.price)}` +
                     (gasSui ? ` · gas ≈ ${gasSui} SUI` : '') + `<br>Approve the order in your wallet…`;
                 const { Transaction } = await import('@mysten/sui/transactions');
                 const tx = Transaction.from(built.txBytes);
                 const res = await window.HubWallet.signAndExecute(tx);
                 digest = res && (res.digest || res.transactionDigest || (typeof res === 'string' ? res : res.effects?.transactionDigest));
                 if (!digest) throw new Error('Wallet did not return a valid transaction digest.');
-                status.innerHTML = `<span style="color:var(--green)">Limit Order Placed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
+                status.innerHTML = `<span style="color:var(--green)">Order Placed</span><br><a href="https://suiscan.xyz/mainnet/tx/${encodeURIComponent(digest)}" target="_blank" style="color:var(--accent)">View on SuiScan (${shortAddr(digest)}) ↗</a>`;
                 btn.textContent = 'Done';
                 toast('DeepBook order placed');
                 recordActivity('SPOT', `${so.side} ${so.quantity} @ ${so.price} (${so.pool})`, digest);
@@ -6604,15 +7156,27 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
                 const dec = tokenDecimals(fTok);
                 if (dec == null) throw new Error('Unknown decimals for ' + fTok + ' — refresh balances first.');
                 const amountMist = String(Math.floor(fAmt * Math.pow(10, dec)));
-                status.textContent = 'Requesting route from Cetus aggregator…';
+                status.textContent = 'Building the quoted route and simulating…';
                 const bRes = await fetch('/api/swap', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ from: fTok, to: tTok, sender: wallet, amountMist, slippage: 0 })
+                    body: JSON.stringify({
+                        from: assetParam(fTok), to: assetParam(tTok), sender: wallet, amountMist, slippage: SWAP_SLIPPAGE, provider: _selectedRoute || undefined,
+                        fromDecimals: customToken(fTok) ? customToken(fTok).decimals : undefined,
+                        toDecimals: customToken(tTok) ? customToken(tTok).decimals : undefined,
+                    })
                 });
-                const built = await bRes.json();
+                let built = await bRes.json();
+                // HBTC is DeepBook-native (Hashi BTC): when the Cetus aggregator has no
+                // route, fall back to the real DeepBook pool swap instead of failing.
+                if ((!built || built.error || !built.txBytes) && (fTok === 'HBTC' || tTok === 'HBTC')) {
+                    status.textContent = 'No aggregator route — building DeepBook v3 pool swap…';
+                    built = await buildDeepBookSwap(fTok, tTok, fAmt);
+                }
                 if (built.error || !built.txBytes) throw new Error((built.error || 'BUILD_FAILED') + (built.detail || built.message ? ': ' + (built.detail || built.message) : ''));
                 const tDec = tokenDecimals(tTok) ?? 9;
-                const realOut = built.amountOut != null ? (Number(built.amountOut) / Math.pow(10, tDec)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : $('swapToAmt').value;
+                const realOut = built.amountOutHuman
+                    ? Number(built.amountOut).toLocaleString(undefined, { maximumFractionDigits: 4 })
+                    : (built.amountOut != null ? (Number(built.amountOut) / Math.pow(10, tDec)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : $('swapToAmt').value);
                 const gasSui = built.gasEst != null ? (Number(built.gasEst) / 1e9).toFixed(4) : null;
                 status.innerHTML = `Route <b>${esc(built.provider || 'Cetus')}</b> · out ≈ <b>${esc(String(realOut))} ${esc(tTok)}</b>` +
                     (gasSui ? ` · gas ≈ ${gasSui} SUI` : '') + `<br>Approve the swap in your wallet…`;
@@ -6661,7 +7225,7 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
             btn.textContent = 'Done';
             toast('Transaction executed successfully on Sui Mainnet');
             
-            const actDetails = actionType === 'flashflow' ? (FLASH_RECIPES[_activeFlashRecipe]?.title || 'Atomic Flash-Flow') : `Executed via ${_selectedRoute.toUpperCase()}`;
+            const actDetails = actionType === 'flashflow' ? (FLASH_RECIPES[_activeFlashRecipe]?.title || 'Atomic Flash-Flow') : `Executed via ${String(_selectedRoute || 'noise route').toUpperCase()}`;
             recordActivity(actionType.toUpperCase(), actDetails, digest);
             
             if (actionType === 'swap') {
@@ -6780,15 +7344,13 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         if (!wallet) {
             btn.textContent = 'Connect Wallet';
             btn.className = 'wallet-btn';
-            $('userRankStatus').textContent = 'Connect wallet to view your personal ranking and verified volume.';
-            $('userRankMetrics').innerHTML = '';
+            paintViewerRank(null);
         } else {
             btn.textContent = shortAddr(wallet);
             btn.className = 'wallet-btn connected';
-            $('userRankStatus').innerHTML = `Wallet: <b>${shortAddr(wallet)}</b> · Status: <span style="color:var(--green)">Active Trader</span>`;
-            $('userRankMetrics').innerHTML = `
-                <div class="net-pill"><span class="net-indicator"></span> YOUR RANK: #14</div>
-                <div class="net-pill">CONFIRMED: 12 TXS</div>`;
+            $('userRankStatus').innerHTML = `Wallet: <b>${shortAddr(wallet)}</b> · <span style="color:var(--text-dim)">loading verified rank…</span>`;
+            $('userRankMetrics').innerHTML = '';
+            if (typeof renderLeaderboardView === 'function') renderLeaderboardView();
         }
         updateBalanceLabels();
         updateUserPointsDisplay();
@@ -6915,6 +7477,8 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         fetchSpotMarkets();
         fetchSpotBook();
         fetchPredictBoard();
+        loadCustomTokens();
+        refreshSwapTokenOptions();
         recalcSwap();
         renderProtocolsRegistry();
         renderEarnSection();
@@ -7027,6 +7591,16 @@ The schedule is now visible in the Strategy Planner timetable and Active Tasks t
         }
         return res;
     }
+
+    // ── GENERATED MIRRORS (single source of truth: shared/registry.js) ──
+    // Regenerate with: node scripts/gen-ui-registry.mjs
+    /* REGISTRY_JSON_START */
+        const REGISTRY = [{"id":"sui","name":"Sui","cat":"infrastructure","status":"LIVE","caps":["settlement","rpc","balances","stakes","transfer"],"url":"https://sui.io","docs":"https://docs.sui.io","fee":"gas only","ref":"—","last":"2026-10-07"},{"id":"sui-native","name":"Sui Native Staking","cat":"staking","status":"LIVE","caps":["stake","unstake","rewards","validators","position"],"url":"https://sui.io","docs":"","fee":"validator commission","ref":"—","last":"2026-10-07"},{"id":"cetus","name":"Cetus","cat":"dex","status":"LIVE","caps":["swap","quote","build-tx","simulate"],"url":"https://app.cetus.zone","docs":"https://cetus-1.gitbook.io/cetus-developer-docs","fee":"pool fee + platform bps (cfg)","ref":"partner closed to new teams → policy 0","last":"2026-10-07"},{"id":"aftermath","name":"Aftermath","cat":"dex","status":"LIVE","caps":["swap-quote","swap-build","pools","staking-apy","rewards","position","deposit","withdraw"],"url":"https://aftermath.finance","docs":"https://docs.aftermath.finance","fee":"router: no protocol fee; pools 0.30%/0.10%","ref":"router 2.5% of integrator fee","last":"2026-10-07"},{"id":"deepbook","name":"DeepBook","cat":"trading","status":"LIVE","caps":["markets","orderbook","spot_order","limit_order","market_order","modify_order","cancel_order","cancel_orders","withdraw_settled","claim_rebates","account","pool_info","deposit","withdraw","referral","spot_swap","deep_stake","deep_unstake","setup_trading_account","position"],"url":"https://deepbook.tech","docs":"https://docs.sui.io/standards/deepbookv3","fee":"maker/taker (protocol)","ref":"—","last":"2026-10-07"},{"id":"deepbook-predict","name":"DeepBook Predict","cat":"trading","status":"LIVE","caps":["markets","predict_mint","predict_redeem","predict_claim","predict_settlement","position"],"url":"https://deepbook.tech","docs":"","fee":"predict fee (simulated pre-sign)","ref":"—","last":"2026-10-07"},{"id":"turbos","name":"Turbos","cat":"dex","status":"LIVE","caps":["pools","swap-quote","swap-build"],"url":"https://turbos.finance","docs":"","fee":"pool fee (provider)","ref":"verify","last":"2026-10-07"},{"id":"flowx","name":"FlowX","cat":"dex","status":"LIVE","caps":["swap-quote","swap-build"],"url":"https://flowx.finance","docs":"https://docs.flowx.finance","fee":"pool fee (provider)","ref":"verify","last":"2026-10-07"},{"id":"momentum","name":"Momentum","cat":"dex","status":"LIVE","caps":["swap-quote","swap-build"],"url":"","docs":"","fee":"verify","ref":"verify","last":"2026-10-07"},{"id":"bluefin-spot","name":"Bluefin Spot","cat":"dex","status":"LIVE","caps":["swap-quote","swap-build"],"url":"https://bluefin.io","docs":"","fee":"verify","ref":"verify","last":"2026-10-07"},{"id":"navi","name":"NAVI","cat":"lending","status":"LIVE","caps":["supply","withdraw","borrow","repay","claim"],"url":"https://naviprotocol.io","docs":"https://docs.naviprotocol.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-07"},{"id":"suilend","name":"Suilend","cat":"lending","status":"LIVE","caps":["supply","withdraw","borrow","repay","claim"],"url":"https://suilend.fi","docs":"https://docs.suilend.fi","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-07"},{"id":"scallop","name":"Scallop","cat":"lending","status":"LIVE","caps":["supply","withdraw","borrow","repay"],"url":"https://scallop.io","docs":"https://docs.scallop.io","fee":"referral-share first","ref":"terms unverified → policy 0","last":"2026-10-07"},{"id":"bucket","name":"Bucket","cat":"lending","status":"LIVE","caps":["psm-swap"],"url":"https://bucketprotocol.io","docs":"https://docs.bucketprotocol.io","fee":"PSM low-fee swaps","ref":"verify","last":"2026-10-07"},{"id":"haedal","name":"Haedal","cat":"liquid-staking","status":"LIVE","caps":["stake","unstake","claim"],"url":"https://haedal.xyz","docs":"","fee":"instant: protocol fee and liquidity; delayed ticket/claim","ref":"verify","last":"2026-10-07"},{"id":"volo","name":"Volo","cat":"liquid-staking","status":"LIVE","caps":["stats","stake","unstake"],"url":"","docs":"https://sdk.naviprotocol.io/wallet-client/volo","fee":"verify","ref":"verify","last":"2026-10-07"},{"id":"springsui","name":"SpringSui","cat":"liquid-staking","status":"LIVE","caps":["stake","unstake"],"url":"https://springsui.com","docs":"https://docs.suilend.fi/springsui/springsui-integration.md","fee":"protocol mint/redeem fees","ref":"verify","last":"2026-10-07"},{"id":"kai","name":"Kai","cat":"yield","status":"LIVE","caps":["deposit","withdraw"],"url":"https://kai.finance","docs":"","fee":"verify","ref":"verify","last":"2026-10-07"},{"id":"steamm","name":"STEAMM","cat":"yield","status":"LIVE","caps":["pools","deposit","withdraw"],"url":"https://suilend.fi","docs":"https://docs.suilend.fi/steamm-developer-integration-guide.md","fee":"verify","ref":"verify","last":"2026-10-07"},{"id":"wormhole","name":"Wormhole / Portal","cat":"bridge","status":"LIVE","caps":["bridge"],"url":"https://portalbridge.com","docs":"https://docs.wormhole.com","fee":"provider fee","ref":"verify","last":"2026-10-07"}];
+    /* REGISTRY_JSON_END */
+    window.CAP_MATRIX = {"sui":{"id":"sui","name":"Sui","category":"infrastructure","bucket":"INFRASTRUCTURE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":true},"sui-native":{"id":"sui-native","name":"Sui Native Staking","category":"staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"cetus":{"id":"cetus","name":"Cetus","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":true},"aftermath":{"id":"aftermath","name":"Aftermath","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":true,"position":true,"execution":true},"deepbook":{"id":"deepbook","name":"DeepBook","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"deepbook-predict":{"id":"deepbook-predict","name":"DeepBook Predict","category":"trading","bucket":"TRADING","status":"LIVE","data":true,"swap":false,"trade":true,"earn":false,"position":true,"execution":true},"turbos":{"id":"turbos","name":"Turbos","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":true},"flowx":{"id":"flowx","name":"FlowX","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":true},"momentum":{"id":"momentum","name":"Momentum","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":true},"bluefin-spot":{"id":"bluefin-spot","name":"Bluefin Spot","category":"dex","bucket":"DEX","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":false,"execution":true},"navi":{"id":"navi","name":"NAVI","category":"lending","bucket":"LENDING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":true},"suilend":{"id":"suilend","name":"Suilend","category":"lending","bucket":"LENDING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":true},"scallop":{"id":"scallop","name":"Scallop","category":"lending","bucket":"LENDING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":true,"execution":true},"bucket":{"id":"bucket","name":"Bucket","category":"lending","bucket":"LENDING","status":"LIVE","data":true,"swap":true,"trade":false,"earn":false,"position":true,"execution":true},"haedal":{"id":"haedal","name":"Haedal","category":"liquid-staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"volo":{"id":"volo","name":"Volo","category":"liquid-staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":false,"execution":true},"springsui":{"id":"springsui","name":"SpringSui","category":"liquid-staking","bucket":"STAKING","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":true,"execution":true},"kai":{"id":"kai","name":"Kai","category":"yield","bucket":"EARN","status":"LIVE","data":true,"swap":false,"trade":false,"earn":true,"position":false,"execution":true},"steamm":{"id":"steamm","name":"STEAMM","category":"yield","bucket":"EARN","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":true},"wormhole":{"id":"wormhole","name":"Wormhole / Portal","category":"bridge","bucket":"BRIDGE","status":"LIVE","data":true,"swap":false,"trade":false,"earn":false,"position":false,"execution":true}};
+    /* CAP_JSON_START */
+        window.ACTION_CAPABILITIES = {"swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Cetus","url":"https://app.cetus.zone","note":"Cetus router: quote → build → simulate → wallet sign."},"stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native stake PTB built + simulated; wallet signs."},"unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui native staking","url":"https://sui.io","note":"Native unstake PTB built + simulated; wallet signs."},"liquid_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath","url":"https://aftermath.finance","note":"Liquid stake/unstake PTB built + simulated; wallet signs."},"predict_mint":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_redeem":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"predict_claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook Predict","url":"https://deepbook.tech"},"spot_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"limit_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"market_order":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"cancel_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"setup_trading_account":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech"},"spot_deposit":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"BalanceManager deposit PTB; dry-run gate runs before signing. Funded-wallet E2E still unproven."},"spot_withdraw":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"BalanceManager withdraw / withdraw-all PTB; dry-run gate before signing. Funded-wallet E2E still unproven."},"modify_order":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Remaining-quantity modify PTB; dry-run gate before signing. Funded-wallet E2E still unproven."},"cancel_orders":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Single, batch and cancel-all PTBs; live-order variants skip unknown ids. Funded-wallet E2E still unproven."},"withdraw_settled":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Settled-fill withdrawal PTB; dry-run gate before signing. Funded-wallet E2E still unproven."},"claim_rebates":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Maker-rebate claim PTB; dry-run gate before signing. Funded-wallet E2E still unproven."},"spot_referral":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Pool referral mint/set/update/claim PTBs (multiplier 0.1–2.0); dry-run gate before signing. Funded-wallet E2E still unproven."},"spot_swap":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"Direct pool swap (no BalanceManager) with on-chain minOut; live quote from the pool. Funded-wallet E2E still unproven."},"deep_stake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"DEEP stake PTB for pool fee/rebate benefits; dry-run gate before signing. Funded-wallet E2E still unproven."},"deep_unstake":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"DeepBook","url":"https://deepbook.tech","note":"DEEP unstake PTB; dry-run gate before signing. Funded-wallet E2E still unproven."},"liquidity":{"data":"LIVE","quote":"LIVE","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Aftermath / STEAMM","url":"https://aftermath.finance","note":"Real LP deposit/withdraw builders; live pool metadata, slippage minima, successful dry-run required before wallet signing. Cetus CLMM LP is not wired."},"claim":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Reward claims build + simulate for NAVI and Suilend; wallet signs. Aftermath/Cetus claims remain provider-side."},"supply":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Supply builds + simulates via official SDKs (NAVI lending v2, Suilend SDK v12, gRPC); wallet signs. E2E proof needs a funded wallet run."},"borrow":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Borrow builds with collateral/health preflight; wallet signs. E2E proof needs a funded wallet run."},"repay":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Partial/full repay builds; wallet signs. E2E proof needs a funded wallet run."},"withdraw":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"NAVI / Suilend","url":"https://naviprotocol.io","note":"Withdraw builds with health-gated preflight; wallet signs. E2E proof needs a funded wallet run."},"transfer":{"data":"LIVE","quote":"—","build":"LIVE","simulate":"LIVE","execute":"LIVE","provider":"Sui","url":"https://sui.io","note":"Plain coin transfer PTB built + simulated; wallet signs. Supported: SUI, USDC, DEEP, CETUS, NAVX."}};
+    /* CAP_JSON_END */
 
     window.HubWallet = {
         list: () => capable().map(w => ({ name: w.name, icon: w.icon })),

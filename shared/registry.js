@@ -93,11 +93,11 @@ export const PROTOCOLS = [
   }),
   p({
     id: 'deepbook', name: 'DeepBook', category: 'trading', bucket: 'TRADING', status: 'LIVE',
-    actions: ['markets', 'orderbook', 'spot_order', 'limit_order', 'market_order', 'cancel_order', 'setup_trading_account', 'position'],
+    actions: ['markets', 'orderbook', 'spot_order', 'limit_order', 'market_order', 'modify_order', 'cancel_order', 'cancel_orders', 'withdraw_settled', 'claim_rebates', 'account', 'pool_info', 'deposit', 'withdraw', 'referral', 'spot_swap', 'deep_stake', 'deep_unstake', 'setup_trading_account', 'position'],
     capability: C.d({ data: true, trade: true, position: true, execution: true }),
-    dataSource: 'DeepBook v3 SDK', fee: 'maker/taker (protocol)', ref: '—',
+    dataSource: 'DeepBook v3 SDK (mainnet core v9)', fee: 'maker/taker (protocol)', ref: '—',
     url: 'https://deepbook.tech', docs: 'https://docs.sui.io/standards/deepbookv3',
-    note: "Sui's native onchain liquidity layer. Live markets, L2 orderbook, order build/cancel via BalanceManager.",
+    note: "Sui's native onchain liquidity layer. Live markets incl. HBTC_USDC, L2 orderbook, limit/market orders, modify + batch/all cancel, manager deposits/withdrawals, settled balances, maker rebates, pool referrals, direct swaps and DEEP governance staking — every PTB dry-run before signing.",
   }),
   p({
     id: 'deepbook-predict', name: 'DeepBook Predict', category: 'trading', bucket: 'TRADING', status: 'LIVE',

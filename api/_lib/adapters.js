@@ -46,8 +46,13 @@ const COIN_TYPES = {
 
 const AF_BASE = process.env.AFTERMATH_API_URL || 'https://aftermath.finance';
 
+// Arbitrary imported coins are addressed by their full struct tag, which is
+// case-sensitive, so it must never be upper-cased like a curated symbol.
+export const STRUCT_TAG = /^0x[0-9a-fA-F]{1,64}::[A-Za-z0-9_]+::[A-Za-z0-9_]+$/;
 export function coinType(sym, network = NETWORK) {
-  const upper = (sym || '').toUpperCase();
+  const raw = String(sym || '').trim();
+  if (STRUCT_TAG.test(raw)) return raw;
+  const upper = raw.toUpperCase();
   const t = network==='mainnet' ? ASSET_BY_SYMBOL[upper]?.coinType : (COIN_TYPES[network] || {})[upper];
   if (!t) throw Object.assign(new Error('UNSUPPORTED_ASSET'), { code: 'UNSUPPORTED_ASSET' });
   return t;
