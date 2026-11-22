@@ -1123,6 +1123,36 @@
             flex: 1 1 auto;
             min-height: 0;
         }
+        /* Terminal fits one screen: the grid takes the remaining viewport height and
+           every column scrolls internally instead of stretching the page downwards. */
+        @media (min-width: 901px) {
+            .spot-grid {
+                height: calc(100vh - 270px);
+                min-height: 500px;
+                max-height: 760px;
+                align-items: stretch;
+            }
+            .spot-grid > .panel {
+                overflow: hidden;
+            }
+            #spotMarketsList {
+                max-height: none !important;
+                min-height: 0 !important;
+            }
+            #spotChartSurface {
+                min-height: 0 !important;
+            }
+            #spotBookRows {
+                min-height: 0 !important;
+                overflow-y: auto;
+            }
+            #spotEntryPanes {
+                overflow-y: auto;
+            }
+            #spotOrdersList {
+                max-height: none !important;
+            }
+        }
         .spot-pane-empty {
             color: var(--text-dim);
             font-size: 11.5px;
